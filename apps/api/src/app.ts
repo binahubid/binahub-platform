@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import auth from "./modules/auth";
-import admin from "./modules/admin";
-import ai from "./modules/ai";
+import auth from "./modules/auth/index";
+import admin from "./modules/admin/index";
+import ai from "./modules/ai/index";
 import { associateRoutes } from "./modules/associate/routes";
 import { reviewRoutes } from "./modules/reviews/routes";
 import { fileRoutes } from "./modules/files/routes";
