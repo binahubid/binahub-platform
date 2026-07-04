@@ -209,6 +209,9 @@ importers:
       '@ams/shared':
         specifier: workspace:*
         version: link:../shared
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.5.0
