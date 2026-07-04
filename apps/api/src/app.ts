@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import auth from "./modules/auth/index";
-import admin from "./modules/admin/index";
-import ai from "./modules/ai/index";
-import { associateRoutes } from "./modules/associate/routes";
-import { reviewRoutes } from "./modules/reviews/routes";
-import { fileRoutes } from "./modules/files/routes";
-import { workerRoutes } from "./workers/routes";
-import type { AppEnv } from "./types/env";
+import auth from "./modules/auth/index.js";
+import admin from "./modules/admin/index.js";
+import ai from "./modules/ai/index.js";
+import { associateRoutes } from "./modules/associate/routes.js";
+import { reviewRoutes } from "./modules/reviews/routes.js";
+import { fileRoutes } from "./modules/files/routes.js";
+import { workerRoutes } from "./workers/routes.js";
+import type { AppEnv } from "./types/env.js";
 
 const app = new Hono<AppEnv>();
 

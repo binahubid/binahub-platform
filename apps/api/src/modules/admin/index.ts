@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { authMiddleware, requireRole } from '../auth/middleware/auth';
-import { getDb } from '../../lib/database';
-import type { AppEnv } from '../../types/env';
+import { authMiddleware, requireRole } from '../auth/middleware/auth.js';
+import { getDb } from '../../lib/database.js';
+import type { AppEnv } from '../../types/env.js';
 
 const admin = new Hono<AppEnv>();
 

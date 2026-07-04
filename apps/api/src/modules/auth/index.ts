@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import { createClient } from '@supabase/supabase-js';
-import { getDb } from '../../lib/database';
+import { getDb } from '../../lib/database.js';
 import { generateSlug } from '@ams/shared/utils/slug';
 import { createAssociateSchema } from '@ams/shared/validators/associate';
 import type { AuthUser } from '../../types';
-import type { AppEnv } from '../../types/env';
+import type { AppEnv } from '../../types/env.js';
 
 const auth = new Hono<AppEnv>();
 

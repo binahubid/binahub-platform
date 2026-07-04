@@ -1,7 +1,7 @@
 import { Context, Next } from 'hono';
-import { getDb } from '../../../lib/database';
+import { getDb } from '../../../lib/database.js';
 import type { AuthUser } from '../../../types';
-import type { AppEnv } from '../../../types/env';
+import type { AppEnv } from '../../../types/env.js';
 
 // ============================================
 // AUTH MIDDLEWARE

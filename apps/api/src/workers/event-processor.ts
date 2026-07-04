@@ -1,4 +1,4 @@
-import { getDb } from '../lib/database';
+import { getDb } from '../lib/database.js';
 import { OpenAIProvider } from '@ams/ai';
 import type { EventQueue } from '@ams/shared/types/events';
 

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { authMiddleware } from '../auth/middleware/auth';
-import { getDb } from '../../lib/database';
+import { authMiddleware } from '../auth/middleware/auth.js';
+import { getDb } from '../../lib/database.js';
 import {
   presignedUrlRequestSchema,
   fileRegistrationSchema,
@@ -8,7 +8,7 @@ import {
   isFileSizeAllowed
 } from '@ams/shared/validators/files';
 import type { AuthUser } from '../../types';
-import type { AppEnv } from '../../types/env';
+import type { AppEnv } from '../../types/env.js';
 
 export const fileRoutes = new Hono<AppEnv>();
 

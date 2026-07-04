@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { getDb } from '../lib/database';
-import { processPendingEvents } from './event-processor';
-import type { AppEnv } from '../types/env';
+import { getDb } from '../lib/database.js';
+import { processPendingEvents } from './event-processor.js';
+import type { AppEnv } from '../types/env.js';
 
 export const workerRoutes = new Hono<AppEnv>();
 

@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
-import { authMiddleware, requireRole } from '../auth/middleware/auth';
-import { getDb } from '../../lib/database';
+import { authMiddleware, requireRole } from '../auth/middleware/auth.js';
+import { getDb } from '../../lib/database.js';
 import {
   createReviewSchema,
   updateReviewSchema,
   reviewFilterSchema
 } from '@ams/shared/validators/reviews';
 import type { AuthUser } from '../../types';
-import type { AppEnv } from '../../types/env';
+import type { AppEnv } from '../../types/env.js';
 
 export const reviewRoutes = new Hono<AppEnv>();
 

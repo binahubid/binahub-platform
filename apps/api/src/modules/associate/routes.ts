@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { authMiddleware, requireRole } from '../auth/middleware/auth';
-import { getDb } from '../../lib/database';
+import { authMiddleware, requireRole } from '../auth/middleware/auth.js';
+import { getDb } from '../../lib/database.js';
 import { generateUniqueSlug, ensureUniqueSlug, isValidSlug } from '@ams/shared/utils/slug';
 import {
   createAssociateSchema,
@@ -18,7 +18,7 @@ import {
   updatePreferencesSchema
 } from '@ams/shared/validators/associate';
 import type { AuthUser } from '../../types';
-import type { AppEnv } from '../../types/env';
+import type { AppEnv } from '../../types/env.js';
 
 export const associateRoutes = new Hono<AppEnv>();
 

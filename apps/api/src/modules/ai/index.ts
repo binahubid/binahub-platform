@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { authMiddleware } from '../auth/middleware/auth';
-import { getDb } from '../../lib/database';
+import { authMiddleware } from '../auth/middleware/auth.js';
+import { getDb } from '../../lib/database.js';
 import { createAIClient, parseCV, extractTextFromPDF, OpenAIProvider } from '@ams/ai';
-import type { AppEnv } from '../../types/env';
+import type { AppEnv } from '../../types/env.js';
 
 const ai = new Hono<AppEnv>();
 
