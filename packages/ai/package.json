@@ -25,12 +25,10 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@ams/shared": "workspace:*",
     "openai": "^4.50.0",
     "@anthropic-ai/sdk": "^0.30.0",
     "pdf-parse": "^1.1.1"
-  },
-  "peerDependencies": {
-    "@ams/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
