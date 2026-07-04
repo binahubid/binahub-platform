@@ -1,0 +1,26 @@
+{
+  "name": "binahub-platform",
+  "version": "0.3.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "db:generate": "pnpm --filter @ams/database db:generate",
+    "db:push": "pnpm --filter @ams/database db:push",
+    "db:seed": "pnpm --filter @ams/database db:seed"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "prettier": "^3.3.0",
+    "turbo": "^2.1.0",
+    "typescript": "^5.5.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

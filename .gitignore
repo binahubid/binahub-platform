@@ -1,0 +1,101 @@
+# ============================================
+# Dependencies
+# ============================================
+node_modules/
+.pnpm-store/
+.yarn/
+
+# ============================================
+# Build Outputs
+# ============================================
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# ============================================
+# Environment Variables
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+.env.test
+
+# ============================================
+# Logs
+# ============================================
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ============================================
+# Testing & Coverage
+# ============================================
+coverage/
+.nyc_output/
+*.lcov
+
+# ============================================
+# Cache
+# ============================================
+.cache/
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.tsbuildinfo
+
+# ============================================
+# IDE & Editors
+# ============================================
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ============================================
+# Operating System
+# ============================================
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ============================================
+# Deployment & Platform
+# ============================================
+.vercel/
+.supabase/
+.netlify/
+
+# ============================================
+# Secrets & Keys
+# ============================================
+*.pem
+*.key
+*.p12
+*.pfx
+service-account.json
+firebase-adminsdk*.json
+
+# ============================================
+# Misc
+# ============================================
+*.pid
+*.seed
+*.pid.lock
+.DS_Store
+.idea
+.env
