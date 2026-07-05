@@ -106,7 +106,7 @@ export const ENGAGEMENT_TYPES = [
 ] as const;
 
 export const updateProfileSchema = z.object({
-  fullName: z.string().min(1, 'Nama lengkap wajib diisi').max(255).optional(),
+  fullName: z.string().min(1, 'Nama lengkap wajib diisi').max(255).nullable().optional(),
   preferredName: z.string().max(100).nullable().optional(),
   headline: z.string().max(255).nullable().optional(),
   bio: z.string().max(5000).nullable().optional(),

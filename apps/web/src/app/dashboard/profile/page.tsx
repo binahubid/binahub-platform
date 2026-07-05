@@ -813,26 +813,28 @@ export default function OriginalProfilePage() {
             if (parseJson.success && parseJson.data) {
               const parsed = parseJson.data;
               
-              // Map fields to correct database schema keys
-              const extractedBio = parsed.bio || parsed.summary || p?.bio;
-              const extractedHeadline = parsed.headline || p?.headline;
+              // === 1. Update Profile (only send fields with actual values) ===
+              const profilePayload: Record<string, unknown> = {};
+              if (parsed.fullName) profilePayload.fullName = parsed.fullName;
+              if (parsed.headline) profilePayload.headline = parsed.headline;
+              if (parsed.bio || parsed.summary) profilePayload.bio = parsed.bio || parsed.summary;
+              if (parsed.phone) profilePayload.phone = parsed.phone;
+              if (parsed.location || parsed.city) profilePayload.city = parsed.location || parsed.city;
 
-              await fetch(`${apiUrl}/api/associate/profile`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-                body: JSON.stringify({
-                  fullName: parsed.fullName || parsed.full_name || p?.full_name,
-                  preferredName: parsed.preferredName || parsed.preferred_name || p?.preferred_name,
-                  headline: extractedHeadline,
-                  bio: extractedBio,
-                  phone: parsed.phone || p?.phone,
-                  city: parsed.location || parsed.city || p?.city
-                }),
-              });
+              if (Object.keys(profilePayload).length > 0) {
+                const profileRes = await fetch(`${apiUrl}/api/associate/profile`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                  body: JSON.stringify(profilePayload),
+                });
+                if (!profileRes.ok) {
+                  console.error('Profile update failed:', await profileRes.text());
+                }
+              }
 
-              // Map experience fields correctly - skip duplicates
-              const experiencesToSave = parsed.experience || parsed.workExperiences;
-              if (experiencesToSave && Array.isArray(experiencesToSave)) {
+              // === 2. Save Experiences (skip duplicates) ===
+              const experiencesToSave = parsed.experience || parsed.workExperiences || [];
+              if (Array.isArray(experiencesToSave)) {
                 for (const exp of experiencesToSave) {
                   const org = exp.company || exp.organization || 'Organisasi';
                   const pos = exp.position || exp.role || 'Peran/Jabatan';
@@ -849,13 +851,108 @@ export default function OriginalProfilePage() {
                         industry: exp.industry || 'Umum',
                         startDate: exp.startDate || '2020-01',
                         endDate: exp.endDate || undefined,
-                        isCurrent: exp.isCurrent || false,
+                        isCurrent: !exp.endDate,
                         description: exp.description || ''
                       }),
                     });
                   }
                 }
               }
+
+              // === 3. Save Education (skip duplicates) ===
+              const educationsToSave = parsed.education || [];
+              if (Array.isArray(educationsToSave)) {
+                for (const edu of educationsToSave) {
+                  if (!edu.institution || !edu.degree) continue;
+                  const isDuplicate = educations.some(
+                    (existing) => existing.institution?.toLowerCase() === edu.institution?.toLowerCase() && existing.degree?.toLowerCase() === edu.degree?.toLowerCase()
+                  );
+                  if (!isDuplicate) {
+                    await fetch(`${apiUrl}/api/associate/educations`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                      body: JSON.stringify({
+                        institution: edu.institution,
+                        degree: edu.degree,
+                        fieldOfStudy: edu.fieldOfStudy || undefined,
+                        startYear: edu.startYear || undefined,
+                        endYear: edu.endYear || undefined,
+                      }),
+                    });
+                  }
+                }
+              }
+
+              // === 4. Save Skills (skip duplicates) ===
+              const skillsToSave = parsed.skills || [];
+              if (Array.isArray(skillsToSave)) {
+                for (const skill of skillsToSave) {
+                  if (!skill.name) continue;
+                  const isDuplicate = skills.some(
+                    (existing) => existing.skill_name?.toLowerCase() === skill.name?.toLowerCase()
+                  );
+                  if (!isDuplicate) {
+                    const validCategories = ['technical', 'soft_skill', 'industry', 'other'];
+                    const validProficiencies = ['beginner', 'intermediate', 'advanced', 'expert'];
+                    await fetch(`${apiUrl}/api/associate/skills`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                      body: JSON.stringify({
+                        skillName: skill.name,
+                        category: validCategories.includes(skill.category) ? skill.category : 'other',
+                        proficiency: validProficiencies.includes(skill.proficiency) ? skill.proficiency : 'intermediate',
+                        yearsExperience: skill.yearsExperience || undefined,
+                      }),
+                    });
+                  }
+                }
+              }
+
+              // === 5. Save Certifications (skip duplicates) ===
+              const certsToSave = parsed.certifications || [];
+              if (Array.isArray(certsToSave)) {
+                for (const cert of certsToSave) {
+                  if (!cert.name || !cert.issuer) continue;
+                  const isDuplicate = certifications.some(
+                    (existing) => existing.name?.toLowerCase() === cert.name?.toLowerCase()
+                  );
+                  if (!isDuplicate) {
+                    await fetch(`${apiUrl}/api/associate/certifications`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                      body: JSON.stringify({
+                        name: cert.name,
+                        issuer: cert.issuer,
+                        issueDate: cert.issueDate || undefined,
+                        expiryDate: cert.expiryDate || undefined,
+                      }),
+                    });
+                  }
+                }
+              }
+
+              // === 6. Save Languages (skip duplicates) ===
+              const langsToSave = parsed.languages || [];
+              if (Array.isArray(langsToSave)) {
+                for (const lang of langsToSave) {
+                  if (!lang.language) continue;
+                  const isDuplicate = languages.some(
+                    (existing) => existing.language?.toLowerCase() === lang.language?.toLowerCase()
+                  );
+                  if (!isDuplicate) {
+                    const validProf = ['basic', 'conversational', 'fluent', 'native'];
+                    await fetch(`${apiUrl}/api/associate/languages`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                      body: JSON.stringify({
+                        language: lang.language,
+                        proficiency: validProf.includes(lang.proficiency) ? lang.proficiency : 'fluent',
+                      }),
+                    });
+                  }
+                }
+              }
+
               await fetchProfile();
               showToastNotification('Unggah & Autofill CV berhasil!', 'success');
             } else {
@@ -967,26 +1064,28 @@ export default function OriginalProfilePage() {
       if (json.success && json.data) {
         const parsed = json.data;
         
-        // Map fields to correct database schema keys
-        const extractedBio = parsed.bio || parsed.summary || p?.bio;
-        const extractedHeadline = parsed.headline || p?.headline;
-        
-        await fetch(`${apiUrl}/api/associate/profile`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({
-            fullName: parsed.fullName || parsed.full_name || p?.full_name,
-            preferredName: parsed.preferredName || parsed.preferred_name || p?.preferred_name,
-            headline: extractedHeadline,
-            bio: extractedBio,
-            phone: parsed.phone || p?.phone,
-            city: parsed.location || parsed.city || p?.city
-          }),
-        });
+        // === 1. Update Profile (only send fields with actual values) ===
+        const profilePayload: Record<string, unknown> = {};
+        if (parsed.fullName) profilePayload.fullName = parsed.fullName;
+        if (parsed.headline) profilePayload.headline = parsed.headline;
+        if (parsed.bio || parsed.summary) profilePayload.bio = parsed.bio || parsed.summary;
+        if (parsed.phone) profilePayload.phone = parsed.phone;
+        if (parsed.location || parsed.city) profilePayload.city = parsed.location || parsed.city;
 
-        // Map experience fields correctly - skip duplicates
-        const experiencesToSave = parsed.experience || parsed.workExperiences;
-        if (experiencesToSave && Array.isArray(experiencesToSave)) {
+        if (Object.keys(profilePayload).length > 0) {
+          const profileRes = await fetch(`${apiUrl}/api/associate/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify(profilePayload),
+          });
+          if (!profileRes.ok) {
+            console.error('Profile update failed:', await profileRes.text());
+          }
+        }
+
+        // === 2. Save Experiences (skip duplicates) ===
+        const experiencesToSave = parsed.experience || parsed.workExperiences || [];
+        if (Array.isArray(experiencesToSave)) {
           for (const exp of experiencesToSave) {
             const org = exp.company || exp.organization || 'Organisasi';
             const pos = exp.position || exp.role || 'Peran/Jabatan';
@@ -1003,13 +1102,108 @@ export default function OriginalProfilePage() {
                   industry: exp.industry || 'Umum',
                   startDate: exp.startDate || '2020-01',
                   endDate: exp.endDate || undefined,
-                  isCurrent: exp.isCurrent || false,
+                  isCurrent: !exp.endDate,
                   description: exp.description || ''
                 }),
               });
             }
           }
         }
+
+        // === 3. Save Education (skip duplicates) ===
+        const educationsToSave = parsed.education || [];
+        if (Array.isArray(educationsToSave)) {
+          for (const edu of educationsToSave) {
+            if (!edu.institution || !edu.degree) continue;
+            const isDuplicate = educations.some(
+              (existing) => existing.institution?.toLowerCase() === edu.institution?.toLowerCase() && existing.degree?.toLowerCase() === edu.degree?.toLowerCase()
+            );
+            if (!isDuplicate) {
+              await fetch(`${apiUrl}/api/associate/educations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                body: JSON.stringify({
+                  institution: edu.institution,
+                  degree: edu.degree,
+                  fieldOfStudy: edu.fieldOfStudy || undefined,
+                  startYear: edu.startYear || undefined,
+                  endYear: edu.endYear || undefined,
+                }),
+              });
+            }
+          }
+        }
+
+        // === 4. Save Skills (skip duplicates) ===
+        const skillsToSave = parsed.skills || [];
+        if (Array.isArray(skillsToSave)) {
+          for (const skill of skillsToSave) {
+            if (!skill.name) continue;
+            const isDuplicate = skills.some(
+              (existing) => existing.skill_name?.toLowerCase() === skill.name?.toLowerCase()
+            );
+            if (!isDuplicate) {
+              const validCategories = ['technical', 'soft_skill', 'industry', 'other'];
+              const validProficiencies = ['beginner', 'intermediate', 'advanced', 'expert'];
+              await fetch(`${apiUrl}/api/associate/skills`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                body: JSON.stringify({
+                  skillName: skill.name,
+                  category: validCategories.includes(skill.category) ? skill.category : 'other',
+                  proficiency: validProficiencies.includes(skill.proficiency) ? skill.proficiency : 'intermediate',
+                  yearsExperience: skill.yearsExperience || undefined,
+                }),
+              });
+            }
+          }
+        }
+
+        // === 5. Save Certifications (skip duplicates) ===
+        const certsToSave = parsed.certifications || [];
+        if (Array.isArray(certsToSave)) {
+          for (const cert of certsToSave) {
+            if (!cert.name || !cert.issuer) continue;
+            const isDuplicate = certifications.some(
+              (existing) => existing.name?.toLowerCase() === cert.name?.toLowerCase()
+            );
+            if (!isDuplicate) {
+              await fetch(`${apiUrl}/api/associate/certifications`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                body: JSON.stringify({
+                  name: cert.name,
+                  issuer: cert.issuer,
+                  issueDate: cert.issueDate || undefined,
+                  expiryDate: cert.expiryDate || undefined,
+                }),
+              });
+            }
+          }
+        }
+
+        // === 6. Save Languages (skip duplicates) ===
+        const langsToSave = parsed.languages || [];
+        if (Array.isArray(langsToSave)) {
+          for (const lang of langsToSave) {
+            if (!lang.language) continue;
+            const isDuplicate = languages.some(
+              (existing) => existing.language?.toLowerCase() === lang.language?.toLowerCase()
+            );
+            if (!isDuplicate) {
+              const validProf = ['basic', 'conversational', 'fluent', 'native'];
+              await fetch(`${apiUrl}/api/associate/languages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                body: JSON.stringify({
+                  language: lang.language,
+                  proficiency: validProf.includes(lang.proficiency) ? lang.proficiency : 'fluent',
+                }),
+              });
+            }
+          }
+        }
+
         await fetchProfile();
         showToastNotification('Autofill profile dari CV berhasil!', 'success');
       } else {

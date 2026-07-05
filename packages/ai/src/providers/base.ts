@@ -5,6 +5,9 @@ import type { AssociateProfile, AssociateSkill, AssociateExperience, AssociateEd
 // ============================================
 
 export interface ParsedCV {
+  fullName: string | null;
+  phone: string | null;
+  location: string | null;
   headline: string | null;
   bio: string | null;
   skills: ParsedSkill[];

@@ -2,6 +2,9 @@ export const CV_PARSING_PROMPT = `You are an expert at parsing CVs/resumes. Extr
 
 Return a JSON object with the following structure:
 {
+  "fullName": "Full name of the person",
+  "phone": "Phone number or null",
+  "location": "City or location or null",
   "headline": "Professional headline or title",
   "bio": "Brief professional summary",
   "skills": [
@@ -54,3 +57,4 @@ Rules:
 5. Keep dates in YYYY-MM-DD format when possible, otherwise YYYY-MM
 6. Do not add information not present in the CV
 7. Return only valid JSON, no additional text`;
+
