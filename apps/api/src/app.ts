@@ -17,6 +17,7 @@ app.use("/*", cors({
     "http://localhost:3001",
     "https://binahub.id",
     "https://app.binahub.id",
+    "https://ams.binahub.id",
     "https://ams-api-binahub.vercel.app",
   ],
   credentials: true,
