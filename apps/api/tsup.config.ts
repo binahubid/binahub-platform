@@ -20,16 +20,7 @@ export default defineConfig({
     '@ams/domain',
     '@ams/validation',
   ],
-  external: [
-    'pdf-parse',
-    'fs',
-    'path',
-    'crypto',
-    'os',
-    'http',
-    'https',
-    'zlib',
-    'stream',
-    'util'
-  ]
+  banner: {
+    js: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`
+  }
 });
