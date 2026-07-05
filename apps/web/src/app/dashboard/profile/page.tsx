@@ -818,6 +818,7 @@ export default function OriginalProfilePage() {
             });
             const parseJson = await parseRes.json();
             if (parseJson.success && parseJson.data) {
+              console.log('AI Parsing Debug Data:', parseJson.debug);
               const parsed = parseJson.data;
               
               // === 1. Update Profile (only send fields with actual values) ===
@@ -1069,6 +1070,7 @@ export default function OriginalProfilePage() {
       });
       const json = await res.json();
       if (json.success && json.data) {
+        console.log('AI Parsing Debug Data:', json.debug);
         const parsed = json.data;
         
         // === 1. Update Profile (only send fields with actual values) ===

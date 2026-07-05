@@ -29,6 +29,8 @@ ai.post('/parse-cv', async (c) => {
       return c.json({ success: false, error: 'Dokumen tidak ditemukan' }, 404);
     }
 
+    let downloadDebug: Record<string, any> = {};
+
     if (!cvText && doc.url) {
       try {
         console.log('Generating signed URL for document path:', doc.url);
@@ -38,13 +40,23 @@ ai.post('/parse-cv', async (c) => {
 
         if (signedUrlError) {
           console.error('Supabase signed URL generation failed:', signedUrlError);
+          downloadDebug.signedUrlError = String(signedUrlError);
         } else if (fileData?.signedUrl) {
           console.log('Downloading file from signed URL...');
           const resp = await fetch(fileData.signedUrl);
           if (resp.ok) {
-            const contentType = resp.headers.get('content-type');
+            const contentType = resp.headers.get('content-type') || '';
+            downloadDebug.contentType = contentType;
+            downloadDebug.status = resp.status;
             console.log('File download success. Content-Type:', contentType);
-            if (contentType?.includes('pdf')) {
+            
+            const isPDF = contentType.includes('pdf') || 
+                          doc.name?.toLowerCase().endsWith('.pdf') || 
+                          doc.url?.toLowerCase().endsWith('.pdf');
+
+            downloadDebug.isPDF = isPDF;
+
+            if (isPDF) {
               const arrayBuffer = await resp.arrayBuffer();
               const buffer = Buffer.from(arrayBuffer);
               cvText = await extractTextFromPDF(buffer);
@@ -55,17 +67,23 @@ ai.post('/parse-cv', async (c) => {
             }
           } else {
             console.error('Download file from signed URL response not OK:', resp.status, resp.statusText);
+            downloadDebug.downloadError = `Status ${resp.status}: ${resp.statusText}`;
           }
         }
       } catch (e) {
         console.error('File download/processing error:', e);
+        downloadDebug.exception = String(e);
       }
     }
 
     if (!cvText || cvText.trim().length < 10) {
       console.warn('Warning: cvText is empty or too short. Falling back to filename.');
+      downloadDebug.fallbackToFilename = true;
       cvText = `File: ${doc.name}`;
     }
+
+    downloadDebug.cvTextLength = cvText.length;
+    downloadDebug.cvTextPreview = cvText.substring(0, 150);
 
     try {
       const provider = new OpenAIProvider({
@@ -81,10 +99,10 @@ ai.post('/parse-cv', async (c) => {
         .update({ parsed_data: parsed })
         .eq('id', document_id);
 
-      return c.json({ success: true, data: parsed });
+      return c.json({ success: true, data: parsed, debug: downloadDebug });
     } catch (err) {
       console.error('AI CV parsing failed:', err);
-      return c.json({ success: false, error: 'AI parsing gagal', detail: String(err) }, 500);
+      return c.json({ success: false, error: 'AI parsing gagal', detail: String(err), debug: downloadDebug }, 500);
     }
   }
 
