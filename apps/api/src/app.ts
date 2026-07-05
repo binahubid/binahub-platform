@@ -30,6 +30,8 @@ app.route("/api/reviews", reviewRoutes);
 app.route("/api/files", fileRoutes);
 app.route("/api/workers", workerRoutes);
 
+app.get("/", (c) => c.json({ status: "ok", message: "BinaApps API is running" }));
+app.get("/api", (c) => c.json({ status: "ok", message: "BinaApps API is running" }));
 app.get("/api/health", (c) => c.json({ status: "ok", version: "0.2.0" }));
 
 export default app;
