@@ -10,6 +10,7 @@ import {
   createEducationSchema,
   updateEducationSchema,
   createCertificationSchema,
+  updateCertificationSchema,
   createSkillSchema,
   createLanguageSchema,
   updateAvailabilitySchema,
@@ -774,6 +775,116 @@ associateRoutes.delete('/languages/:id', async (c) => {
   }
 
   return c.json({ success: true, message: 'Bahasa berhasil dihapus' });
+});
+
+// ============================================
+// CERTIFICATION ROUTES
+// ============================================
+
+associateRoutes.get('/certifications', async (c) => {
+  const user = c.get('user') as AuthUser;
+  const db = getDb();
+  
+  const { data, error } = await db
+    .from('associate_certifications')
+    .select('*')
+    .eq('associate_id', user.id)
+    .order('issued_date', { ascending: false });
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+
+  return c.json({ success: true, data });
+});
+
+associateRoutes.post('/certifications', async (c) => {
+  const user = c.get('user') as AuthUser;
+  const body = await c.req.json();
+  
+  const validation = createCertificationSchema.safeParse(body);
+  if (!validation.success) {
+    return c.json({
+      success: false,
+      error: validation.error.issues[0]?.message || 'Data tidak valid'
+    }, 400);
+  }
+
+  const db = getDb();
+  const { data, error } = await db
+    .from('associate_certifications')
+    .insert({
+      associate_id: user.id,
+      name: validation.data.name,
+      issuer: validation.data.issuer,
+      issued_date: validation.data.issueDate || null,
+      expiry_date: validation.data.expiryDate || null,
+      credential_id: validation.data.credentialId || null,
+      credential_url: validation.data.credentialUrl || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+
+  return c.json({ success: true, data }, 201);
+});
+
+associateRoutes.put('/certifications/:id', async (c) => {
+  const user = c.get('user') as AuthUser;
+  const id = c.req.param('id');
+  const body = await c.req.json();
+  
+  const validation = updateCertificationSchema.safeParse(body);
+  if (!validation.success) {
+    return c.json({
+      success: false,
+      error: validation.error.issues[0]?.message || 'Data tidak valid'
+    }, 400);
+  }
+
+  const db = getDb();
+  const updateData: Record<string, unknown> = {};
+  if (validation.data.name !== undefined) updateData.name = validation.data.name;
+  if (validation.data.issuer !== undefined) updateData.issuer = validation.data.issuer;
+  if (validation.data.issueDate !== undefined) updateData.issued_date = validation.data.issueDate;
+  if (validation.data.expiryDate !== undefined) updateData.expiry_date = validation.data.expiryDate;
+  if (validation.data.credentialId !== undefined) updateData.credential_id = validation.data.credentialId;
+  if (validation.data.credentialUrl !== undefined) updateData.credential_url = validation.data.credentialUrl;
+
+  const { data, error } = await db
+    .from('associate_certifications')
+    .update(updateData)
+    .eq('id', id)
+    .eq('associate_id', user.id)
+    .select()
+    .single();
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+
+  return c.json({ success: true, data });
+});
+
+associateRoutes.delete('/certifications/:id', async (c) => {
+  const user = c.get('user') as AuthUser;
+  const id = c.req.param('id');
+  const db = getDb();
+  
+  const { error } = await db
+    .from('associate_certifications')
+    .delete()
+    .eq('id', id)
+    .eq('associate_id', user.id);
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+
+  return c.json({ success: true, message: 'Sertifikasi berhasil dihapus' });
 });
 
 // ============================================
