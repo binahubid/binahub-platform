@@ -829,15 +829,22 @@ export default function OriginalProfilePage() {
               if (parsed.phone) profilePayload.phone = parsed.phone;
               if (parsed.location || parsed.city) profilePayload.city = parsed.location || parsed.city;
 
+              console.log('Profile payload from CV:', profilePayload, '| Parsed fields from AI:', { fullName: parsed.fullName, headline: parsed.headline, bio: parsed.bio, phone: parsed.phone, location: parsed.location, city: parsed.city });
+
               if (Object.keys(profilePayload).length > 0) {
                 const profileRes = await fetch(`${apiUrl}/api/associate/profile`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
                   body: JSON.stringify(profilePayload),
                 });
+                const profileResult = await profileRes.json().catch(() => null);
                 if (!profileRes.ok) {
-                  console.error('Profile update failed:', await profileRes.text());
+                  console.error('Profile update failed:', profileResult);
+                } else {
+                  console.log('Profile update success!');
                 }
+              } else {
+                console.warn('Profile payload is EMPTY - AI did not return name/phone/city/etc.');
               }
 
               // === 2. Save Experiences (skip duplicates) ===
