@@ -114,11 +114,11 @@ export const updateProfileSchema = z.object({
   city: z.string().max(100).nullable().optional(),
   timezone: z.string().max(50).nullable().optional(),
   nationality: z.string().max(100).nullable().optional(),
-  photoUrl: z.string().url('URL tidak valid').nullable().optional(),
+  photoUrl: z.union([z.string().url('URL tidak valid'), z.literal('')]).nullable().optional(),
   dateOfBirth: z.string().max(50).nullable().optional(),
   gender: z.string().max(20).nullable().optional(),
-  roles: z.array(z.string().max(100)).optional(),
-  expertises: z.array(z.string().max(100)).optional(),
+  roles: z.array(z.string().max(100)).nullable().optional(),
+  expertises: z.array(z.string().max(100)).nullable().optional(),
 });
 
 // ============================================

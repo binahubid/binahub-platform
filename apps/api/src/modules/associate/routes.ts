@@ -290,6 +290,7 @@ associateRoutes.put('/profile', async (c) => {
 
   const validation = updateProfileSchema.safeParse(body);
   if (!validation.success) {
+    console.error('Update profile validation error:', validation.error.format());
     return c.json({
       success: false,
       error: validation.error.issues[0]?.message || 'Data tidak valid'
