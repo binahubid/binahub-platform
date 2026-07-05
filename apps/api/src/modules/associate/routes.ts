@@ -293,7 +293,8 @@ associateRoutes.put('/profile', async (c) => {
     console.error('Update profile validation error:', validation.error.format());
     return c.json({
       success: false,
-      error: validation.error.issues[0]?.message || 'Data tidak valid'
+      error: validation.error.issues[0]?.message || 'Data tidak valid',
+      details: validation.error.issues
     }, 400);
   }
 

@@ -31,29 +31,39 @@ ai.post('/parse-cv', async (c) => {
 
     if (!cvText && doc.url) {
       try {
-        const { data: fileData } = await db.storage
+        console.log('Generating signed URL for document path:', doc.url);
+        const { data: fileData, error: signedUrlError } = await db.storage
           .from('ams-files')
           .createSignedUrl(doc.url, 3600);
 
-        if (fileData?.signedUrl) {
+        if (signedUrlError) {
+          console.error('Supabase signed URL generation failed:', signedUrlError);
+        } else if (fileData?.signedUrl) {
+          console.log('Downloading file from signed URL...');
           const resp = await fetch(fileData.signedUrl);
           if (resp.ok) {
             const contentType = resp.headers.get('content-type');
+            console.log('File download success. Content-Type:', contentType);
             if (contentType?.includes('pdf')) {
               const arrayBuffer = await resp.arrayBuffer();
               const buffer = Buffer.from(arrayBuffer);
               cvText = await extractTextFromPDF(buffer);
+              console.log('PDF text extraction success. Character length:', cvText?.length);
             } else {
               cvText = await resp.text();
+              console.log('Text file download success. Character length:', cvText?.length);
             }
+          } else {
+            console.error('Download file from signed URL response not OK:', resp.status, resp.statusText);
           }
         }
       } catch (e) {
-        console.error('File download error:', e);
+        console.error('File download/processing error:', e);
       }
     }
 
-    if (!cvText) {
+    if (!cvText || cvText.trim().length < 10) {
+      console.warn('Warning: cvText is empty or too short. Falling back to filename.');
       cvText = `File: ${doc.name}`;
     }
 
@@ -62,7 +72,9 @@ ai.post('/parse-cv', async (c) => {
         apiKey: process.env.OPENAI_API_KEY || "",
         model: process.env.OPENAI_MODEL || "openai/gpt-oss-120b:free"
       });
+      console.log('Sending text to AI provider for CV parsing. Length:', cvText.length);
       const parsed = await provider.parseCV(cvText);
+      console.log('AI CV parsing succeeded. Parsed keys:', Object.keys(parsed));
 
       await db
         .from('associate_documents')
@@ -71,6 +83,7 @@ ai.post('/parse-cv', async (c) => {
 
       return c.json({ success: true, data: parsed });
     } catch (err) {
+      console.error('AI CV parsing failed:', err);
       return c.json({ success: false, error: 'AI parsing gagal', detail: String(err) }, 500);
     }
   }

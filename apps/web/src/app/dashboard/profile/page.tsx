@@ -448,6 +448,7 @@ export default function OriginalProfilePage() {
         setIsEditing(false);
         setEditProfile(null);
       } else {
+        console.error('Gagal menyimpan profil. Detail:', result);
         setSaveError(result?.error || 'Gagal menyimpan profil');
       }
     } catch {
@@ -790,11 +791,17 @@ export default function OriginalProfilePage() {
       });
       const json = await res.json();
       if (json.success && json.data?.presignedUrl) {
-        await fetch(json.data.presignedUrl, {
+        const uploadRes = await fetch(json.data.presignedUrl, {
           method: 'PUT',
           headers: { 'Content-Type': file.type },
           body: file,
         });
+        if (!uploadRes.ok) {
+          console.error('CV upload to storage failed:', uploadRes.status, await uploadRes.text());
+          showToastNotification('Gagal mengunggah file CV ke storage', 'error');
+          setUploadingCV(false);
+          return;
+        }
         await fetchProfile();
 
         // Auto-trigger AI parsing after upload
