@@ -20,4 +20,16 @@ export default defineConfig({
     '@ams/domain',
     '@ams/validation',
   ],
+  external: [
+    'pdf-parse',
+    'fs',
+    'path',
+    'crypto',
+    'os',
+    'http',
+    'https',
+    'zlib',
+    'stream',
+    'util'
+  ]
 });
