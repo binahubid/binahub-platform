@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { CapabilityRadar, ProfileStrength, Avatar } from '../../components/ui';
+import { OnboardingChecklist } from '../../components/onboarding/checklist';
 
 type ProfileData = {
   full_name: string;
@@ -748,6 +749,9 @@ export default function DashboardPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Onboarding Checklist */}
+          <OnboardingChecklist />
+
           {/* Profile Strength */}
           <div id="profile-strength">
             <ProfileStrength

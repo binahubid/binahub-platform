@@ -6,8 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useCallback } from 'react';
 import { OnboardingProvider } from '../../components/onboarding/context';
-import { OnboardingTooltip } from '../../components/onboarding/tooltip';
-import { ReminderBar } from '../../components/onboarding/reminder-bar';
+import { OnboardingModal } from '../../components/onboarding/onboarding-modal';
 import { ToastProvider } from '../../components/ui';
 
 const sidebarSections = [
@@ -244,9 +243,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      {/* Onboarding Components */}
-      <OnboardingTooltip />
-      <ReminderBar />
+      {/* Onboarding Modal */}
+      <OnboardingModal />
     </div>
   );
 }
