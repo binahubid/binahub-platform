@@ -11,11 +11,7 @@ export class OpenAIProvider implements AIProvider {
   constructor(config: AIProviderConfig) {
     this.client = new OpenAI({
       apiKey: config.apiKey,
-      baseURL: process.env.OPENAI_API_BASE || undefined,
-      defaultHeaders: {
-        "HTTP-Referer": "https://binahub.id",
-        "X-Title": "BinaHub Platform",
-      }
+      baseURL: process.env.OPENAI_API_BASE || "https://opencode.ai/zen/v1",
     });
     this.model = config.model || process.env.OPENAI_MODEL || 'gpt-4o';
     this.temperature = config.temperature ?? 0.3;

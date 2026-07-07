@@ -2,20 +2,16 @@ import OpenAI from "openai";
 
 export function createAIClient() {
   const apiKey = process.env.OPENAI_API_KEY ?? "";
-  const baseURL = process.env.OPENAI_API_BASE || undefined; // opsional, gunakan OPENAI_API_BASE untuk OpenRouter
+  const baseURL = process.env.OPENAI_API_BASE || "https://opencode.ai/zen/v1"; // OpenCode Zen default
   return new OpenAI({
     apiKey,
     baseURL,
-    defaultHeaders: {
-      "HTTP-Referer": "https://binahub.id",
-      "X-Title": "BinaHub Platform",
-    }
   });
 }
 
 export async function parseCV(text: string): Promise<Record<string, unknown>> {
   const client = createAIClient();
-  const modelName = process.env.OPENAI_MODEL || "xiaomi/mimo-v2.5";
+  const modelName = process.env.OPENAI_MODEL || "aihubmix/xiaomi-mimo-v2.5-free";
   const response = await client.chat.completions.create({
     model: modelName,
     messages: [
