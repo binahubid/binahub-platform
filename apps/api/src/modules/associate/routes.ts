@@ -120,40 +120,39 @@ associateRoutes.get('/me', async (c) => {
     .single();
 
   if (error || !associate) {
-    // Only create new associate if it truly doesn't exist
-    const { data: existing } = await db
-      .from('associates')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (!existing) {
-      const baseName = user.email.split('@')[0] || 'associate';
-      const slug = await ensureUniqueSlug(generateUniqueSlug(baseName), async (checkSlug) => {
-        const { data } = await db
-          .from('associates')
-          .select('id')
-          .eq('slug', checkSlug)
-          .single();
-        return !!data;
-      });
-
-      await db
+    // Auto-create associate if missing. Use upsert to be safe against concurrent
+    // requests (race condition) — on duplicate id/slug the row already exists.
+    const baseName = user.email.split('@')[0] || 'associate';
+    const slug = await ensureUniqueSlug(generateUniqueSlug(baseName), async (checkSlug) => {
+      const { data } = await db
         .from('associates')
-        .insert({
+        .select('id')
+        .eq('slug', checkSlug)
+        .maybeSingle();
+      return !!data;
+    });
+
+    await db
+      .from('associates')
+      .upsert(
+        {
           id: user.id,
           email: user.email,
           slug,
           status: 'draft'
-        });
+        },
+        { onConflict: 'id' }
+      );
 
-      await db
-        .from('associate_profiles')
-        .insert({
+    await db
+      .from('associate_profiles')
+      .upsert(
+        {
           associate_id: user.id,
           full_name: baseName
-        });
-    }
+        },
+        { onConflict: 'associate_id' }
+      );
 
     // Re-fetch after creation
     const refetched = await db

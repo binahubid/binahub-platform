@@ -91,14 +91,15 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D9A441]">Talent Operations</p>
+          <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900">
             {greeting}, {firstName}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             Berikut ringkasan talent operations BinaHub hari ini.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm">
           <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
@@ -320,13 +321,13 @@ function StatBox({ label, value, sub, icon, iconBg, iconColor }: {
   iconColor: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
       <div className="flex items-center justify-between">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${iconBg}`}>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg} transition-transform duration-200 group-hover:scale-105`}>
           <StatIcon type={icon} className={`h-5 w-5 ${iconColor}`} />
         </div>
       </div>
-      <p className="mt-3 text-2xl font-bold text-slate-900">{value}</p>
+      <p className="mt-3 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
       <p className="text-xs font-medium text-slate-600 mt-0.5">{label}</p>
       <p className="mt-1 text-[11px] text-slate-400">{sub}</p>
     </div>

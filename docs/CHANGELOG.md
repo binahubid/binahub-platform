@@ -4,6 +4,57 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-07-07
+
+### Fixed
+- **Worker routes unauthenticated** (`apps/api/src/workers/routes.ts`): `POST /api/workers/process-events` sekarang dilindungi `authMiddleware` + `requireRole(['admin'])` — sebelumnya endpoint terbuka tanpa auth
+- **`/logout` broken** (`apps/api/src/modules/auth/index.ts`): pakai `getDb()` (service role) → `auth.admin.signOut(userId)` berdasarkan `user.id` dari token, bukan `getAnonClient().auth.admin.signOut()` yang throw error
+- **No global error handler** (`apps/api/src/app.ts`): tambah `app.onError` (500 generic, tidak bocor `error.message`) + `app.notFound` (404 JSON) — sebelumnya error stack bocor ke client
+- **Race condition `/api/associate/me`** (`apps/api/src/modules/associate/routes.ts`): auto-create associate pakai `upsert` (`onConflict: 'id'` + `onConflict: 'associate_id'`) + `.maybeSingle()` — sebelumnya `insert` + `.single()` throw saat concurrent request
+- **Worker `extractTextFromFile` placeholder** (`apps/api/src/workers/event-processor.ts`): sekarang panggil `extractTextFromPDF` dari `@ams/ai` — sebelumnya return string placeholder (tidak parse PDF sungguhan)
+- **`ToastProvider` missing di dashboard** (`apps/web/src/app/dashboard/layout.tsx`): wrap layout dengan `ToastProvider` — sebelumnya `useToast()` throw runtime error di 7 halaman dashboard (profile, assignments, tasks, notifications, dll)
+- **Magic number profile ring** (`apps/web/src/app/dashboard/page.tsx`): `351.86` → konstanta `PROFILE_RING_CIRC = 2 * Math.PI * 56`
+- **Capability Snapshot radar tidak berubah** (`apps/web/src/app/dashboard/page.tsx`): dashboard pakai `data.capability_scores` (field tidak pernah ada di API response) → selalu all-zero → radar flat. Fix: hitung dari `data.skills.map()` berdasarkan `proficiency` (sama seperti halaman detail `/dashboard/capability`)
+- **`hasCV` salah hitung** (`apps/web/src/app/dashboard/page.tsx`): `documents.length > 0` → cek semua dokumen (bukan tipe CV). Fix: `documents.find(d => d.type === 'cv')` — AI recommendation sekarang tidak lagi menampilkan “Upload CV” jika CV sudah terunggah
+- **Skill type mismatch** (`apps/web/src/app/dashboard/page.tsx`): `level?: number` → `proficiency?: string` — sebelumnya `capabilityScore` selalu fallback 50 karena field `level` tidak ada di API response
+- **Emoticons di profile & dashboard** (`apps/web/src/app/dashboard/profile/page.tsx`, `apps/web/src/app/dashboard/page.tsx`): ganti ✉️📱📍🌐📅👤🕐💼📋🛠⏳ dengan SVG icons (Heroicons) — deskripsi lebih profesional, konsisten dengan design system
+
+### Security
+- **Rate limiting** (`apps/api/src/middleware/rate-limit.ts`, baru): in-memory rate limit (10 req / 15 menit, IP + path keyed) diterapkan ke `POST /api/auth/register` & `POST /api/auth/login` — mitigasi brute-force dasar. Catatan: in-memory reset per cold start di Vercel serverless; untuk produksi skala penuh pindah ke Upstash Redis
+
+### Changed
+- **`AGENTS.md` rewrite**: disinkronkan dengan stack aktual — hapus klaim Drizzle ORM (runtime pakai Supabase JS client), struktur path benar, semua routes terdokumentasi, rules update
+- **Repo cleanup — vendor bloat removal**: ~1628 file vendored (`packages/ai/openai/`, `packages/ai/typescript/`, `packages/ai/@anthropic-ai/`, `packages/ai/@ams/`) dihapus dari git tracking + `.gitignore` rules. Paket tetap resolve via `node_modules`
+- **Repo cleanup — orphaned/duplicate paths removed**: `api/`, `apps/src/`, `apps/drizzle/`, `apps/api/api/`, `apps/api/drizzle/`, `apps/api/src/lib/supabase.ts` (dead), `apps/web/src/lib/api.ts` (dead), `apps/web/src/lib/supabase.ts` (dead), `apps/web/src/lib/onboarding-api.ts` (dead)
+
+### Added — UI Components
+- `apps/web/src/components/ui/button.tsx` — 5 varian (primary/secondary/ghost/danger/gold), 3 size, loading state + spinner, `aria-busy`, focus ring accessible
+- `apps/web/src/components/ui/spinner.tsx` — 3 size + `FullPageSpinner`
+- `apps/web/src/components/ui/empty-state.tsx` — icon + title + description + optional CTA
+- `apps/web/tailwind.config.js` — token semantic baru: `brand`, `gold`, `surface` (backward-compatible, tidak override `binahub.*`), shadow presets (`card`, `card-hover`, `soft`), timing function `smooth`
+
+### Changed — UI Modernization (CSS-only, non-breaking)
+- **Pola visual konsisten** diterapkan di seluruh app:
+  - Eyebrow label `text-xs uppercase tracking-[0.18em] text-[#D9A441]` di atas page title (admin dashboard, associates, assignments, profile)
+  - Card hover lift: `hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200` (stat-card, stat-box, profile-completion-card, dashboard stats)
+  - Active state sidebar: `font-semibold ring-1 ring-inset` (dashboard + admin layout, desktop & mobile)
+  - Tab pills active: gradient `from-[#0B2C6B] to-[#0A255A]` + shadow-sm (profile page, 5 lokasi)
+  - InfoCard icon bg: `bg-white border border-slate-200` → `bg-[#0B2C6B]/5` (konsisten dengan brand)
+  - Search dropdown icons: SVG icons (Assignment/Skill/Profile) menggantikan emoticon
+  - Primary button: `bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] shadow-lg shadow-[#0B2C6B]/20` (login, register, Hero CTA, Navbar Daftar, admin assignments)
+  - StatusBadge: ring border + dot pulse animation untuk `pending_review`
+  - StatCard: trend arrow indicator + gradient icon background
+  - Table: `overflow-hidden` + header `backdrop-blur-sm` (admin associates list)
+- **Halaman yang ditingkatkan**: landing Hero & Navbar, auth login & register, admin dashboard (header + StatBox), admin associates list (header + table), admin assignments (header + button), dashboard page (5 stats card), dashboard profile (header + save button + tab pills), dashboard & admin layout (sidebar active state)
+
+### Notes
+- Semua perubahan UI bersifat **CSS-only** (className) — tidak ada perubahan logic/data flow, tidak ada hydration risk
+- Typecheck lulus: `@ams/api`, `@ams/web`, `@ams/ai`, + 6 packages lain
+- Tidak ada fitur/fungsi yang dihapus atau diubah alurnya — semua perbaikan non-breaking
+- Catatan deploy: worker route kini admin-only — jika ada cron job eksternal yang hit `/api/workers/process-events` tanpa auth akan 401. Sesuaikan cron (Bearer token admin) atau buat endpoint terpisah dengan API key secret
+
+---
+
 ## [0.3.0] — 2026-07-04
 
 ### Added

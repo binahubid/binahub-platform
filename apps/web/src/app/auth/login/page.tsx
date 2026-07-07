@@ -211,7 +211,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0A255A] hover:shadow disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/20 transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-xl hover:shadow-[#0B2C6B]/30 disabled:opacity-50 disabled:shadow-none"
             >
               {loading ? (
                 <>

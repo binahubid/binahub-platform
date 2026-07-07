@@ -189,7 +189,7 @@ function BadgeSelector({
             onClick={() => toggle(opt)}
             className={`rounded-full px-3 py-1 text-xs font-medium border transition-all ${
               selected.includes(opt)
-                ? 'bg-[#0B2C6B] text-white border-[#0B2C6B]'
+                ? 'bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] text-white border-[#0B2C6B] shadow-sm'
                 : 'bg-white text-slate-600 border-slate-200 hover:border-[#0B2C6B]/40 hover:text-[#0B2C6B]'
             }`}
           >
@@ -259,7 +259,7 @@ function SectionHeader({ title, description }: { title: string; description?: st
 function InfoCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white border border-slate-200">
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#0B2C6B]/5">
         {icon}
       </div>
       <div>
@@ -292,7 +292,7 @@ function ToggleChip({
       onClick={onClick}
       className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-all ${
         active
-          ? 'bg-[#0B2C6B] text-white border-[#0B2C6B]'
+          ? 'bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] text-white border-[#0B2C6B] shadow-sm'
           : 'bg-white text-slate-600 border-slate-200 hover:border-[#0B2C6B]/40'
       }`}
     >
@@ -1356,7 +1356,8 @@ export default function OriginalProfilePage() {
 
               {/* Name & Info */}
               <div className="min-w-0 flex-1">
-                <h1 className="text-xl font-bold sm:text-2xl truncate">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#D9A441]">Talent Profile</p>
+                <h1 className="mt-1 text-xl font-bold sm:text-2xl truncate">
                   {p?.full_name || 'Lengkapi Profile Anda'}
                 </h1>
                 
@@ -1439,7 +1440,7 @@ export default function OriginalProfilePage() {
                   <button onClick={handleCancelEdit} className="rounded-lg border border-white/30 bg-white/10 px-4 py-2 text-xs font-medium text-white hover:bg-white/20 transition-colors">
                     Batal
                   </button>
-                  <button onClick={handleSaveProfile} disabled={saving} className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-[#0B2C6B] hover:bg-white/90 transition-colors">
+                  <button onClick={handleSaveProfile} disabled={saving} className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-[#0B2C6B] shadow-sm transition-all hover:bg-white/90 hover:shadow disabled:opacity-50 disabled:shadow-none">
                     {saving ? 'Menyimpan...' : 'Simpan'}
                   </button>
                 </>
@@ -1514,13 +1515,13 @@ export default function OriginalProfilePage() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {p?.email && <InfoCard label="Email" value={p.email} icon={<span>✉️</span>} />}
-                      {p?.phone && <InfoCard label="WhatsApp" value={p.phone} icon={<span>📱</span>} />}
-                      {p?.city && <InfoCard label="Domisili" value={p.city} icon={<span>📍</span>} />}
-                      {p?.nationality && <InfoCard label="Kewarganegaraan" value={p.nationality} icon={<span>🌐</span>} />}
-                      {p?.date_of_birth && <InfoCard label="Tanggal Lahir" value={p.date_of_birth} icon={<span>📅</span>} />}
-                      {p?.gender && <InfoCard label="Jenis Kelamin" value={p.gender} icon={<span>👤</span>} />}
-                      {p?.timezone && <InfoCard label="Timezone" value={p.timezone} icon={<span>🕐</span>} />}
+                      {p?.email && <InfoCard label="Email" value={p.email} icon={<svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>} />}
+                      {p?.phone && <InfoCard label="WhatsApp" value={p.phone} icon={<svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>} />}
+                      {p?.city && <InfoCard label="Domisili" value={p.city} icon={<svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />}
+                      {p?.nationality && <InfoCard label="Kewarganegaraan" value={p.nationality} icon={<svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />}
+                      {p?.date_of_birth && <InfoCard label="Tanggal Lahir" value={p.date_of_birth} icon={<svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>} />}
+                      {p?.gender && <InfoCard label="Jenis Kelamin" value={p.gender} icon={<svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>} />}
+                      {p?.timezone && <InfoCard label="Timezone" value={p.timezone} icon={<svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />}
                     </div>
                   )}
                 </div>
@@ -1545,7 +1546,7 @@ export default function OriginalProfilePage() {
                                 type="button"
                                 onClick={() => handleRoleToggle(role)}
                                 className={`rounded-full px-3 py-1.5 text-xs font-semibold border transition-all ${
-                                  active ? 'bg-[#0B2C6B] text-white border-[#0B2C6B]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                  active ? 'bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] text-white border-[#0B2C6B] shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                                 }`}
                               >
                                 {role}
@@ -1592,7 +1593,7 @@ export default function OriginalProfilePage() {
                     <div className="space-y-6">
                       {(!p?.bio && (!p?.roles || p.roles.length === 0) && skills.length === 0) ? (
                         <div className="flex flex-col items-center justify-center py-12">
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 mb-3 text-xl">💼</div>
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 mb-3"><svg className="h-6 w-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></div>
                           <p className="text-sm font-medium text-slate-500 mb-3">Belum ada Bidang & Keahlian yang diatur</p>
                           <button type="button" onClick={handleStartEdit} className="rounded-lg bg-[#0B2C6B] text-white px-4 py-2 text-xs font-semibold hover:bg-[#0A255A] transition-colors">Atur Sekarang</button>
                         </div>
@@ -2020,7 +2021,7 @@ export default function OriginalProfilePage() {
                     </div>
                     {isEditing && (
                     <label className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-white shadow-sm transition-all ${(uploadingCV || parsingCV) ? 'bg-slate-400' : 'bg-[#0B2C6B] hover:bg-[#0A255A]'}`}>
-                      {uploadingCV ? 'Mengupload...' : parsingCV ? '⏳ AI Mengisi Profil...' : cvDoc ? 'Ganti CV' : 'Upload CV'}
+                      {uploadingCV ? 'Mengupload...' : parsingCV ? 'AI Mengisi Profil...' : cvDoc ? 'Ganti CV' : 'Upload CV'}
                       <input type="file" accept=".pdf,.doc,.docx" className="hidden" disabled={uploadingCV || parsingCV} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCVUpload(f); }} />
                     </label>
                     )}
@@ -2147,7 +2148,7 @@ function AvailabilityEditor({
               type="button"
               onClick={() => toggleArr(workLocs, loc, setWorkLocs)}
               className={`rounded-lg px-4 py-2 text-xs font-semibold border transition-all ${
-                workLocs.includes(loc) ? 'bg-[#0B2C6B] text-white border-[#0B2C6B]' : 'bg-white text-slate-600 border-slate-200'
+                workLocs.includes(loc) ? 'bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] text-white border-[#0B2C6B] shadow-sm' : 'bg-white text-slate-600 border-slate-200'
               }`}
             >
               {loc}
@@ -2173,7 +2174,7 @@ function AvailabilityEditor({
               type="button"
               onClick={() => toggleArr(engagements, type, setEngagements)}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold border transition-all ${
-                engagements.includes(type) ? 'bg-[#0B2C6B] text-white border-[#0B2C6B]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                engagements.includes(type) ? 'bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] text-white border-[#0B2C6B] shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
               }`}
             >
               {type}

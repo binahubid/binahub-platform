@@ -46,8 +46,9 @@ type Assignment = {
 type Skill = {
   id: string;
   skill_name: string;
-  level?: number;
+  proficiency?: string;
   category?: string;
+  years_experience?: number;
 };
 
 type CapabilityData = {
@@ -197,6 +198,9 @@ export default function DashboardPage() {
     return results.slice(0, 8);
   }, [searchQuery, data]);
 
+  const PROFILE_RING_RADIUS = 56;
+  const PROFILE_RING_CIRC = 2 * Math.PI * PROFILE_RING_RADIUS;
+
   const completionPercentage = (() => {
     if (!data) return 0;
     let filled = 0;
@@ -218,14 +222,15 @@ export default function DashboardPage() {
     const levelMap: Record<string, number> = { beginner: 25, intermediate: 50, advanced: 75, expert: 95 };
     let total = 0;
     for (const s of data.skills) {
-      const prof = String(s.level || '').toLowerCase();
+      const prof = String(s.proficiency || '').toLowerCase();
       const lvl = levelMap[prof] || 50;
       total += lvl;
     }
     return Math.round(total / data.skills.length);
   })();
 
-  const hasCV = !!(data?.documents && data.documents.length > 0);
+  const cvDoc = data?.documents?.find((d) => d.type === 'cv');
+  const hasCV = !!cvDoc;
   const hasExperience = !!(data?.experiences && data.experiences.length > 0);
   const hasEducation = !!(data?.educations && data.educations.length > 0);
   const hasSkills = !!(data?.skills && data.skills.length > 0);
@@ -245,16 +250,16 @@ export default function DashboardPage() {
     return count;
   })();
 
-  const capabilityData: CapabilityData[] = data?.capability_scores?.length
-    ? data.capability_scores
-    : [
-        { label: 'Leadership', score: 0 },
-        { label: 'Technical', score: 0 },
-        { label: 'Execution', score: 0 },
-        { label: 'Communication', score: 0 },
-        { label: 'Innovation', score: 0 },
-        { label: 'Learning', score: 0 },
-      ];
+  const capabilityData: CapabilityData[] = data?.skills?.length
+    ? data.skills.map((s) => {
+        const levelMap: Record<string, number> = { beginner: 25, intermediate: 50, advanced: 75, expert: 95 };
+        const prof = String(s.proficiency || '').toLowerCase();
+        return {
+          label: s.skill_name.length > 14 ? s.skill_name.slice(0, 14) + '…' : s.skill_name,
+          score: levelMap[prof] || 50,
+        };
+      })
+    : [];
 
   const inProgressAssignments = data?.assignments.filter((a) => a.status === 'in_progress') || [];
   const otherAssignments = data?.assignments.filter((a) => a.status !== 'in_progress').slice(0, 2) || [];
@@ -316,8 +321,14 @@ export default function DashboardPage() {
                         onClick={() => { setSearchQuery(''); setSearchFocused(false); }}
                         className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
                       >
-                        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#0B2C6B]/10 text-[10px] font-bold text-[#0B2C6B]">
-                          {r.type === 'Assignment' ? '📋' : r.type === 'Skill' ? '🛠' : '⭐'}
+                        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#0B2C6B]/10">
+                          {r.type === 'Assignment' ? (
+                            <svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                          ) : r.type === 'Skill' ? (
+                            <svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                          ) : (
+                            <svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                          )}
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-slate-900 truncate">{r.label}</p>
@@ -455,7 +466,7 @@ export default function DashboardPage() {
                     fill="none"
                     stroke="white"
                     strokeWidth="8"
-                    strokeDasharray={`${(completionPercentage / 100) * 351.86} 351.86`}
+                    strokeDasharray={`${(completionPercentage / 100) * PROFILE_RING_CIRC} ${PROFILE_RING_CIRC}`}
                     strokeLinecap="round"
                   />
                 </svg>
@@ -507,8 +518,8 @@ export default function DashboardPage() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-slate-500">Profile Completion</p>
+        <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Profile Completion</p>
           <div className="mt-2 flex items-center gap-3">
             <span className="text-xl font-bold text-[#0B2C6B]">{completionPercentage}%</span>
             <div className="h-10 w-10">
@@ -521,47 +532,47 @@ export default function DashboardPage() {
           <p className="mt-1 text-[11px] text-slate-400">Keep it up!</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
           <div className="flex items-center gap-2">
             <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
-            <p className="text-xs font-medium text-slate-500">Visibility Status</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Visibility Status</p>
           </div>
           <p className="mt-2 text-lg font-bold text-slate-900">{completionPercentage >= 50 ? 'Public' : 'Private'}</p>
           <p className="text-[11px] text-slate-400">{completionPercentage >= 50 ? 'Visible to reviewers' : 'Only visible to you'}</p>
           <Link href="/dashboard/profile" className="mt-1 inline-block text-[11px] font-medium text-[#0B2C6B] hover:underline">Change</Link>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
           <div className="flex items-center gap-2">
             <svg className="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-xs font-medium text-slate-500">Opportunity Match</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Opportunity Match</p>
           </div>
           <p className="mt-2 text-lg font-bold text-slate-900">{(data?.assignments || []).length}</p>
           <p className="text-[11px] text-slate-400">{(data?.assignments || []).length > 0 ? 'assignments available' : 'Complete your profile to see matches'}</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
           <div className="flex items-center gap-2">
             <svg className="h-4 w-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
             </svg>
-            <p className="text-xs font-medium text-slate-500">Capability Score</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Capability Score</p>
           </div>
           <p className="mt-2 text-lg font-bold text-slate-900">{capabilityScore > 0 ? capabilityScore : '--'}</p>
           <p className="text-[11px] text-slate-400">{capabilityScore > 0 ? 'Based on your skills' : 'Add skills to see your score'}</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
           <div className="flex items-center gap-2">
             <svg className="h-4 w-4 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <p className="text-xs font-medium text-slate-500">Availability</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Availability</p>
           </div>
           <p className={`mt-2 text-lg font-bold ${data?.availability?.status === 'available' ? 'text-emerald-600' : data?.availability?.status === 'busy' ? 'text-amber-600' : 'text-slate-400'}`}>
             {data?.availability?.status === 'available' ? 'Available' : data?.availability?.status === 'busy' ? 'Busy' : 'Not Set'}

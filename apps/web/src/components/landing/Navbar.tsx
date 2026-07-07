@@ -31,7 +31,7 @@ export function Navbar() {
           </Link>
           <Link
             href="/auth/register"
-            className="rounded-full bg-[#0B2C6B] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#0a255a]"
+            className="rounded-full bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-md"
           >
             Daftar
           </Link>

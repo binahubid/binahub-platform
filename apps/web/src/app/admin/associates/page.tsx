@@ -264,7 +264,8 @@ export default function AdminAssociatesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Associates</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D9A441]">Talent Operations</p>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900">Associates</h1>
           <p className="mt-1 text-sm text-slate-500">
             Kelola dan lihat semua associate di organisasi.
           </p>
@@ -326,11 +327,11 @@ export default function AdminAssociatesPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
+              <tr className="border-b border-slate-200 bg-slate-50/80 backdrop-blur-sm">
                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Nama</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Bidang</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
@@ -339,9 +340,9 @@ export default function AdminAssociatesPage() {
                 <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-100">
               {paginatedAssociates.map((associate) => (
-                <tr key={associate.id} className="transition-colors hover:bg-slate-50">
+                <tr key={associate.id} className="transition-colors hover:bg-slate-50/60">
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-3">
                       <Avatar name={associate.profile?.full_name || associate.email} src={associate.profile?.photo_url} />

@@ -200,7 +200,7 @@ export function Hero() {
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/auth/register"
-                className="group inline-flex items-center justify-center gap-2 rounded-full bg-[#0B2C6B] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#071A33]"
+                className="group inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/20 transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-xl hover:shadow-[#0B2C6B]/30"
               >
                 Daftar Sebagai Associate
                 <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

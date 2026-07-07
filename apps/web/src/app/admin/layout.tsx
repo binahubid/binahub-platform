@@ -284,8 +284,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                          active ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                        className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                          active ? 'bg-white/15 text-white font-semibold ring-1 ring-inset ring-white/20' : 'text-white/70 hover:bg-white/10 hover:text-white'
                         }`}
                       >
                         <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -357,8 +357,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           <Link
                             key={item.href}
                             href={item.href}
-                            className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                              active ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                            className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                              active ? 'bg-white/15 text-white font-semibold ring-1 ring-inset ring-white/20' : 'text-white/70 hover:bg-white/10 hover:text-white'
                             }`}
                           >
                             <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

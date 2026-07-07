@@ -5,6 +5,13 @@ node_modules/
 .pnpm-store/
 .yarn/
 
+# Vendored copies of npm packages inside packages/ai (resolved via node_modules instead)
+packages/ai/openai/
+packages/ai/typescript/
+packages/ai/@anthropic-ai/
+packages/ai/@ams/
+packages/ai/dist/
+
 # ============================================
 # Build Outputs
 # ============================================
@@ -91,11 +98,12 @@ service-account.json
 firebase-adminsdk*.json
 
 # ============================================
-# Misc
+# Pi (AI coding agent)
 # ============================================
-*.pid
-*.seed
-*.pid.lock
-.DS_Store
-.idea
+# Keep the configuration folder, but ignore any local API key overrides
+# that an operator might drop in for custom providers (e.g. Conduit).
+.pi/extensions/**/*.env
+.pi/extensions/**/*.local
+.pi/extensions/conduit/
+.opencodeignore
 .env

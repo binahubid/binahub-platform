@@ -248,10 +248,11 @@ export default function AdminAssignmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Assignments</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D9A441]">Talent Operations</p>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900">Assignments</h1>
           <p className="mt-1 text-sm text-slate-500">Kelola semua project dan penugasan BinaHub.</p>
         </div>
-        <button onClick={() => { setShowForm(!showForm); setEditingId(null); }} className="flex items-center gap-2 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0A255A]">
+        <button onClick={() => { setShowForm(!showForm); setEditingId(null); }} className="flex items-center gap-2 rounded-lg bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/20 transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-xl hover:shadow-[#0B2C6B]/30">
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -264,7 +265,7 @@ export default function AdminAssignmentsPage() {
           <h3 className="text-sm font-semibold text-slate-900 mb-4">Assignment Baru</h3>
           <FormFields form={form} setForm={setForm} />
           <div className="mt-4 flex gap-2">
-            <button onClick={handleCreate} disabled={saving} className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white hover:bg-[#0A255A] disabled:opacity-50">
+            <button onClick={handleCreate} disabled={saving} className="rounded-lg bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:from-[#0A255A] hover:to-[#071A33] disabled:opacity-50 disabled:shadow-none">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
             <button onClick={() => setShowForm(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { createClient } from '@supabase/supabase-js';
 import { getDb } from '../../lib/database.js';
+import { rateLimit } from '../../middleware/rate-limit.js';
 import { generateSlug } from '@ams/shared/utils/slug';
 import { createAssociateSchema } from '@ams/shared/validators/associate';
 import type { AuthUser } from '../../types';
@@ -15,7 +16,7 @@ function getAnonClient() {
   return createClient(supabaseUrl, supabaseAnonKey);
 }
 
-auth.post('/register', async (c) => {
+auth.post('/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c) => {
   const body = await c.req.json();
 
   const validation = createAssociateSchema.safeParse(body);
@@ -79,7 +80,7 @@ auth.post('/register', async (c) => {
   return c.json({ success: true, message: 'Registrasi berhasil. Cek email untuk konfirmasi.' }, 201);
 });
 
-auth.post('/login', async (c) => {
+auth.post('/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c) => {
   const body = await c.req.json();
   const { email, password } = body;
 
@@ -112,8 +113,19 @@ auth.post('/logout', async (c) => {
   }
 
   const token = authHeader.replace('Bearer ', '');
-  const anonClient = getAnonClient();
-  await anonClient.auth.admin.signOut(token);
+
+  // Verify the token & resolve the user id before revoking (admin API needs user id)
+  const db = getDb();
+  const { data: { user }, error } = await db.auth.getUser(token);
+  if (error || !user) {
+    return c.json({ success: false, error: 'Token tidak valid' }, 401);
+  }
+
+  try {
+    await db.auth.admin.signOut(user.id);
+  } catch (e) {
+    console.error('Logout error:', e);
+  }
 
   return c.json({ success: true, message: 'Logout berhasil' });
 });

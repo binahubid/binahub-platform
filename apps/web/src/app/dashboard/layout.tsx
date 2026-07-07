@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { OnboardingProvider } from '../../components/onboarding/context';
 import { OnboardingTooltip } from '../../components/onboarding/tooltip';
 import { ReminderBar } from '../../components/onboarding/reminder-bar';
+import { ToastProvider } from '../../components/ui';
 
 const sidebarSections = [
   {
@@ -147,9 +148,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     id={item.id}
-                    className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                       isActive(item.href)
-                        ? 'bg-[#0B2C6B]/10 text-[#0B2C6B]'
+                        ? 'bg-[#0B2C6B]/10 text-[#0B2C6B] font-semibold ring-1 ring-inset ring-[#0B2C6B]/10'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
@@ -252,8 +253,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <OnboardingProvider>
-      <DashboardLayoutInner>{children}</DashboardLayoutInner>
-    </OnboardingProvider>
+    <ToastProvider>
+      <OnboardingProvider>
+        <DashboardLayoutInner>{children}</DashboardLayoutInner>
+      </OnboardingProvider>
+    </ToastProvider>
   );
 }

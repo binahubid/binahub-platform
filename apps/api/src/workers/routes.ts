@@ -1,9 +1,16 @@
 import { Hono } from 'hono';
+import { authMiddleware, requireRole } from '../modules/auth/middleware/auth.js';
 import { getDb } from '../lib/database.js';
 import { processPendingEvents } from './event-processor.js';
 import type { AppEnv } from '../types/env.js';
 
 export const workerRoutes = new Hono<AppEnv>();
+
+// ============================================
+// PROTECTED (admin only)
+// ============================================
+workerRoutes.use('*', authMiddleware);
+workerRoutes.use('*', requireRole(['admin']));
 
 // ============================================
 // PROCESS EVENTS

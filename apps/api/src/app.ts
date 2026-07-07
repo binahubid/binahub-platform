@@ -23,6 +23,19 @@ app.use("/*", cors({
   credentials: true,
 }));
 
+// ============================================
+// GLOBAL ERROR HANDLER
+// ============================================
+// Never leak internal error details to the client. Log full error server-side,
+// return a generic message for 500s. Route-level responses (4xx) are untouched.
+app.onError((err, c) => {
+  console.error('Unhandled error:', err);
+  return c.json({ success: false, error: 'Terjadi kesalahan pada server' }, 500);
+});
+
+// Catch unhandled async rejections / not-found to avoid stack traces leaking
+app.notFound((c) => c.json({ success: false, error: 'Endpoint tidak ditemukan' }, 404));
+
 app.route("/api/auth", auth);
 app.route("/api/associate", associateRoutes);
 app.route("/api/admin", admin);

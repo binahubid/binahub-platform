@@ -1,5 +1,5 @@
 import { getDb } from '../lib/database.js';
-import { OpenAIProvider } from '@ams/ai';
+import { OpenAIProvider, extractTextFromPDF } from '@ams/ai';
 import type { EventQueue } from '@ams/shared/types/events';
 
 // ============================================
@@ -249,19 +249,29 @@ async function processCVUploaded(event: EventQueue) {
 // ============================================
 
 async function extractTextFromFile(fileData: Blob, mime: string): Promise<string> {
-  // In production, use proper PDF parsing library
-  // For now, return placeholder
+  const arrayBuffer = await fileData.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
   if (mime === 'application/pdf') {
-    // TODO: Implement PDF text extraction using pdf-parse
-    return 'PDF content extracted - implement pdf-parse library';
+    try {
+      return await extractTextFromPDF(buffer);
+    } catch (e) {
+      console.error('PDF text extraction failed:', e);
+      return '';
+    }
   }
-  
+
   if (mime.includes('word')) {
-    // TODO: Implement Word document extraction using mammoth
-    return 'Word document content extracted - implement mammoth library';
+    // TODO: Word document extraction (e.g. mammoth). Return empty so AI can skip gracefully.
+    return '';
   }
-  
-  return '';
+
+  // Fallback: treat as plain text
+  try {
+    return await fileData.text();
+  } catch {
+    return '';
+  }
 }
 
 // ============================================
