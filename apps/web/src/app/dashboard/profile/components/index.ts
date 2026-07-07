@@ -1,0 +1,6 @@
+export { StepIndicator } from './step-indicator';
+export { StepProfile } from './step-profile';
+export { StepExperience } from './step-experience';
+export { StepSkills } from './step-skills';
+export { StepDocuments } from './step-documents';
+export { StepAvailability } from './step-availability';
