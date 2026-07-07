@@ -12,10 +12,10 @@ import type { ProfileData, Experience, Document, Skill, Language, Availability, 
 // ============================================
 
 const STEPS = [
+  { label: 'Dokumen', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
   { label: 'Profil', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   { label: 'Pengalaman', icon: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
   { label: 'Keahlian', icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' },
-  { label: 'Dokumen', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
   { label: 'Ketersediaan', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
 ];
 
@@ -340,11 +340,27 @@ export default function ProfilePage() {
 
       {/* Step Content */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        {/* Step 1: Profile */}
+        {/* Step 1: Documents (CV First) */}
         {currentStep === 0 && (
           <div>
+            <h2 className="text-base font-bold text-slate-900 mb-1">Upload CV Anda</h2>
+            <p className="text-xs text-slate-500 mb-6">Langkah pertama — CV akan dianalisis AI untuk mengisi profil otomatis</p>
+            <StepDocuments
+              documents={profileData?.documents || []}
+              apiUrl={apiUrl}
+              accessToken={accessToken || ''}
+              onRefresh={fetchProfile}
+              onParseCV={handleParseCV}
+              parsingCV={parsingCV}
+            />
+          </div>
+        )}
+
+        {/* Step 2: Profile */}
+        {currentStep === 1 && (
+          <div>
             <h2 className="text-base font-bold text-slate-900 mb-1">Data Diri & Profil</h2>
-            <p className="text-xs text-slate-500 mb-6">Isi informasi dasar Anda</p>
+            <p className="text-xs text-slate-500 mb-6">Isi atau perbaiki informasi Anda</p>
             {editProfile && (
               <StepProfile
                 profile={editProfile}
@@ -356,8 +372,8 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Step 2: Experience */}
-        {currentStep === 1 && (
+        {/* Step 3: Experience */}
+        {currentStep === 2 && (
           <div>
             <h2 className="text-base font-bold text-slate-900 mb-1">Pengalaman Kerja</h2>
             <p className="text-xs text-slate-500 mb-6">Tambahkan riwayat pekerjaan Anda</p>
@@ -370,8 +386,8 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Step 3: Skills */}
-        {currentStep === 2 && (
+        {/* Step 4: Skills */}
+        {currentStep === 3 && (
           <div>
             <h2 className="text-base font-bold text-slate-900 mb-1">Keahlian & Bahasa</h2>
             <p className="text-xs text-slate-500 mb-6">Tambahkan skill dan bahasa yang Anda kuasai</p>
@@ -381,22 +397,6 @@ export default function ProfilePage() {
               apiUrl={apiUrl}
               accessToken={accessToken || ''}
               onRefresh={fetchProfile}
-            />
-          </div>
-        )}
-
-        {/* Step 4: Documents */}
-        {currentStep === 3 && (
-          <div>
-            <h2 className="text-base font-bold text-slate-900 mb-1">Dokumen</h2>
-            <p className="text-xs text-slate-500 mb-6">Upload CV dan dokumen pendukung</p>
-            <StepDocuments
-              documents={profileData?.documents || []}
-              apiUrl={apiUrl}
-              accessToken={accessToken || ''}
-              onRefresh={fetchProfile}
-              onParseCV={handleParseCV}
-              parsingCV={parsingCV}
             />
           </div>
         )}
