@@ -319,9 +319,9 @@ export default function OriginalProfilePage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingCV, setUploadingCV] = useState(false);
   const [parsingCV, setParsingCV] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
 
-  const showToastNotification = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToastNotification = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
   };
@@ -780,10 +780,49 @@ export default function OriginalProfilePage() {
   };
 
   // CV Upload + Auto-parse
+  const handleDeleteDocument = async (docId: string, docName: string) => {
+    if (!accessToken) return;
+    if (!confirm(`Hapus dokumen "${docName}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+    try {
+      const res = await fetch(`${apiUrl}/api/files/${docId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToastNotification('Dokumen berhasil dihapus', 'success');
+        await fetchProfile();
+      } else {
+        showToastNotification(json.error || 'Gagal menghapus dokumen', 'error');
+      }
+    } catch (e) {
+      showToastNotification('Gagal menghapus dokumen', 'error');
+    }
+  };
+
   const handleCVUpload = async (file: File) => {
     if (!accessToken || !data?.id) return;
+
+    // Confirm if replacing existing CV
+    const oldCv = documents.find((d) => d.type === 'cv');
+    if (oldCv) {
+      if (!confirm('CV lama akan diganti dengan CV baru. Lanjutkan?')) return;
+    }
+
     setUploadingCV(true);
     try {
+      // Delete old CV if exists
+      if (oldCv) {
+        try {
+          await fetch(`${apiUrl}/api/files/${oldCv.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+        } catch (e) {
+          console.warn('Failed to delete old CV, proceeding with upload:', e);
+        }
+      }
+
       const res = await fetch(`${apiUrl}/api/files/associate/${data.id}/cv`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -811,11 +850,16 @@ export default function OriginalProfilePage() {
           const newDocs = updatedData?.documents || documents;
           const newCvDoc = newDocs.find((d) => d.type === 'cv') || { id: json.data.fileId };
           if (newCvDoc?.id) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+            
             const parseRes = await fetch(`${apiUrl}/api/ai/parse-cv`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
               body: JSON.stringify({ document_id: newCvDoc.id }),
+              signal: controller.signal,
             });
+            clearTimeout(timeoutId);
             const parseJson = await parseRes.json();
             if (parseJson.success && parseJson.data) {
               console.log('AI Parsing Debug Data:', parseJson.debug);
@@ -979,6 +1023,13 @@ export default function OriginalProfilePage() {
           }
         } catch (parseErr) {
           console.error('Auto-parse CV failed:', parseErr);
+          const isTimeout = parseErr instanceof DOMException && parseErr.name === 'AbortError';
+          showToastNotification(
+            isTimeout
+              ? 'CV berhasil diupload. AI timeout — silakan isi profil manual atau coba Re-parse CV.'
+              : 'CV berhasil diupload. Gagal memproses AI — silakan isi profil manual.',
+            isTimeout ? 'warning' : 'error'
+          );
         } finally {
           setParsingCV(false);
         }
@@ -1073,11 +1124,16 @@ export default function OriginalProfilePage() {
     if (!cvDoc || !accessToken) return;
     setParsingCV(true);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
       const res = await fetch(`${apiUrl}/api/ai/parse-cv`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ document_id: cvDoc.id }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       const json = await res.json();
       if (json.success && json.data) {
         console.log('AI Parsing Debug Data:', json.debug);
@@ -1240,7 +1296,13 @@ export default function OriginalProfilePage() {
       }
     } catch (e) {
       console.error(e);
-      showToastNotification('Gagal memproses autofill CV', 'error');
+      const isTimeout = e instanceof DOMException && e.name === 'AbortError';
+      showToastNotification(
+        isTimeout
+          ? 'AI timeout — silakan coba Re-parse CV lagi.'
+          : 'Gagal memproses autofill CV',
+        isTimeout ? 'warning' : 'error'
+      );
     } finally {
       setParsingCV(false);
     }
@@ -1299,6 +1361,10 @@ export default function OriginalProfilePage() {
             {toast.type === 'success' ? (
               <svg className="h-3 w-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : toast.type === 'warning' ? (
+              <svg className="h-3 w-3 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             ) : (
               <svg className="h-3 w-3 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2041,13 +2107,16 @@ export default function OriginalProfilePage() {
                     <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-xl">📄</span>
+                          <svg className="h-8 w-8 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                           <div>
                             <p className="text-xs font-semibold text-slate-800">{cvDoc.name}</p>
                             <p className="text-[10px] text-slate-400">Diupload {new Date(cvDoc.created_at).toLocaleDateString('id-ID')}</p>
                           </div>
                         </div>
-                        <button onClick={() => window.open(`${apiUrl}/api/files/${cvDoc.id}/view`, '_blank')} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600">Unduh CV</button>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => window.open(`${apiUrl}/api/files/${cvDoc.id}/view`, '_blank')} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Unduh</button>
+                          <button onClick={() => handleDeleteDocument(cvDoc.id, cvDoc.name)} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors">Hapus</button>
+                        </div>
                       </div>
 
                       <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
