@@ -61,7 +61,12 @@ associateRoutes.get('/slug/:slug', async (c) => {
     return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
   }
 
-  return c.json({ success: true, data: associate });
+  // Filter out soft-deleted documents
+  const filteredData = associate
+    ? { ...associate, documents: (associate.documents || []).filter((d: { deleted_at: string | null }) => !d.deleted_at) }
+    : associate;
+
+  return c.json({ success: true, data: filteredData });
 });
 
 // ============================================
@@ -223,7 +228,12 @@ associateRoutes.get('/me', async (c) => {
     .eq('associate_id', user.id)
     .single();
 
-  return c.json({ success: true, data: { ...associate, reviews: reviews || [], assignments: assignmentsWithStatus, assessments: assessments || [], development_plan: developmentPlan || null } });
+  // Filter out soft-deleted documents
+  const filteredAssociate = associate
+    ? { ...associate, documents: (associate.documents || []).filter((d: { deleted_at: string | null }) => !d.deleted_at) }
+    : associate;
+
+  return c.json({ success: true, data: { ...filteredAssociate, reviews: reviews || [], assignments: assignmentsWithStatus, assessments: assessments || [], development_plan: developmentPlan || null } });
 });
 
 // Create associate profile

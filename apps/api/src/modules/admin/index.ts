@@ -29,10 +29,10 @@ admin.get('/stats', async (c) => {
     }
   }
 
-  const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true });
+  const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true }).is('deleted_at', null);
 
   const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-  const { count: cvToday } = await db.from('associate_documents').select('*', { count: 'exact', head: true }).eq('type', 'cv').gte('created_at', dayStart);
+  const { count: cvToday } = await db.from('associate_documents').select('*', { count: 'exact', head: true }).eq('type', 'cv').is('deleted_at', null).gte('created_at', dayStart);
 
   return c.json({
     success: true,
@@ -155,7 +155,7 @@ admin.get('/associates/:id', async (c) => {
     .select('*')
     .eq('associate_id', id);
 
-  return c.json({ success: true, data: { ...data, reviews: reviews || [] } });
+  return c.json({ success: true, data: { ...data, documents: (data.documents || []).filter((d: { deleted_at: string | null }) => !d.deleted_at), reviews: reviews || [] } });
 });
 
 admin.patch('/associates/:id/review', async (c) => {
@@ -640,7 +640,7 @@ admin.get('/reports/summary', async (c) => {
   const { count: totalAssociates } = await db.from('associates').select('*', { count: 'exact', head: true });
   const { count: activeAssociates } = await db.from('associates').select('*', { count: 'exact', head: true }).eq('status', 'active');
   const { count: pendingAssociates } = await db.from('associates').select('*', { count: 'exact', head: true }).eq('status', 'pending_review');
-  const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true });
+  const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true }).is('deleted_at', null);
   const { count: totalAssignments } = await db.from('assignments').select('*', { count: 'exact', head: true });
   const { count: activeAssignments } = await db.from('assignments').select('*', { count: 'exact', head: true }).eq('status', 'active');
   const { count: totalReviews } = await db.from('associate_reviews').select('*', { count: 'exact', head: true });
