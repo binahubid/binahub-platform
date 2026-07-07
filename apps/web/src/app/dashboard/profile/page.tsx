@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { Avatar } from '../../../components/ui';
 import { useSearchParams } from 'next/navigation';
-import { StepIndicator, StepProfile, StepExperience, StepSkills, StepDocuments, StepAvailability, ProfileView } from './components';
+import { StepIndicator, StepProfile, StepExperience, StepSkills, StepDocuments, StepAvailability } from './components';
 import type { ProfileData, Experience, Document, Skill, Language, Availability, AssociateData } from './types';
 
 // ============================================
@@ -32,6 +32,7 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<AssociateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [viewTab, setViewTab] = useState('profile');
 
   // Step state
   const tabParam = searchParams.get('tab');
@@ -299,38 +300,77 @@ export default function ProfilePage() {
           <h1 className="text-lg font-bold text-slate-900">Profil Saya</h1>
           <p className="text-sm text-slate-500">{isEditing ? 'Edit profil Anda' : 'Lengkapi profil Anda untuk mendapatkan peluang terbaik'}</p>
         </div>
-        {!isEditing && (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
+        {!isEditing ? (
+          <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
             Edit Profil
           </button>
-        )}
-        {isEditing && (
-          <button
-            onClick={() => setIsEditing(false)}
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
+        ) : (
+          <button onClick={() => setIsEditing(false)} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
             Lihat Profil
           </button>
         )}
       </div>
 
-      {/* Profile View Mode */}
+      {/* Profile View Mode (Tab Style) */}
       {!isEditing && profileData && (
-        <ProfileView
-          data={profileData}
-          completionPercentage={completionPercentage}
-          onEdit={() => setIsEditing(true)}
-        />
+        <>
+          {/* Profile Hero Card */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B2C6B] via-[#1440a0] to-[#1e3a8a] p-6 sm:p-8 shadow-lg mb-6 text-white">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyem0wLTRWMjhIMjR2Mmgxem0tNC04aDJ2MmgtMnptMCA0aDJ2MmgtMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              <Avatar src={profileData?.profile?.photo_url} name={profileData?.profile?.full_name || user?.email} size="lg" className="h-24 w-24 ring-4 ring-white/20" />
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold">{profileData?.profile?.full_name || 'Nama Belum Diisi'}</h1>
+                <p className="text-sm text-white/70 mt-1">{profileData?.profile?.headline || profileData?.profile?.roles?.join(' & ') || 'Headline belum diisi'}</p>
+                <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-white/50">
+                  {profileData?.profile?.city && <span className="flex items-center gap-1"><svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>{profileData.profile.city}</span>}
+                  {profileData?.profile?.phone && <span className="flex items-center gap-1"><svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>{profileData.profile.phone}</span>}
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">{profileData?.status || 'draft'}</span>
+                </div>
+              </div>
+              <div className="hidden sm:block text-right">
+                <div className="text-3xl font-bold">{completionPercentage}%</div>
+                <div className="text-xs text-white/50">Profil Lengkap</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tab View */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="flex border-b border-slate-100 px-6 pt-4">
+              {[{ id: 'profile', label: 'Profil' }, { id: 'experience', label: 'Pengalaman' }, { id: 'skills', label: 'Keahlian' }, { id: 'availability', label: 'Ketersediaan' }, { id: 'documents', label: 'Dokumen' }].map((tab) => (
+                <button key={tab.id} onClick={() => setViewTab(tab.id)} className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${viewTab === tab.id ? 'border-[#0B2C6B] text-[#0B2C6B] font-semibold' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>{tab.label}</button>
+              ))}
+            </div>
+            <div className="p-6">
+              {viewTab === 'profile' && (
+                <div className="space-y-6">
+                  {profileData?.profile?.bio && <div><h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Tentang Saya</h4><p className="text-sm text-slate-600 leading-relaxed">{profileData.profile.bio}</p></div>}
+                  {profileData?.profile?.roles && profileData.profile.roles.length > 0 && <div><h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Bidang Penugasan</h4><div className="flex flex-wrap gap-2">{profileData.profile.roles.map((r) => <span key={r} className="rounded-full bg-[#0B2C6B] px-3 py-1 text-xs font-semibold text-white">{r}</span>)}</div></div>}
+                  {profileData?.profile?.expertises && profileData.profile.expertises.length > 0 && <div><h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Keahlian Utama</h4><div className="flex flex-wrap gap-2">{profileData.profile.expertises.map((e) => <span key={e} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">{e}</span>)}</div></div>}
+                  {!profileData?.profile?.bio && (!profileData?.profile?.roles || profileData.profile.roles.length === 0) && <div className="text-center py-8"><p className="text-sm text-slate-500">Profil masih kosong.</p><button onClick={() => setIsEditing(true)} className="mt-3 text-sm font-semibold text-[#0B2C6B] hover:underline">Isi Profil Sekarang</button></div>}
+                </div>
+              )}
+              {viewTab === 'experience' && (
+                <div>{profileData?.experiences.length === 0 ? <div className="text-center py-8"><p className="text-sm text-slate-500">Belum ada pengalaman kerja.</p></div> : <div className="space-y-4">{profileData.experiences.map((exp) => <div key={exp.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4"><p className="text-sm font-semibold text-slate-900">{exp.position}</p><p className="text-xs text-[#0B2C6B] font-semibold">{exp.organization}</p><p className="text-[10px] text-slate-400 mt-1">{exp.start_date} – {exp.is_current ? 'Sekarang' : exp.end_date}</p>{exp.description && <p className="text-xs text-slate-500 mt-2">{exp.description}</p>}</div>)}</div>}</div>
+              )}
+              {viewTab === 'skills' && (
+                <div className="space-y-6">
+                  <div><h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Keahlian</h4>{profileData?.skills.length === 0 ? <p className="text-sm text-slate-500">Belum ada keahlian.</p> : <div className="flex flex-wrap gap-2">{profileData?.skills.map((s) => <span key={s.id} className="rounded-full bg-[#0B2C6B]/10 px-3 py-1 text-xs font-semibold text-[#0B2C6B]">{s.skill_name} {s.proficiency && `(${s.proficiency})`}</span>)}</div>}</div>
+                  <div><h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Bahasa</h4>{profileData?.languages.length === 0 ? <p className="text-sm text-slate-500">Belum ada bahasa.</p> : <div className="flex flex-wrap gap-2">{profileData?.languages.map((l) => <span key={l.id} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">{l.language} ({l.proficiency})</span>)}</div>}</div>
+                </div>
+              )}
+              {viewTab === 'availability' && (
+                <div>{!profileData?.availability ? <div className="text-center py-8"><p className="text-sm text-slate-500">Belum ada ketersediaan.</p></div> : <div className="space-y-4"><div className="flex items-center gap-3"><div className={`h-3 w-3 rounded-full ${profileData.availability.status === 'open' ? 'bg-emerald-500' : profileData.availability.status === 'busy' ? 'bg-amber-500' : 'bg-red-500'}`} /><span className="text-sm font-medium text-slate-700">{profileData.availability.status === 'open' ? 'Open for Opportunities' : profileData.availability.status === 'busy' ? 'Busy' : 'Not Available'}</span></div>{profileData.availability.work_locations && profileData.availability.work_locations.length > 0 && <div><p className="text-xs font-semibold text-slate-400 mb-1">Lokasi Kerja</p><div className="flex flex-wrap gap-2">{profileData.availability.work_locations.map((l) => <span key={l} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">{l}</span>)}</div></div>}</div>}</div>
+              )}
+              {viewTab === 'documents' && (
+                <div>{profileData?.documents.length === 0 ? <div className="text-center py-8"><p className="text-sm text-slate-500">Belum ada dokumen.</p></div> : <div className="space-y-3">{profileData.documents.filter(d => d.type === 'cv').map((doc) => <div key={doc.id} className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100"><svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-sm font-semibold text-slate-900">{doc.file_name}</p><p className="text-xs text-slate-500">CV – {new Date(doc.created_at).toLocaleDateString('id-ID')}</p></div></div></div>)}</div>}</div>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Profile Edit Mode */}
