@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { Avatar } from '../../../components/ui';
 import { useSearchParams } from 'next/navigation';
-import { StepIndicator, StepProfile, StepExperience, StepSkills, StepDocuments, StepAvailability } from './components';
+import { StepIndicator, StepProfile, StepExperience, StepSkills, StepDocuments, StepAvailability, ProfileView } from './components';
 import type { ProfileData, Experience, Document, Skill, Language, Availability, AssociateData } from './types';
 
 // ============================================
@@ -31,10 +31,12 @@ export default function ProfilePage() {
   // Data state
   const [profileData, setProfileData] = useState<AssociateData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Step state
   const tabParam = searchParams.get('tab');
-  const initialStep = tabParam === 'documents' ? 3 : 0;
+  const editParam = searchParams.get('edit');
+  const initialStep = tabParam === 'documents' ? 0 : 0;
   const [currentStep, setCurrentStep] = useState(initialStep);
 
   // Profile editing state
@@ -44,6 +46,14 @@ export default function ProfilePage() {
 
   // AI parsing state
   const [parsingCV, setParsingCV] = useState(false);
+
+  // Auto-enter edit mode if ?edit=true or ?tab=documents
+  useEffect(() => {
+    if (editParam === 'true' || tabParam === 'documents') {
+      setIsEditing(true);
+      if (tabParam === 'documents') setCurrentStep(0); // Documents is now step 1
+    }
+  }, [editParam, tabParam]);
 
   const showToastNotification = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ message, type });
@@ -284,59 +294,96 @@ export default function ProfilePage() {
       )}
 
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-lg font-bold text-slate-900">Profil Saya</h1>
-        <p className="text-sm text-slate-500">Lengkapi profil Anda untuk mendapatkan peluang terbaik</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-slate-900">Profil Saya</h1>
+          <p className="text-sm text-slate-500">{isEditing ? 'Edit profil Anda' : 'Lengkapi profil Anda untuk mendapatkan peluang terbaik'}</p>
+        </div>
+        {!isEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit Profil
+          </button>
+        )}
+        {isEditing && (
+          <button
+            onClick={() => setIsEditing(false)}
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            Lihat Profil
+          </button>
+        )}
       </div>
 
-      {/* Profile Hero Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B2C6B] via-[#1440a0] to-[#1e3a8a] p-6 sm:p-8 shadow-lg mb-6 text-white">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyem0wLTRWMjhIMjR2Mmgxem0tNC04aDJ2MmgtMnptMCA0aDJ2MmgtMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
-        <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="relative group">
-            <Avatar src={profileData?.profile?.photo_url} name={profileData?.profile?.full_name || user?.email} size="lg" className="ring-2 ring-white/20" />
-            <label className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-            </label>
-          </div>
-          <div className="flex-1">
-            <p className="text-xl font-bold">{profileData?.profile?.full_name || 'Tambahkan Nama'}</p>
-            <p className="text-sm text-white/70 mt-1">{profileData?.profile?.headline || profileData?.profile?.roles?.join(' & ') || 'Tambahkan headline'}</p>
-            <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-white/50">
-              {profileData?.profile?.city && (
-                <span className="flex items-center gap-1">
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      {/* Profile View Mode */}
+      {!isEditing && profileData && (
+        <ProfileView
+          data={profileData}
+          completionPercentage={completionPercentage}
+          onEdit={() => setIsEditing(true)}
+        />
+      )}
+
+      {/* Profile Edit Mode */}
+      {isEditing && (
+        <>
+          {/* Profile Hero Card */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B2C6B] via-[#1440a0] to-[#1e3a8a] p-6 sm:p-8 shadow-lg mb-6 text-white">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyem0wLTRWMjhIMjR2Mmgxem0tNC04aDJ2MmgtMnptMCA0aDJ2MmgtMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="relative group">
+                <Avatar src={profileData?.profile?.photo_url} name={profileData?.profile?.full_name || user?.email} size="lg" className="ring-2 ring-white/20" />
+                <label className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                  <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  {profileData.profile.city}
-                </span>
-              )}
-              {profileData?.profile?.phone && (
-                <span className="flex items-center gap-1">
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  {profileData.profile.phone}
-                </span>
-              )}
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                {profileData?.status || 'draft'}
-              </span>
+                  <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                </label>
+              </div>
+              <div className="flex-1">
+                <p className="text-xl font-bold">{profileData?.profile?.full_name || 'Tambahkan Nama'}</p>
+                <p className="text-sm text-white/70 mt-1">{profileData?.profile?.headline || profileData?.profile?.roles?.join(' & ') || 'Tambahkan headline'}</p>
+                <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-white/50">
+                  {profileData?.profile?.city && (
+                    <span className="flex items-center gap-1">
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      </svg>
+                      {profileData.profile.city}
+                    </span>
+                  )}
+                  {profileData?.profile?.phone && (
+                    <span className="flex items-center gap-1">
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      {profileData.profile.phone}
+                    </span>
+                  )}
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                    {profileData?.status || 'draft'}
+                  </span>
+                </div>
+              </div>
+              <div className="hidden sm:block text-right">
+                <div className="text-3xl font-bold">{completionPercentage}%</div>
+                <div className="text-xs text-white/50">Lengkap</div>
+              </div>
             </div>
           </div>
-          <div className="hidden sm:block text-right">
-            <div className="text-3xl font-bold">{completionPercentage}%</div>
-            <div className="text-xs text-white/50">Lengkap</div>
-          </div>
-        </div>
-      </div>
 
-      {/* Step Indicator */}
-      <StepIndicator currentStep={currentStep} totalSteps={STEPS.length} steps={STEPS} />
+          {/* Step Indicator */}
+          <StepIndicator currentStep={currentStep} totalSteps={STEPS.length} steps={STEPS} />
 
       {/* Step Content */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -461,6 +508,8 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
