@@ -88,7 +88,7 @@ ai.post('/parse-cv', async (c) => {
     try {
       const provider = new OpenAIProvider({
         apiKey: process.env.OPENAI_API_KEY || "",
-        model: process.env.OPENAI_MODEL || "openai/gpt-oss-120b:free"
+        model: process.env.OPENAI_MODEL || "xiaomi/mimo-v2.5"
       });
       console.log('Sending text to AI provider for CV parsing. Length:', cvText.length);
       const parsed = await provider.parseCV(cvText);
@@ -113,7 +113,7 @@ ai.post('/parse-cv', async (c) => {
   try {
     const provider = new OpenAIProvider({
       apiKey: process.env.OPENAI_API_KEY || "",
-      model: process.env.OPENAI_MODEL || "openai/gpt-oss-120b:free"
+      model: process.env.OPENAI_MODEL || "xiaomi/mimo-v2.5"
     });
     const parsed = await provider.parseCV(cvText);
     return c.json({ success: true, data: parsed });

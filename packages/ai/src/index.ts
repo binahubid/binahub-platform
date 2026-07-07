@@ -15,7 +15,7 @@ export function createAIClient() {
 
 export async function parseCV(text: string): Promise<Record<string, unknown>> {
   const client = createAIClient();
-  const modelName = process.env.OPENAI_MODEL || "openai/gpt-oss-120b:free";
+  const modelName = process.env.OPENAI_MODEL || "xiaomi/mimo-v2.5";
   const response = await client.chat.completions.create({
     model: modelName,
     messages: [
