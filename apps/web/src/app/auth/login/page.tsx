@@ -24,6 +24,7 @@ function LoginForm() {
 
   const registered = searchParams.get('registered');
   const confirmed = searchParams.get('confirmed');
+  const newUser = searchParams.get('newUser');
 
   useEffect(() => {
     if (registered) setSuccess('Akun berhasil dibuat. Cek email untuk verifikasi.');
@@ -50,10 +51,31 @@ function LoginForm() {
     const role = signInData.user?.app_metadata?.role;
     if (role === 'admin') {
       router.push('/admin');
-    } else {
+      return;
+    }
+
+    // Jika flag onboarding ada (dari sessionStorage atau URL param), langsung ke onboarding
+    const sessionFlag = typeof window !== 'undefined' && sessionStorage.getItem('ams_needs_onboarding') === 'true';
+    if (sessionFlag || newUser === 'true') {
+      if (typeof window !== 'undefined') sessionStorage.removeItem('ams_needs_onboarding');
+      router.push('/onboarding');
+      return;
+    }
+
+    // User lama: cek profil apakah perlu onboarding
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const res = await fetch(`${apiUrl}/api/associate/me`, {
+        headers: { Authorization: `Bearer ${signInData.session?.access_token}` },
+      });
+      const json = await res.json();
+      const hasProfile = json.success && json.data?.profile?.full_name;
+      router.push(hasProfile ? '/dashboard' : '/onboarding');
+    } catch {
       router.push('/dashboard');
     }
   };
+
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);

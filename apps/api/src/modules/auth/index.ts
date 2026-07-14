@@ -63,6 +63,13 @@ auth.post('/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (
 
   if (associateError) {
     console.error('Create associate error:', associateError);
+    // Rollback auth user
+    try {
+      await db.auth.admin.deleteUser(authData.user.id);
+    } catch (rollbackErr) {
+      console.error('Rollback user failed:', rollbackErr);
+    }
+    return c.json({ success: false, error: 'Gagal membuat data associate: ' + associateError.message }, 500);
   }
 
   const { error: profileError } = await db
@@ -75,6 +82,14 @@ auth.post('/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (
 
   if (profileError) {
     console.error('Create profile error:', profileError);
+    // Rollback associate table & auth user
+    try {
+      await db.from('associates').delete().eq('id', authData.user.id);
+      await db.auth.admin.deleteUser(authData.user.id);
+    } catch (rollbackErr) {
+      console.error('Rollback user/table failed:', rollbackErr);
+    }
+    return c.json({ success: false, error: 'Gagal membuat profil: ' + profileError.message }, 500);
   }
 
   return c.json({ success: true, message: 'Registrasi berhasil. Cek email untuk konfirmasi.' }, 201);

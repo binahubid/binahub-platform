@@ -168,6 +168,7 @@ export const associateDocuments = pgTable("associate_documents", {
   url: text("url").notNull(),
   parsed_data: jsonb("parsed_data").$type<Record<string, unknown>>(),
   created_at: timestamp("created_at").defaultNow().notNull(),
+  deleted_at: timestamp("deleted_at"),
 });
 
 export const associateReviews = pgTable("associate_reviews", {

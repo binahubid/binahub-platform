@@ -85,17 +85,32 @@ export type EmergencyContact = {
   email?: string | null;
 };
 
+export type Certification = {
+  id: string;
+  name: string;
+  issuing_organization: string;
+  credential_id?: string;
+  credential_url?: string;
+};
+
+export type Portfolio = {
+  id: string;
+  title: string;
+  description?: string;
+  link_url?: string;
+};
+
 export type AssociateData = {
   id: string;
   status: string;
   profile: ProfileData | null;
   experiences: Experience[];
   educations: Education[];
-  certifications: { id: string; name: string; issuer: string }[];
+  certifications: Certification[];
   skills: Skill[];
   languages: Language[];
   documents: Document[];
-  portfolios: { id: string; title: string }[];
+  portfolios: Portfolio[];
   availability: Availability | null;
   socialLinks: SocialLink[];
   emergencyContact: EmergencyContact | null;

@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] — 2026-07-14
+
+### Added
+- **Fitur Portofolio & Sertifikasi Baru**:
+  - Menambahkan component input `StepPortfolio` untuk menambahkan link/tautan hasil karya proyek beserta judul dan deskripsi singkat.
+  - Menambahkan component input `StepCertifications` untuk mengelola sertifikat profesional lengkap dengan Nama, Penerbit, ID, dan Link Kredensial.
+  - Mengintegrasikan kedua form pengisian tersebut ke dalam alur editor profil (meningkatkan langkah edit dari 5 menjadi 7 langkah).
+  - Menyediakan visual rendering premium untuk **Sertifikasi Profesional** & **Portofolio** di halaman Ringkasan Profil (`ProfileView`).
+- **Banner Status Verifikasi Profil & Tombol Submit (Submit for Review)**:
+  - Menyediakan banner status dinamis di dashboard utama Talent Associate berdasarkan status database (`draft`, `pending_review`, `suspended`).
+  - Mengintegrasikan badge status akun (`Draft`, `Under Review`, `Active`, `Suspended`) langsung di bawah nama profil pada **Hero Banner Halaman Profil** (`ProfileView`).
+  - Menyediakan tombol pintas **"Kirim Profil untuk Direview oleh Admin"** (khusus saat berstatus `draft`) langsung di dalam **Hero Banner Halaman Profil** (`ProfileView`) tepat di atas tombol ubah profil untuk kenyamanan akses instan.
+- **Notifikasi Penyambutan Onboarding Otomatis**:
+  - Menyisipkan notifikasi sistem virtual *"Selamat Datang di BinaHub! 👋"* di API `/api/associate/notifications` begitu pengguna selesai mengisi nama dari onboarding.
+
+### Fixed
+- **Sinkronisasi Persentase Kelengkapan Profil**:
+  - Memperbaiki perbedaan perhitungan persentase kelengkapan profil antara dashboard (sebelumnya 70%) dan edit profil (sebelumnya 80%).
+  - Kedua halaman kini mengevaluasi 10 komponen terstandar yang sama persis (Nama, CV, Pengalaman, Pendidikan, Keahlian, Peran, Foto, Ketersediaan, Sertifikasi, Portofolio) sehingga persentase kelengkapan sinkron tepat 100% saat profil lengkap.
+- **Resolusi Crash Avatar User**:
+  - Menambahkan helper dynamic image handler di dashboard dan header untuk memetakan path relatif gambar ke backend port secara dinamis (`http://localhost:4000/uploads/...`) guna menghindari blank-circle avatar.
+- **Notifikasi Popover Header**:
+  - Mengubah tautan bel notifikasi header menjadi popover interaktif yang menandai status dibaca secara instan melalui API tanpa memindahkan halaman (no redirection).
+  - Menghubungkan custom event listener `'update-notif-count'` untuk menyinkronkan jumlah notifikasi sidebar secara realtime.
+
 ## [0.4.0] — 2026-07-07
 
 ### Fixed

@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { Document } from '../types';
 
 type StepDocumentsProps = {
+  associateId: string;
   documents: Document[];
   apiUrl: string;
   accessToken: string;
@@ -12,13 +13,58 @@ type StepDocumentsProps = {
   parsingCV: boolean;
 };
 
-export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onParseCV, parsingCV }: StepDocumentsProps) {
+function ProcessingIllustration() {
+  return (
+    <svg viewBox="0 0 200 160" fill="none" className="w-full max-w-[200px] mx-auto mb-2" xmlns="http://www.w3.org/2000/svg">
+      {/* Document */}
+      <rect x="35" y="18" width="70" height="95" rx="6" fill="#f1f5f9" />
+      <rect x="45" y="30" width="35" height="3.5" rx="1.75" fill="#cbd5e1" />
+      <rect x="45" y="38" width="50" height="3.5" rx="1.75" fill="#cbd5e1" />
+      <rect x="45" y="46" width="43" height="3.5" rx="1.75" fill="#cbd5e1" />
+      <rect x="45" y="58" width="50" height="3.5" rx="1.75" fill="#0B2C6B" opacity="0.4">
+        <animate attributeName="opacity" values="0.2;0.6;0.2" dur="1.8s" repeatCount="indefinite" />
+      </rect>
+      <rect x="45" y="66" width="38" height="3.5" rx="1.75" fill="#0B2C6B" opacity="0.4">
+        <animate attributeName="opacity" values="0.2;0.6;0.2" dur="1.8s" begin="0.3s" repeatCount="indefinite" />
+      </rect>
+      <rect x="45" y="74" width="46" height="3.5" rx="1.75" fill="#D9A441" opacity="0.5">
+        <animate attributeName="opacity" values="0.2;0.7;0.2" dur="1.8s" begin="0.6s" repeatCount="indefinite" />
+      </rect>
+      <rect x="45" y="86" width="50" height="3.5" rx="1.75" fill="#0B2C6B" opacity="0.4">
+        <animate attributeName="opacity" values="0.2;0.6;0.2" dur="1.8s" begin="0.9s" repeatCount="indefinite" />
+      </rect>
+      <rect x="45" y="94" width="40" height="3.5" rx="1.75" fill="#0B2C6B" opacity="0.4">
+        <animate attributeName="opacity" values="0.2;0.6;0.2" dur="1.8s" begin="1.2s" repeatCount="indefinite" />
+      </rect>
+      {/* Arrow */}
+      <path d="M112 65h18" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeDasharray="4 3">
+        <animate attributeName="stroke-dashoffset" values="14;0" dur="1s" repeatCount="indefinite" />
+      </path>
+      <path d="M126 60l6 5-6 5" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Brain circle */}
+      <circle cx="152" cy="65" r="28" fill="#0B2C6B" />
+      <path d="M144 65h2l3-8 4 16 3-8h2" stroke="#D9A441" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Sparkles */}
+      <circle cx="140" cy="55" r="2" fill="#D9A441">
+        <animate attributeName="r" values="1;2.5;1" dur="1.5s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="164" cy="57" r="1.5" fill="#fff" opacity="0.7">
+        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.2s" repeatCount="indefinite" />
+      </circle>
+    </svg>
+  );
+}
+
+export function StepDocuments({ associateId, documents, apiUrl, accessToken, onRefresh, onParseCV, parsingCV }: StepDocumentsProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const cvDoc = documents.find((d) => d.type === 'cv');
   const otherDocs = documents.filter((d) => d.type !== 'cv');
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -41,8 +87,8 @@ export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onPar
     setUploadProgress(0);
 
     try {
-      // Step 1: Get presigned URL
-      const presignRes = await fetch(`${apiUrl}/api/files/presign`, {
+      // Step 1: Get presigned URL & Register file records in one call
+      const presignRes = await fetch(`${apiUrl}/api/files/associate/${associateId}/cv`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size }),
@@ -50,11 +96,11 @@ export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onPar
       const presignData = await presignRes.json();
 
       if (!presignData.success) {
-        alert('Gagal mendapatkan URL upload');
+        alert(presignData.error || 'Gagal menyiapkan upload CV');
         return;
       }
 
-      setUploadProgress(30);
+      setUploadProgress(40);
 
       // Step 2: Upload to storage
       await fetch(presignData.data.presignedUrl, {
@@ -63,33 +109,15 @@ export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onPar
         body: file,
       });
 
-      setUploadProgress(60);
+      setUploadProgress(70);
 
-      // Step 3: Register file record
-      const registerRes = await fetch(`${apiUrl}/api/files`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          storagePath: presignData.data.storagePath,
-          documentType: 'cv',
-        }),
-      });
-      const registerData = await registerRes.json();
-
-      setUploadProgress(80);
-
-      if (registerData.success) {
-        // Step 4: Parse CV with AI
-        if (registerData.data?.id) {
-          onParseCV(registerData.data.id);
-        }
-        await onRefresh();
-      } else {
-        alert('Gagal menyimpan file');
+      // Step 3: Trigger CV parsing with AI directly using the registered file ID
+      if (presignData.data?.fileId) {
+        onParseCV(presignData.data.fileId);
       }
+      
+      setUploadProgress(100);
+      await onRefresh();
     } catch (err) {
       console.error('Upload error:', err);
       alert('Terjadi kesalahan saat upload');
@@ -100,7 +128,29 @@ export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onPar
     }
   };
 
-  const handleDelete = async (docId: string, docName: string) => {
+  const handleDelete = async () => {
+    if (!cvDoc) return;
+    setDeleting(true);
+    setConfirmDelete(false);
+    try {
+      const res = await fetch(`${apiUrl}/api/files/${cvDoc.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        await onRefresh();
+      } else {
+        alert(`Gagal menghapus dokumen: ${json.error || 'Server error'}`);
+      }
+    } catch (e: any) {
+      alert(`Terjadi kesalahan koneksi: ${e.message}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleOtherDelete = async (docId: string, docName: string) => {
     if (!confirm(`Hapus dokumen "${docName}"? Tindakan ini tidak dapat dibatalkan.`)) return;
     try {
       const res = await fetch(`${apiUrl}/api/files/${docId}`, {
@@ -118,6 +168,39 @@ export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onPar
 
   return (
     <div className="space-y-6">
+      {/* Confirm Delete CV Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 m-4 animate-scaleUp">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600 border border-red-100 mb-4">
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-bold text-center text-slate-900 mb-1.5">Hapus Dokumen CV?</h3>
+            <p className="text-xs text-center text-slate-500 mb-5 leading-relaxed">
+              Dokumen CV saat ini <span className="font-semibold text-slate-700">({cvDoc?.file_name})</span> akan dihapus permanen dari sistem untuk mengunggah CV yang baru.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 rounded-xl bg-red-600 text-white py-2.5 text-xs font-semibold hover:bg-red-700 transition-all shadow-md shadow-red-600/10 disabled:opacity-50"
+              >
+                {deleting ? 'Menghapus...' : 'Ya, Hapus'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="flex-1 rounded-xl border border-slate-200 bg-white text-slate-650 py-2.5 text-xs font-semibold hover:bg-slate-50 transition-all"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* CV Section */}
       <div>
         <h4 className="text-sm font-bold text-slate-900 mb-4">
@@ -128,8 +211,8 @@ export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onPar
         </h4>
 
         {cvDoc ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-center justify-between">
+          <div className="rounded-xl border border-emerald-250 bg-emerald-50/40 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
                   <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,25 +226,25 @@ export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onPar
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <a
                   href={cvDoc.storage_path?.startsWith('http') ? cvDoc.storage_path : `${apiUrl}/api/files/${cvDoc.id}/download`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Unduh
                 </a>
                 <button
                   onClick={() => onParseCV(cvDoc.id)}
                   disabled={parsingCV}
-                  className="rounded-lg bg-[#0B2C6B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0A255A] disabled:opacity-50"
+                  className="rounded-lg bg-[#0B2C6B]/10 border border-[#0B2C6B]/25 px-3 py-1.5 text-xs font-bold text-[#0B2C6B] hover:bg-[#0B2C6B]/20 transition-all disabled:opacity-50"
                 >
                   {parsingCV ? 'Memproses...' : 'Re-parse AI'}
                 </button>
                 <button
-                  onClick={() => handleDelete(cvDoc.id, cvDoc.file_name)}
-                  className="rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-500"
+                  onClick={() => setConfirmDelete(true)}
+                  className="rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -195,18 +278,37 @@ export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onPar
           </div>
         )}
 
-        {/* Upload Progress */}
-        {uploading && (
-          <div className="mt-3">
-            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#0B2C6B] to-[#D9A441] transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
+        {/* Upload & Parsing Illustration Progress */}
+        {(uploading || parsingCV) && (
+          <div className="flex flex-col items-center justify-center py-6 gap-4 max-w-md mx-auto">
+            <ProcessingIllustration />
+            
+            <div className="text-center">
+              <h5 className="text-sm font-bold text-slate-800 transition-all duration-300">
+                {uploading 
+                  ? (uploadProgress < 40 ? 'Menyiapkan berkas...' : 'Mengunggah CV Anda...') 
+                  : 'Sistem sedang membaca & menganalisis CV Anda...'}
+              </h5>
+              <p className="mt-1.5 text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                {uploading 
+                  ? 'Mohon jangan tutup halaman ini selama pengunggahan.' 
+                  : 'Sistem sedang memetakan pengalaman kerja, pendidikan, dan keahlian secara otomatis.'}
+              </p>
             </div>
-            <p className="mt-1 text-xs text-slate-500 text-center">
-              {uploadProgress < 30 ? 'Menyiapkan upload...' : uploadProgress < 60 ? 'Mengupload file...' : uploadProgress < 80 ? 'Menyimpan...' : 'Memproses AI...'}
-            </p>
+
+            {/* Linear Progress Bar */}
+            <div className="w-full max-w-xs mt-2">
+              <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#0B2C6B] to-[#D9A441] transition-all duration-350"
+                  style={{ width: uploading ? `${uploadProgress}%` : '85%' }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mt-2 px-1">
+                <span>PROSES</span>
+                <span>{uploading ? `${uploadProgress}%` : '85%'}</span>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -238,7 +340,7 @@ export function StepDocuments({ documents, apiUrl, accessToken, onRefresh, onPar
                   <a href={doc.storage_path?.startsWith('http') ? doc.storage_path : `${apiUrl}/api/files/${doc.id}/download`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0B2C6B] hover:underline">
                     Unduh
                   </a>
-                  <button onClick={() => handleDelete(doc.id, doc.file_name)} className="rounded-lg p-1 text-red-400 hover:text-red-500">
+                  <button onClick={() => handleOtherDelete(doc.id, doc.file_name)} className="rounded-lg p-1 text-red-400 hover:text-red-500">
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>

@@ -149,15 +149,21 @@ associateRoutes.get('/me', async (c) => {
         { onConflict: 'id' }
       );
 
-    await db
+    // Cek apakah profile sudah ada
+    const { data: existingProf } = await db
       .from('associate_profiles')
-      .upsert(
-        {
+      .select('full_name')
+      .eq('associate_id', user.id)
+      .maybeSingle();
+
+    if (!existingProf) {
+      await db
+        .from('associate_profiles')
+        .insert({
           associate_id: user.id,
-          full_name: baseName
-        },
-        { onConflict: 'associate_id' }
-      );
+          full_name: (user as any).user_metadata?.full_name || baseName
+        });
+    }
 
     // Re-fetch after creation
     const refetched = await db
@@ -228,9 +234,25 @@ associateRoutes.get('/me', async (c) => {
     .eq('associate_id', user.id)
     .single();
 
-  // Filter out soft-deleted documents
+  // Filter out soft-deleted documents & map field names to frontend types
+  const mappedDocuments = ((associate.documents || []) as any[])
+    .filter((d) => !d.deleted_at)
+    .map((d) => ({
+      id: d.id,
+      type: d.type,
+      name: d.name,
+      file_name: d.name,
+      file_size: d.size || 0,
+      storage_path: d.url,
+      created_at: d.created_at,
+      parsed_data: d.parsed_data || null
+    }));
+
   const filteredAssociate = associate
-    ? { ...associate, documents: (associate.documents || []).filter((d: { deleted_at: string | null }) => !d.deleted_at) }
+    ? { 
+        ...associate, 
+        documents: mappedDocuments 
+      }
     : associate;
 
   return c.json({ success: true, data: { ...filteredAssociate, reviews: reviews || [], assignments: assignmentsWithStatus, assessments: assessments || [], development_plan: developmentPlan || null } });
@@ -1075,9 +1097,15 @@ associateRoutes.put('/social-links/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
   
+  const { platform, url, isPrimary } = body;
+  const updateData: Record<string, any> = {};
+  if (platform !== undefined) updateData.platform = platform;
+  if (url !== undefined) updateData.url = url;
+  if (isPrimary !== undefined) updateData.is_primary = isPrimary;
+
   const { data, error } = await getDb()
     .from('associate_social_links')
-    .update(body)
+    .update(updateData)
     .eq('id', id)
     .eq('associate_id', user.id)
     .select()
@@ -1530,6 +1558,26 @@ associateRoutes.get('/notifications', async (c) => {
     }
   }
 
+  // Prepend welcome notification if associate profile is created (indicates onboarding is complete)
+  const { data: assoc } = await db
+    .from('associates')
+    .select('created_at, profile:associate_profiles(full_name)')
+    .eq('id', user.id)
+    .single();
+
+  if (assoc) {
+    const fullName = assoc.profile?.full_name || 'Associate';
+    notifications.unshift({
+      id: 'welcome-notification',
+      type: 'system',
+      status: 'read',
+      title: 'Selamat Datang di BinaHub! 👋',
+      message: `Halo ${fullName.split(' ')[0]}, selamat datang! Onboarding Anda telah selesai. Profil Anda kini aktif dan siap diajukan ke assignment baru.`,
+      created_at: assoc.created_at,
+      read: true,
+    });
+  }
+
   return c.json({ success: true, data: notifications });
 });
 
@@ -1540,9 +1588,33 @@ associateRoutes.get('/notifications/count', async (c) => {
   const { count } = await db
     .from('assignment_assignees')
     .select('*', { count: 'exact', head: true })
-    .eq('associate_id', user.id);
+    .eq('associate_id', user.id)
+    .eq('status', 'invited');
 
   return c.json({ success: true, data: { count: count || 0 } });
+});
+
+associateRoutes.post('/notifications/:id/read', async (c) => {
+  const user = c.get('user') as AuthUser;
+  const id = c.req.param('id');
+  const db = getDb();
+
+  if (id === 'welcome-notification') {
+    return c.json({ success: true, data: { id, status: 'viewed' } });
+  }
+
+  const { data, error } = await db
+    .from('assignment_assignees')
+    .update({ status: 'viewed', updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('associate_id', user.id)
+    .select();
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 400);
+  }
+
+  return c.json({ success: true, data });
 });
 
 // ============================================

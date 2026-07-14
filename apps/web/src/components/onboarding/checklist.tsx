@@ -6,8 +6,8 @@ import { useOnboarding } from './context';
 const steps = [
   {
     id: 'cv',
-    title: 'Upload CV',
-    description: 'Upload CV untuk analisis AI',
+    title: 'Unggah CV',
+    description: 'Unggah CV untuk pengisian otomatis',
     icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
     href: '/dashboard/profile?tab=documents',
   },
@@ -27,8 +27,29 @@ const steps = [
   },
 ];
 
-export function OnboardingChecklist() {
-  const { completedSteps, completionPercent, reopenModal, isCompleted } = useOnboarding();
+type OnboardingChecklistProps = {
+  hasCV?: boolean;
+  hasProfile?: boolean;
+  hasCapability?: boolean;
+};
+
+export function OnboardingChecklist({
+  hasCV,
+  hasProfile,
+  hasCapability,
+}: OnboardingChecklistProps) {
+  const { completedSteps, completionPercent: contextPercent, reopenModal, isCompleted: contextCompleted } = useOnboarding();
+
+  // Dynamic status evaluation
+  const stepsDone = {
+    cv: hasCV ?? completedSteps.includes('cv'),
+    profile: hasProfile ?? completedSteps.includes('profile'),
+    capability: hasCapability ?? completedSteps.includes('capability'),
+  };
+
+  const doneCount = Object.values(stepsDone).filter(Boolean).length;
+  const completionPercent = Math.round((doneCount / 3) * 100);
+  const isCompleted = doneCount === 3;
 
   // Don't show if all completed
   if (isCompleted) return null;
@@ -60,7 +81,7 @@ export function OnboardingChecklist() {
       {/* Steps */}
       <div className="space-y-2">
         {steps.map((step) => {
-          const isDone = completedSteps.includes(step.id);
+          const isDone = stepsDone[step.id as keyof typeof stepsDone];
           return (
             <Link
               key={step.id}

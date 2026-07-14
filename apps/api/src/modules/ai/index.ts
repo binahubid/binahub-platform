@@ -99,10 +99,10 @@ ai.post('/parse-cv', async (c) => {
         .update({ parsed_data: parsed })
         .eq('id', document_id);
 
-      return c.json({ success: true, data: parsed, debug: downloadDebug });
+      return c.json({ success: true, data: parsed });
     } catch (err) {
       console.error('AI CV parsing failed:', err);
-      return c.json({ success: false, error: 'AI parsing gagal', detail: String(err), debug: downloadDebug }, 500);
+      return c.json({ success: false, error: 'AI parsing gagal' }, 500);
     }
   }
 
@@ -118,7 +118,8 @@ ai.post('/parse-cv', async (c) => {
     const parsed = await provider.parseCV(cvText);
     return c.json({ success: true, data: parsed });
   } catch (err) {
-    return c.json({ success: false, error: 'AI parsing gagal', detail: String(err) }, 500);
+    console.error('AI CV parsing failed (direct text):', err);
+    return c.json({ success: false, error: 'AI parsing gagal' }, 500);
   }
 });
 

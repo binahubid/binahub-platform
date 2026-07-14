@@ -58,22 +58,32 @@ type CapabilityData = {
 };
 
 type DashboardData = {
+  status: string;
   profile: ProfileData | null;
   assignments: Assignment[];
   skills: Skill[];
   capability_scores: CapabilityData[];
   experiences?: Array<{ id: string }>;
   educations?: Array<{ id: string }>;
+  certifications?: Array<{ id: string }>;
   portfolios?: Array<{ id: string }>;
   documents?: Array<{ id: string; type: string }>;
   availability: Availability | null;
 };
 
+const getPhotoUrl = (path: string | null | undefined) => {
+  if (!path) return undefined;
+  if (path.startsWith('http') || path.startsWith('data:')) return path;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  return `${apiUrl}${path}`;
+};
+
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour < 12) return 'Selamat Pagi';
+  if (hour < 15) return 'Selamat Siang';
+  if (hour < 18) return 'Selamat Sore';
+  return 'Selamat Malam';
 }
 
 function getInitials(name?: string) {
@@ -97,7 +107,95 @@ export default function DashboardPage() {
   const searchRef = useRef<HTMLInputElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
 
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [showNotifPopover, setShowNotifPopover] = useState<boolean>(false);
+  const notifPopoverRef = useRef<HTMLDivElement>(null);
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+  const fetchNotifications = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${apiUrl}/api/associate/notifications`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setNotifications(json.data || []);
+          const unread = (json.data || []).filter((n: any) => !n.read).length;
+          setUnreadCount(unread);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [accessToken, apiUrl]);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const handleSubmitProfile = async () => {
+    if (!accessToken) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/associate/submit`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json = await res.json();
+      if (json.success) {
+        setToast({ message: 'Profil berhasil dikirim untuk review!', type: 'success' });
+        // Update local status state
+        setData((prev) => prev ? { ...prev, status: 'pending_review' } : null);
+      } else {
+        setToast({ message: json.error || 'Gagal mengirim profil', type: 'error' });
+      }
+    } catch {
+      setToast({ message: 'Gagal menghubungi server', type: 'error' });
+    } finally {
+      setSubmitting(false);
+      setTimeout(() => setToast(null), 4000);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifPopoverRef.current && !notifPopoverRef.current.contains(e.target as Node)) {
+        setShowNotifPopover(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleMarkAsRead = async (notifId: string) => {
+    if (!accessToken) return;
+    try {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+
+      const res = await fetch(`${apiUrl}/api/associate/notifications/${notifId}/read`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (res.ok) {
+        window.dispatchEvent(new Event('update-notif-count'));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     if (!user || !accessToken) return;
@@ -109,12 +207,14 @@ export default function DashboardPage() {
         if (d && d.success && d.data) {
           const associate = d.data;
           setData({
+            status: associate.status || 'draft',
             profile: associate.profile || null,
             assignments: associate.assignments || [],
             skills: associate.skills || [],
             capability_scores: associate.capability_scores || [],
             experiences: associate.experiences || [],
             educations: associate.educations || [],
+            certifications: associate.certifications || [],
             portfolios: associate.portfolios || [],
             documents: associate.documents || [],
             availability: associate.availability || null,
@@ -205,16 +305,17 @@ export default function DashboardPage() {
   const completionPercentage = (() => {
     if (!data) return 0;
     let filled = 0;
-    const total = 9;
+    const total = 10;
     if (data.profile?.full_name) filled++;
     if (data.documents && data.documents.length > 0) filled++;
     if (data.experiences && data.experiences.length > 0) filled++;
     if (data.educations && data.educations.length > 0) filled++;
     if (data.skills && data.skills.length > 0) filled++;
     if (data.profile?.expertises && data.profile.expertises.length > 0) filled++;
-    if (data.portfolios && data.portfolios.length > 0) filled++;
     if (data.profile?.photo_url) filled++;
     if (data.availability && (Array.isArray(data.availability) ? data.availability[0]?.status : data.availability?.status)) filled++;
+    if (data.certifications && data.certifications.length > 0) filled++;
+    if (data.portfolios && data.portfolios.length > 0) filled++;
     return Math.round((filled / total) * 100);
   })();
 
@@ -235,6 +336,7 @@ export default function DashboardPage() {
   const hasExperience = !!(data?.experiences && data.experiences.length > 0);
   const hasEducation = !!(data?.educations && data.educations.length > 0);
   const hasSkills = !!(data?.skills && data.skills.length > 0);
+  const hasCertifications = !!(data?.certifications && data.certifications.length > 0);
   const hasPortfolio = !!(data?.portfolios && data.portfolios.length > 0);
 
   // Notification count = incomplete profile items
@@ -247,6 +349,7 @@ export default function DashboardPage() {
     if (!hasExperience) count++;
     if (!hasEducation) count++;
     if (!hasSkills) count++;
+    if (!hasCertifications) count++;
     if (!hasPortfolio) count++;
     return count;
   })();
@@ -277,14 +380,28 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Floating feedback toast */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 animate-bounce flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg border text-xs font-semibold text-white bg-slate-900 border-slate-800">
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10">
+            {toast.type === 'success' ? (
+              <svg className="h-3 w-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+            ) : (
+              <svg className="h-3 w-3 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+            )}
+          </div>
+          <span>{toast.message}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
             {getGreeting()}, {data?.profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}! 👋
           </h1>
-          <p className="text-sm text-slate-500">Here&apos;s what&apos;s happening with your work today.</p>
+          <p className="text-sm text-slate-500">Berikut perkembangan aktivitas Anda hari ini.</p>
         </div>
         <div className="flex items-center gap-4">
           {/* Search */}
@@ -299,7 +416,7 @@ export default function DashboardPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                placeholder="Search anything..."
+                placeholder="Cari sesuatu..."
                 className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-12 text-sm text-slate-900 outline-none transition-colors focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B]/20"
               />
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
@@ -345,20 +462,66 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          {/* Notifications */}
-          <Link href="/dashboard/notifications" className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            {notificationCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">{notificationCount}</span>
+          {/* Notifications Popover */}
+          <div className="relative" ref={notifPopoverRef}>
+            <button
+              onClick={() => setShowNotifPopover(!showNotifPopover)}
+              className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifPopover && (
+              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
+                  <span className="text-xs font-bold text-slate-900">Notifikasi ({unreadCount})</span>
+                  <Link 
+                    href="/dashboard/notifications" 
+                    onClick={() => setShowNotifPopover(false)}
+                    className="text-[10px] font-bold text-[#0B2C6B] hover:underline"
+                  >
+                    Lihat Semua
+                  </Link>
+                </div>
+                <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-xs text-slate-400">
+                      Tidak ada notifikasi baru
+                    </div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => handleMarkAsRead(notif.id)}
+                        className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors ${!notif.read ? 'bg-blue-50/30' : ''}`}
+                      >
+                        <div className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${!notif.read ? 'bg-[#0B2C6B]' : 'bg-transparent'}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-xs ${!notif.read ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{notif.title}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{notif.message}</p>
+                          <p className="text-[9px] text-slate-400 mt-1">
+                            {new Date(notif.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             )}
-          </Link>
+          </div>
           {/* User */}
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 overflow-hidden rounded-full bg-[#0B2C6B]">
+            <div className="h-9 w-9 overflow-hidden rounded-full bg-[#0B2C6B] flex items-center justify-center">
               {data?.profile?.photo_url ? (
-                <img src={data.profile.photo_url} alt="" className="h-full w-full object-cover" />
+                <img src={getPhotoUrl(data.profile.photo_url)} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
                   {getInitials(data?.profile?.full_name || user?.email)}
@@ -373,6 +536,68 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Banner Status Profil */}
+      {data && (
+        <>
+          {data.status === 'draft' && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-amber-900">Profil Berstatus Draft</h4>
+                  <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                    Profil Anda saat ini berstatus Draft dan belum dapat diajukan ke assignment. Silakan kirimkan profil Anda untuk direview oleh admin.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleSubmitProfile}
+                disabled={submitting}
+                className="flex-shrink-0 rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white shadow transition-colors disabled:opacity-50 animate-pulse hover:animate-none"
+              >
+                {submitting ? 'Mengirim...' : 'Kirim Profil untuk Review'}
+              </button>
+            </div>
+          )}
+
+          {data.status === 'pending_review' && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm flex items-start gap-3">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-[#0B2C6B]">
+                <svg className="h-5 w-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-blue-900">Profil Sedang Ditinjau (Under Review)</h4>
+                <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
+                  Terima kasih! Profil Anda saat ini sedang ditinjau oleh tim Reviewer BinaHub. Kami akan segera memproses akun Anda untuk penempatan tugas.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {data.status === 'suspended' && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm flex items-start gap-3">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-rose-900">Profil Ditangguhkan (Suspended)</h4>
+                <p className="text-xs text-rose-700 mt-0.5 leading-relaxed">
+                  Akun Anda saat ini ditangguhkan oleh tim administrator. Silakan hubungi pusat bantuan atau admin BinaHub untuk bantuan lebih lanjut.
+                </p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
       {/* Profile Hero & Completion Banner */}
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B2C6B] via-[#1440a0] to-[#1e3a8a] p-6 sm:p-8 shadow-lg text-white">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -382,7 +607,7 @@ export default function DashboardPage() {
             <div className="relative flex-shrink-0">
               <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-white/30 shadow-lg sm:h-24 sm:w-24 bg-slate-100 flex items-center justify-center">
                 {data?.profile?.photo_url ? (
-                  <img src={data.profile.photo_url} alt="" className="h-full w-full object-cover" />
+                  <img src={getPhotoUrl(data.profile.photo_url)} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <Avatar name={data?.profile?.full_name} size="xl" className="h-full w-full" />
                 )}
@@ -392,8 +617,32 @@ export default function DashboardPage() {
             {/* Name & Info */}
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold sm:text-2xl truncate">
-                {data?.profile?.full_name || 'Lengkapi Profile Anda'}
+                {data?.profile?.full_name || 'Lengkapi Profil Anda'}
               </h1>
+
+              {/* Badge Status Verifikasi Profil */}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {data?.status === 'draft' && (
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-500/25 border border-amber-400/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-200 uppercase tracking-wide">
+                    Status: Draft
+                  </span>
+                )}
+                {data?.status === 'pending_review' && (
+                  <span className="inline-flex items-center gap-1 rounded bg-blue-500/25 border border-blue-400/30 px-2.5 py-0.5 text-[10px] font-bold text-blue-200 uppercase tracking-wide animate-pulse">
+                    Status: Under Review
+                  </span>
+                )}
+                {data?.status === 'active' && (
+                  <span className="inline-flex items-center gap-1 rounded bg-emerald-500/25 border border-emerald-400/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-200 uppercase tracking-wide">
+                    Status: Active
+                  </span>
+                )}
+                {data?.status === 'suspended' && (
+                  <span className="inline-flex items-center gap-1 rounded bg-rose-500/25 border border-rose-400/30 px-2.5 py-0.5 text-[10px] font-bold text-rose-200 uppercase tracking-wide">
+                    Status: Suspended
+                  </span>
+                )}
+              </div>
               
               <div className="mt-4 flex flex-col gap-3">
                 {/* Bidang */}
@@ -438,10 +687,32 @@ export default function DashboardPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
                   <span className="text-[11px] uppercase tracking-wider text-white/60 font-semibold w-20 flex-shrink-0">Status</span>
                   <div className="flex items-center gap-2">
-                    <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border ${data?.availability?.status === 'available' ? 'bg-green-500/20 border-green-400/30 text-green-100' : 'bg-yellow-500/20 border-yellow-400/30 text-yellow-100'}`}>
-                      <div className={`h-1.5 w-1.5 rounded-full ${data?.availability?.status === 'available' ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
-                      {data?.availability?.status === 'available' ? 'Available' : 'Not Available'}
-                    </div>
+                    {(() => {
+                      const status = data?.availability?.status || 'open';
+                      const isAvailable = status === 'open';
+                      const isBusy = status === 'busy';
+                      
+                      let badgeClass = 'bg-rose-500/20 border-rose-400/30 text-rose-100';
+                      let dotClass = 'bg-rose-400';
+                      let text = 'Not Available';
+                      
+                      if (isAvailable) {
+                        badgeClass = 'bg-green-500/20 border-green-400/30 text-green-100';
+                        dotClass = 'bg-green-400';
+                        text = 'Available';
+                      } else if (isBusy) {
+                        badgeClass = 'bg-yellow-500/20 border-yellow-400/30 text-yellow-100';
+                        dotClass = 'bg-yellow-400';
+                        text = 'Limited / Busy';
+                      }
+                      
+                      return (
+                        <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border ${badgeClass}`}>
+                          <div className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
+                          {text}
+                        </div>
+                      );
+                    })()}
                     {data?.availability?.work_locations && data.availability.work_locations.length > 0 && (
                       <span className="text-xs text-white/80 flex items-center gap-1">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -476,13 +747,13 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div>
-                <h2 className="text-sm font-bold text-white">Profile Completion</h2>
-                <p className="text-xs text-white/70 mt-0.5">Keep updating your profile to get matches.</p>
+                <h2 className="text-sm font-bold text-white">Kelengkapan Profil</h2>
+                <p className="text-xs text-white/70 mt-0.5">Lengkapi profil Anda untuk penugasan proyek.</p>
                 <Link
                   href="/dashboard/profile"
                   className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-white hover:underline"
                 >
-                  Edit Profile →
+                  Ubah Profil ➔
                 </Link>
               </div>
             </div>
@@ -491,14 +762,14 @@ export default function DashboardPage() {
             {!hasCV && (
               <div className="flex-1 flex items-center justify-between gap-4 rounded-xl bg-white/10 p-3.5 backdrop-blur-sm">
                 <div className="min-w-0">
-                  <h3 className="text-xs font-bold text-white truncate">Upload your CV</h3>
-                  <p className="text-[10px] text-white/70 truncate">AI will auto-fill your profile</p>
+                  <h3 className="text-xs font-bold text-white truncate">Unggah CV Anda</h3>
+                  <p className="text-[10px] text-white/70 truncate">Sistem akan mengisi profil secara otomatis</p>
                 </div>
                 <Link
                   href="/dashboard/profile?tab=documents"
                   className="flex-shrink-0 flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-[#0B2C6B] hover:bg-white/90 transition-colors"
                 >
-                  Upload CV
+                  Unggah CV
                 </Link>
               </div>
             )}
@@ -509,7 +780,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-xs font-bold text-emerald-100 truncate">CV Terunggah</h3>
-                  <p className="text-[10px] text-emerald-200/70 truncate">Profile terisi otomatis dari CV</p>
+                  <p className="text-[10px] text-emerald-200/70 truncate">Profil terisi otomatis dari CV</p>
                 </div>
               </div>
             )}
@@ -527,9 +798,9 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="flex-1 text-center sm:text-left">
-              <h3 className="text-base font-bold text-slate-900">Langkah Pertama: Upload CV Anda</h3>
+              <h3 className="text-base font-bold text-slate-900">Langkah Pertama: Unggah CV Anda</h3>
               <p className="text-sm text-slate-500 mt-1">
-                AI akan menganalisis CV Anda dan mengisi profil secara otomatis. Seperti mengunggah KTP di aplikasi fintech.
+                Sistem akan menganalisis CV Anda dan mengisi profil secara otomatis secara aman dan instan.
               </p>
             </div>
             <Link
@@ -539,7 +810,7 @@ export default function DashboardPage() {
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Upload CV
+              Unggah CV
             </Link>
           </div>
         </div>
@@ -548,7 +819,7 @@ export default function DashboardPage() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Profile Completion</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Kelengkapan Profil</p>
           <div className="mt-2 flex items-center gap-3">
             <span className="text-xl font-bold text-[#0B2C6B]">{completionPercentage}%</span>
             <div className="h-10 w-10">
@@ -558,7 +829,7 @@ export default function DashboardPage() {
               </svg>
             </div>
           </div>
-          <p className="mt-1 text-[11px] text-slate-400">Keep it up!</p>
+          <p className="mt-1 text-[11px] text-slate-400">Pertahankan progres Anda!</p>
         </div>
 
         <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
@@ -567,11 +838,11 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Visibility Status</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Status Visibilitas</p>
           </div>
-          <p className="mt-2 text-lg font-bold text-slate-900">{completionPercentage >= 50 ? 'Public' : 'Private'}</p>
-          <p className="text-[11px] text-slate-400">{completionPercentage >= 50 ? 'Visible to reviewers' : 'Only visible to you'}</p>
-          <Link href="/dashboard/profile" className="mt-1 inline-block text-[11px] font-medium text-[#0B2C6B] hover:underline">Change</Link>
+          <p className="mt-2 text-lg font-bold text-slate-900">{completionPercentage >= 50 ? 'Publik' : 'Privat'}</p>
+          <p className="text-[11px] text-slate-400">{completionPercentage >= 50 ? 'Dapat dilihat reviewer' : 'Hanya terlihat oleh Anda'}</p>
+          <Link href="/dashboard/profile" className="mt-1 inline-block text-[11px] font-bold text-[#0B2C6B] hover:underline">Ubah</Link>
         </div>
 
         <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
@@ -579,10 +850,10 @@ export default function DashboardPage() {
             <svg className="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Opportunity Match</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Kesesuaian Proyek</p>
           </div>
           <p className="mt-2 text-lg font-bold text-slate-900">{(data?.assignments || []).length}</p>
-          <p className="text-[11px] text-slate-400">{(data?.assignments || []).length > 0 ? 'assignments available' : 'Complete your profile to see matches'}</p>
+          <p className="text-[11px] text-slate-400">{(data?.assignments || []).length > 0 ? 'proyek tersedia' : 'Lengkapi profil untuk melihat proyek'}</p>
         </div>
 
         <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
@@ -590,10 +861,10 @@ export default function DashboardPage() {
             <svg className="h-4 w-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
             </svg>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Capability Score</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Skor Kapabilitas</p>
           </div>
           <p className="mt-2 text-lg font-bold text-slate-900">{capabilityScore > 0 ? capabilityScore : '--'}</p>
-          <p className="text-[11px] text-slate-400">{capabilityScore > 0 ? 'Based on your skills' : 'Add skills to see your score'}</p>
+          <p className="text-[11px] text-slate-400">{capabilityScore > 0 ? 'Berdasarkan keahlian Anda' : 'Tambah keahlian untuk melihat skor'}</p>
         </div>
 
         <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
@@ -603,11 +874,21 @@ export default function DashboardPage() {
             </svg>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Availability</p>
           </div>
-          <p className={`mt-2 text-lg font-bold ${data?.availability?.status === 'available' ? 'text-emerald-600' : data?.availability?.status === 'busy' ? 'text-amber-600' : 'text-slate-400'}`}>
-            {data?.availability?.status === 'available' ? 'Available' : data?.availability?.status === 'busy' ? 'Busy' : 'Not Set'}
+          <p className={`mt-2 text-lg font-bold ${
+            (data?.availability?.status || 'open') === 'open' 
+              ? 'text-emerald-600' 
+              : (data?.availability?.status || 'open') === 'busy' 
+              ? 'text-amber-600' 
+              : 'text-slate-400'
+          }`}>
+            {(data?.availability?.status || 'open') === 'open' 
+              ? 'Available' 
+              : (data?.availability?.status || 'open') === 'busy' 
+              ? 'Busy' 
+              : 'Not Available'}
           </p>
-          <p className="text-[11px] text-slate-400">{data?.availability?.status ? 'Open for opportunities' : 'Set your availability'}</p>
-          <Link href="/dashboard/profile" className="mt-1 inline-block text-[11px] font-medium text-[#0B2C6B] hover:underline">{data?.availability?.status ? 'Edit' : 'Set'}</Link>
+          <p className="text-[11px] text-slate-400">Status Ketersediaan Anda</p>
+          <Link href="/dashboard/profile" className="mt-1 inline-block text-[11px] font-bold text-[#0B2C6B] hover:underline">Ubah Status</Link>
         </div>
       </div>
 
@@ -618,9 +899,9 @@ export default function DashboardPage() {
           {/* My Assignments */}
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <h2 className="text-sm font-semibold text-slate-900">My Assignments</h2>
+              <h2 className="text-sm font-semibold text-slate-900">Proyek Saya</h2>
               <Link href="/dashboard/assignments" className="flex items-center gap-1 text-xs font-medium text-[#0B2C6B] hover:underline">
-                View all assignments
+                Lihat semua proyek
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -632,8 +913,8 @@ export default function DashboardPage() {
                 <svg className="mx-auto h-12 w-12 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <p className="mt-3 text-sm font-medium text-slate-900">No assignments yet</p>
-                <p className="mt-1 text-xs text-slate-500">Complete your profile to get matched</p>
+                <p className="mt-3 text-sm font-medium text-slate-900">Belum ada proyek ditugaskan</p>
+                <p className="mt-1 text-xs text-slate-500">Lengkapi profil Anda agar sistem dapat mencocokkan proyek</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
@@ -673,16 +954,16 @@ export default function DashboardPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-medium text-slate-900">
-                          {assignment.status === 'in_progress' ? 'Due Date' : 'Start Date'}
+                          {assignment.status === 'in_progress' ? 'Batas Waktu' : 'Tanggal Mulai'}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {new Date(assignment.status === 'in_progress' ? assignment.deadline : assignment.start_date || assignment.deadline).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(assignment.status === 'in_progress' ? assignment.deadline : assignment.start_date || assignment.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                         {assignment.reviewer && (
                           <div className="mt-2 flex items-center justify-end gap-2">
                             <div className="h-6 w-6 overflow-hidden rounded-full bg-slate-200">
                               {assignment.reviewer_avatar ? (
-                                <img src={assignment.reviewer_avatar} alt="" className="h-full w-full object-cover" />
+                                <img src={getPhotoUrl(assignment.reviewer_avatar)} alt="" className="h-full w-full object-cover" />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center text-[8px] font-semibold text-slate-500">
                                   {getInitials(assignment.reviewer)}
@@ -697,7 +978,7 @@ export default function DashboardPage() {
                         href={`/dashboard/assignments/${assignment.id}`}
                         className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0A255A] transition-colors"
                       >
-                        Continue Work
+                        Lanjutkan Pekerjaan
                       </Link>
                     </div>
                   );
@@ -715,16 +996,16 @@ export default function DashboardPage() {
                         <p className="text-xs text-slate-500">{assignment.role}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs font-medium text-slate-900">Start Date</p>
+                        <p className="text-xs font-medium text-slate-900">Tanggal Mulai</p>
                         <p className="text-xs text-slate-500">
-                          {new Date(assignment.start_date || assignment.deadline).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(assignment.start_date || assignment.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                       </div>
                       <Link
                         href={`/dashboard/assignments/${assignment.id}`}
                         className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                       >
-                        View
+                        Lihat
                       </Link>
                     </div>
                   );
@@ -738,9 +1019,9 @@ export default function DashboardPage() {
             {/* Capability Snapshot */}
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-slate-900">Capability Snapshot</h2>
+                <h2 className="text-sm font-semibold text-slate-900">Ringkasan Kapabilitas</h2>
                 <Link href="/dashboard/capability" className="flex items-center gap-1 text-xs font-medium text-[#0B2C6B] hover:underline">
-                  View detail
+                  Lihat detail
                   <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -749,26 +1030,26 @@ export default function DashboardPage() {
               <CapabilityRadar data={capabilityData} size={240} />
             </div>
 
-            {/* AI Recommendation */}
+            {/* Rekomendasi Sistem */}
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-sm font-semibold text-slate-900">AI Recommendation</h2>
-                <span className="rounded-full bg-[#0B2C6B]/10 px-2 py-0.5 text-[10px] font-semibold text-[#0B2C6B]">New</span>
+                <h2 className="text-sm font-semibold text-slate-900">Rekomendasi Sistem</h2>
+                <span className="rounded-full bg-[#0B2C6B]/10 px-2 py-0.5 text-[10px] font-semibold text-[#0B2C6B]">Baru</span>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-sm font-medium text-slate-900">Hi {data?.profile?.full_name?.split(' ')[0] || 'there'},</p>
+                <p className="text-sm font-medium text-slate-900">Halo {data?.profile?.full_name?.split(' ')[0] || 'Associate'},</p>
                 <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-                  Based on your profile, we recommend uploading your portfolio to increase your visibility to project owners.
+                  Berdasarkan profil Anda, kami menyarankan untuk menambahkan sertifikasi profesional guna meningkatkan visibilitas Anda kepada reviewer.
                 </p>
                 <div className="mt-4">
-                  <p className="text-xs text-slate-500">Potential Impact</p>
-                  <p className="text-sm font-bold text-emerald-600">+20% profile visibility</p>
+                  <p className="text-xs text-slate-500">Potensi Dampak</p>
+                  <p className="text-sm font-bold text-emerald-600">+20% visibilitas profil</p>
                 </div>
                 <Link
-                  href="/dashboard/profile?tab=experience"
+                  href="/dashboard/profile?tab=certifications"
                   className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                 >
-                  Upload Portfolio
+                  Tambah Sertifikasi
                 </Link>
               </div>
             </div>
@@ -778,7 +1059,11 @@ export default function DashboardPage() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Onboarding Checklist */}
-          <OnboardingChecklist />
+          <OnboardingChecklist 
+            hasCV={hasCV}
+            hasProfile={!!data?.profile?.full_name}
+            hasCapability={capabilityScore > 0}
+          />
 
           {/* Profile Strength */}
           <div id="profile-strength">
@@ -787,6 +1072,7 @@ export default function DashboardPage() {
               hasCV={hasCV}
               hasExperience={hasExperience}
               hasSkills={hasSkills}
+              hasCertifications={hasCertifications}
               hasPortfolio={hasPortfolio}
               hasEducation={hasEducation}
             />
@@ -795,8 +1081,8 @@ export default function DashboardPage() {
           {/* Recent Activity */}
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-900">Recent Activity</h3>
-              <Link href="/dashboard/notifications" className="text-xs font-medium text-[#0B2C6B] hover:underline">View all</Link>
+              <h3 className="text-sm font-semibold text-slate-900">Aktivitas Terbaru</h3>
+              <Link href="/dashboard/notifications" className="text-xs font-medium text-[#0B2C6B] hover:underline">Lihat semua</Link>
             </div>
             <div className="space-y-4">
               {!hasCV && (
@@ -807,10 +1093,10 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-slate-900">Upload CV Anda</p>
-                    <p className="text-[11px] text-slate-500">Profil akan terisi otomatis oleh AI</p>
+                    <p className="text-xs font-medium text-slate-900">Unggah CV Anda</p>
+                    <p className="text-[11px] text-slate-500">Profil akan terisi otomatis dari CV</p>
                   </div>
-                  <Link href="/dashboard/profile?tab=documents" className="text-[10px] font-semibold text-[#0B2C6B] hover:underline">Upload</Link>
+                  <Link href="/dashboard/profile?tab=documents" className="text-[10px] font-semibold text-[#0B2C6B] hover:underline">Unggah</Link>
                 </div>
               )}
               {!data?.profile?.full_name && (

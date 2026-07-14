@@ -24,6 +24,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
 
     if (password !== confirmPassword) {
@@ -51,7 +52,14 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push('/auth/login?registered=true');
+      // Tandai bahwa user ini perlu onboarding
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('ams_needs_onboarding', 'true');
+      }
+      // Gunakan URL param sebagai backup (agar tetap ada setelah verifikasi email)
+      router.push('/auth/login?registered=true&newUser=true');
+
+
     } catch {
       setError('Gagal menghubungi server');
       setLoading(false);

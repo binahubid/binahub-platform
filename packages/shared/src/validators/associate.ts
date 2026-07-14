@@ -37,6 +37,7 @@ export const ASSOCIATE_ROLES = [
   'Speaker',
   'Researcher',
   'Writer',
+  'Game Master',
   'Other',
 ] as const;
 
@@ -114,7 +115,7 @@ export const updateProfileSchema = z.object({
   city: z.string().max(100).nullable().optional(),
   timezone: z.string().max(50).nullable().optional(),
   nationality: z.string().max(100).nullable().optional(),
-  photoUrl: z.union([z.string().url('URL tidak valid'), z.literal('')]).nullable().optional(),
+  photoUrl: z.string().max(2048).nullable().optional(),
   dateOfBirth: z.string().max(50).nullable().optional(),
   gender: z.string().max(20).nullable().optional(),
   roles: z.array(z.string().max(100)).nullable().optional(),

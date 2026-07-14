@@ -30,36 +30,37 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
   });
   const [saving, setSaving] = useState(false);
 
-  const handleSave = async () => {
-    setSaving(true);
+  const handleSave = async (updatedForm = form) => {
     try {
       const method = availability ? 'PUT' : 'POST';
       await fetch(`${apiUrl}/api/associate/availability`, {
         method,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
-          ...form,
-          max_hours_per_week: form.max_hours_per_week ? parseInt(form.max_hours_per_week) : null,
+          ...updatedForm,
+          max_hours_per_week: updatedForm.max_hours_per_week ? parseInt(updatedForm.max_hours_per_week) : null,
         }),
       });
       onRefresh();
     } catch (e) {
-      console.error(e);
-    } finally {
-      setSaving(false);
+      console.error('Failed to autosave availability:', e);
     }
   };
 
   const toggleLocation = (loc: string) => {
     const cur = form.work_locations;
     const next = cur.includes(loc) ? cur.filter((l) => l !== loc) : [...cur, loc];
-    setForm({ ...form, work_locations: next });
+    const nextForm = { ...form, work_locations: next };
+    setForm(nextForm);
+    handleSave(nextForm);
   };
 
   const toggleEngagement = (eng: string) => {
     const cur = form.preferred_engagements;
     const next = cur.includes(eng) ? cur.filter((e) => e !== eng) : [...cur, eng];
-    setForm({ ...form, preferred_engagements: next });
+    const nextForm = { ...form, preferred_engagements: next };
+    setForm(nextForm);
+    handleSave(nextForm);
   };
 
   return (
@@ -77,7 +78,11 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
             <button
               key={opt.value}
               type="button"
-              onClick={() => setForm({ ...form, status: opt.value })}
+              onClick={() => {
+                const nextForm = { ...form, status: opt.value };
+                setForm(nextForm);
+                handleSave(nextForm);
+              }}
               className={`rounded-xl border-2 p-3 text-left transition-all ${
                 form.status === opt.value
                   ? opt.color === 'emerald'
@@ -176,7 +181,11 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
               <input
                 type="checkbox"
                 checked={form.travel_ready}
-                onChange={(e) => setForm({ ...form, travel_ready: e.target.checked })}
+                onChange={(e) => {
+                  const nextForm = { ...form, travel_ready: e.target.checked };
+                  setForm(nextForm);
+                  handleSave(nextForm);
+                }}
                 className="sr-only"
               />
               <div className={`h-6 w-11 rounded-full transition-colors ${form.travel_ready ? 'bg-[#0B2C6B]' : 'bg-slate-200'}`}>
@@ -200,6 +209,7 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
             max="80"
             value={form.max_hours_per_week}
             onChange={(e) => setForm({ ...form, max_hours_per_week: e.target.value })}
+            onBlur={() => handleSave()}
             placeholder="Contoh: 40"
             className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 transition-all"
           />
@@ -217,21 +227,11 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
         <textarea
           value={form.notes}
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          onBlur={() => handleSave()}
           rows={3}
           placeholder="Informasi tambahan tentang ketersediaan Anda..."
           className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 transition-all resize-none"
         />
-      </div>
-
-      {/* Save */}
-      <div className="pt-4 border-t border-slate-100">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full sm:w-auto rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all disabled:opacity-50"
-        >
-          {saving ? 'Menyimpan...' : 'Simpan Ketersediaan'}
-        </button>
       </div>
     </div>
   );

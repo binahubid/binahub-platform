@@ -99,6 +99,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   }, [user, fetchNotifCount]);
 
   useEffect(() => {
+    const handleUpdate = () => {
+      fetchNotifCount();
+    };
+    window.addEventListener('update-notif-count', handleUpdate);
+    return () => window.removeEventListener('update-notif-count', handleUpdate);
+  }, [fetchNotifCount]);
+
+  useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login');
     } else if (!loading && user && user.app_metadata?.role === 'admin') {

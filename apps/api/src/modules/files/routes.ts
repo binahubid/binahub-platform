@@ -124,6 +124,7 @@ fileRoutes.post('/', authMiddleware, async (c) => {
 // ============================================
 
 fileRoutes.get('/:id', authMiddleware, async (c) => {
+  const user = c.get('user') as AuthUser;
   const id = c.req.param('id');
   const db = getDb();
   
@@ -138,6 +139,11 @@ fileRoutes.get('/:id', authMiddleware, async (c) => {
     return c.json({ success: false, error: 'File tidak ditemukan' }, 404);
   }
 
+  // Ownership check
+  if (data.owner_id !== user.id && data.uploaded_by !== user.id && user.role !== 'admin') {
+    return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
+  }
+
   return c.json({ success: true, data });
 });
 
@@ -146,6 +152,7 @@ fileRoutes.get('/:id', authMiddleware, async (c) => {
 // ============================================
 
 fileRoutes.get('/:id/download', authMiddleware, async (c) => {
+  const user = c.get('user') as AuthUser;
   const id = c.req.param('id');
   const db = getDb();
   
@@ -158,6 +165,11 @@ fileRoutes.get('/:id/download', authMiddleware, async (c) => {
 
   if (fileError || !file) {
     return c.json({ success: false, error: 'File tidak ditemukan' }, 404);
+  }
+
+  // Ownership check
+  if (file.owner_id !== user.id && file.uploaded_by !== user.id && user.role !== 'admin') {
+    return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
   }
 
   try {
@@ -180,7 +192,8 @@ fileRoutes.get('/:id/download', authMiddleware, async (c) => {
 // VIEW FILE (Redirects directly to signed storage URL)
 // ============================================
 
-fileRoutes.get('/:id/view', async (c) => {
+fileRoutes.get('/:id/view', authMiddleware, async (c) => {
+  const user = c.get('user') as AuthUser;
   const id = c.req.param('id');
   const db = getDb();
   
@@ -193,6 +206,11 @@ fileRoutes.get('/:id/view', async (c) => {
 
   if (fileError || !file) {
     return c.text('File tidak ditemukan', 404);
+  }
+
+  // Ownership check
+  if (file.owner_id !== user.id && file.uploaded_by !== user.id && user.role !== 'admin') {
+    return c.text('Tidak memiliki akses', 403);
   }
 
   try {
@@ -216,6 +234,7 @@ fileRoutes.get('/:id/view', async (c) => {
 // ============================================
 
 fileRoutes.delete('/:id', authMiddleware, async (c) => {
+  const user = c.get('user') as AuthUser;
   const id = c.req.param('id');
   const db = getDb();
   
@@ -230,17 +249,38 @@ fileRoutes.delete('/:id', authMiddleware, async (c) => {
     return c.json({ success: false, error: 'File tidak ditemukan' }, 404);
   }
 
-  // Soft delete
+  // Ownership check
+  if (file.owner_id !== user.id && file.uploaded_by !== user.id && user.role !== 'admin') {
+    return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
+  }
+
+  // Physically remove the file from Supabase Storage bucket first
+  if (file.bucket && file.path) {
+    const { error: storageError } = await db.storage
+      .from(file.bucket)
+      .remove([file.path]);
+    if (storageError) {
+      console.error('Failed to delete file from Supabase storage:', storageError);
+    }
+  }
+
+  // Hard delete in files table to ensure it is completely gone
   const { error } = await db
     .from('files')
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq('id', id);
 
   if (error) {
     return c.json({ success: false, error: error.message }, 500);
   }
 
-  return c.json({ success: true, message: 'File berhasil dihapus' });
+  // Hard delete in associate_documents to ensure it is completely deleted from the database
+  await db
+    .from('associate_documents')
+    .delete()
+    .eq('id', id);
+
+  return c.json({ success: true, message: 'File berhasil dihapus secara permanen' });
 });
 
 // ============================================
@@ -258,10 +298,10 @@ fileRoutes.get('/', authMiddleware, async (c) => {
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
-  if (owner_id) {
+  // Prevent non-admin from reading files belonging to other users
+  if (user.role === 'admin' && owner_id) {
     query = query.eq('owner_id', owner_id);
   } else {
-    // Default to current user's files
     query = query.eq('owner_id', user.id);
   }
 
@@ -323,8 +363,26 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
   const bucket = 'ams-files';
 
   try {
+    const db = getDb();
+    
+    // Soft-delete old CVs before registering the new one
+    await db
+      .from('files')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('owner_id', associateId)
+      .eq('owner_type', 'associate')
+      .eq('category', 'cv')
+      .is('deleted_at', null);
+
+    await db
+      .from('associate_documents')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('associate_id', associateId)
+      .eq('type', 'cv')
+      .is('deleted_at', null);
+
     // Create presigned URL
-    const { data: presignedData, error: presignedError } = await getDb().storage
+    const { data: presignedData, error: presignedError } = await db.storage
       .from(bucket)
       .createSignedUploadUrl(path, { upsert: false });
 
@@ -333,7 +391,7 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
     }
 
     // Register file in database
-    const { data: fileData, error: fileError } = await getDb()
+    const { data: fileData, error: fileError } = await db
       .from('files')
       .insert({
         owner_id: associateId,
@@ -356,7 +414,7 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
     }
 
     // Register CV file in associate_documents to display in UI
-    const { error: docError } = await getDb()
+    const { error: docError } = await db
       .from('associate_documents')
       .insert({
         id: fileData.id,
@@ -371,7 +429,7 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
     }
 
     // Enqueue CVUploaded event
-    await getDb().rpc('enqueue_transformation_event', {
+    await db.rpc('enqueue_transformation_event', {
       p_type: 'CVUploaded',
       p_aggregate_type: 'file',
       p_aggregate_id: fileData.id,

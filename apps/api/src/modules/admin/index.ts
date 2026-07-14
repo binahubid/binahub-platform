@@ -84,9 +84,9 @@ admin.get('/associates', async (c) => {
     } else {
       query = query.ilike('email', `%${search}%`);
     }
-  } else {
-    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
   }
+
+  query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
   const { data, error, count } = await query;
 
@@ -222,6 +222,23 @@ admin.patch('/associates/:id/review', async (c) => {
   if (reviewError) {
     console.error('Review save error:', reviewError);
     return c.json({ success: false, error: `Associate updated but review failed: ${reviewError.message}` }, 500);
+  }
+
+  // Trigger event queue for sync and notifications
+  if (status === 'approved') {
+    await db.rpc('enqueue_transformation_event', {
+      p_type: 'AssociateApproved',
+      p_aggregate_type: 'associate',
+      p_aggregate_id: id,
+      p_payload: { associate_id: id, approved_by: user.id, approved_at: new Date().toISOString() }
+    });
+  } else if (status === 'rejected') {
+    await db.rpc('enqueue_transformation_event', {
+      p_type: 'AssociateRejected',
+      p_aggregate_type: 'associate',
+      p_aggregate_id: id,
+      p_payload: { associate_id: id, rejected_by: user.id, reason: notes }
+    });
   }
 
   return c.json({ success: true, data, message: `Associate ${status}` });

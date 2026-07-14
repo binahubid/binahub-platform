@@ -4,4 +4,6 @@ export { StepExperience } from './step-experience';
 export { StepSkills } from './step-skills';
 export { StepDocuments } from './step-documents';
 export { StepAvailability } from './step-availability';
+export { StepCertifications } from './step-certifications';
+export { StepPortfolio } from './step-portfolio';
 export { ProfileView } from './profile-view';

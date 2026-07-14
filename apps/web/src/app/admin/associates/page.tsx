@@ -336,6 +336,7 @@ export default function AdminAssociatesPage() {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Bidang</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ketersediaan</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Kelengkapan</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Bergabung</th>
                 <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Aksi</th>
               </tr>
@@ -366,6 +367,19 @@ export default function AdminAssociatesPage() {
                     ) : (
                       <span className="text-xs text-slate-400">-</span>
                     )}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${(associate.completeness || 0) >= 80 ? 'bg-emerald-500' : (associate.completeness || 0) >= 50 ? 'bg-amber-500' : 'bg-red-400'}`}
+                          style={{ width: `${associate.completeness || 0}%` }}
+                        />
+                      </div>
+                      <span className={`text-[10px] font-bold ${(associate.completeness || 0) >= 80 ? 'text-emerald-600' : (associate.completeness || 0) >= 50 ? 'text-amber-600' : 'text-red-500'}`}>
+                        {associate.completeness || 0}%
+                      </span>
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <p className="text-xs text-slate-500">
