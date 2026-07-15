@@ -12,12 +12,22 @@ type StepProfileProps = {
 
 const roleOptions = [
   'Trainer', 'Facilitator', 'Coach', 'Mentor', 'Consultant', 'Assessor', 'Speaker', 'Game Master',
+  'Tour Leader', 'Project Manager', 'EO', 'MC', 'Photographer', 'Videographer', 'Affiliate Marketer', 'AI Consultant'
 ];
 
 const expertiseOptions = [
-  'Leadership Development', 'Organizational Development', 'Learning & Development',
-  'Change Management', 'Team Building & Teamwork', 'Communication & Interpersonal Skills',
-  'Soft Skills Training', 'Culture Transformation', 'Design Thinking & Innovation',
+  'Leadership Development',
+  'Team Development',
+  'Learning & Facilitation',
+  'Coaching & Mentoring',
+  'Assessment & Talent',
+  'Organization Development',
+  'Performance & Execution',
+  'Business Consulting',
+  'Learning Design',
+  'Measurement & Analytics',
+  'AI & Digital Transformation',
+  'Spiritual & Character Development'
 ];
 
 // Helper: Custom Select Component for Upward Dropdown in Edit Mode
@@ -98,18 +108,30 @@ const TIMEZONE_OPTIONS = [
   { value: 'Asia/Jayapura', label: 'WIT — Jayapura, Ambon' },
   { value: 'Asia/Singapore', label: 'SGT — Singapore' },
   { value: 'Asia/Kuala_Lumpur', label: 'MYT — Kuala Lumpur' },
+  { value: 'Asia/Riyadh', label: 'AST — Saudi Arabia (Riyadh)' },
+  { value: 'Australia/Sydney', label: 'AEST — Australia (Sydney)' },
 ];
 
 export function StepProfile({ profile, saving, onUpdate, onSave }: StepProfileProps) {
   const handleRoleToggle = (role: string) => {
     const cur = profile.roles || [];
-    const next = cur.includes(role) ? cur.filter((r) => r !== role) : [...cur, role];
+    const active = cur.includes(role);
+    if (!active && cur.length >= 7) {
+      alert('Maksimal memilih 7 peran utama.');
+      return;
+    }
+    const next = active ? cur.filter((r) => r !== role) : [...cur, role];
     onUpdate({ roles: next, headline: next.join(' & ') });
   };
 
   const handleExpertiseToggle = (exp: string) => {
     const cur = profile.expertises || [];
-    const next = cur.includes(exp) ? cur.filter((e) => e !== exp) : [...cur, exp];
+    const active = cur.includes(exp);
+    if (!active && cur.length >= 5) {
+      alert('Maksimal memilih 5 bidang keahlian utama.');
+      return;
+    }
+    const next = active ? cur.filter((e) => e !== exp) : [...cur, exp];
     onUpdate({ expertises: next });
   };
 
@@ -283,7 +305,7 @@ export function StepProfile({ profile, saving, onUpdate, onSave }: StepProfilePr
           <svg className="inline h-4 w-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zM6 3a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          Peran / Peran Utama
+          Pilih maksimal 7 peran utama yang ingin Anda kontribusikan di BinaHub
         </label>
         <div className="flex flex-wrap gap-2">
           {roleOptions.map((role) => {

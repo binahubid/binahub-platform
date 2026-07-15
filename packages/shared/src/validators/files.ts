@@ -63,14 +63,32 @@ export const allowedMimeTypes: Record<string, string[]> = {
     'application/pdf',
     'image/jpeg',
     'image/png',
-    'image/webp'
+    'image/webp',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+    'application/zip',
+    'application/x-zip-compressed'
   ],
   portfolio: [
     'application/pdf',
     'image/jpeg',
     'image/png',
     'image/webp',
-    'video/mp4'
+    'video/mp4',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+    'application/zip',
+    'application/x-zip-compressed'
   ],
   proposal: [
     'application/pdf',

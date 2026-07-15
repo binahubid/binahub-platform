@@ -120,6 +120,32 @@ fileRoutes.post('/', authMiddleware, async (c) => {
 });
 
 // ============================================
+// VIEW FILE BY STORAGE PATH (Public redirect)
+// ============================================
+
+fileRoutes.get('/view-path', async (c) => {
+  const path = c.req.query('path');
+  if (!path) {
+    return c.text('Path tidak valid', 400);
+  }
+  const db = getDb();
+  try {
+    const { data, error } = await db.storage
+      .from('ams-files')
+      .createSignedUrl(path, 3600); // 1 hour expiry
+
+    if (error || !data?.signedUrl) {
+      return c.text('Gagal membuat URL akses file', 500);
+    }
+
+    return c.redirect(data.signedUrl);
+  } catch (error) {
+    console.error('File view path redirect error:', error);
+    return c.text('Gagal membuka file', 500);
+  }
+});
+
+// ============================================
 // GET FILE
 // ============================================
 
@@ -376,10 +402,9 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
 
     await db
       .from('associate_documents')
-      .update({ deleted_at: new Date().toISOString() })
+      .delete()
       .eq('associate_id', associateId)
-      .eq('type', 'cv')
-      .is('deleted_at', null);
+      .eq('type', 'cv');
 
     // Create presigned URL
     const { data: presignedData, error: presignedError } = await db.storage

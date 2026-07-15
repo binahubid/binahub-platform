@@ -315,15 +315,25 @@ export default function OnboardingPage() {
   };
 
   const handleRoleToggle = (role: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
-    );
+    setSelectedRoles((prev) => {
+      const active = prev.includes(role);
+      if (!active && prev.length >= 7) {
+        alert('Maksimal memilih 7 peran utama.');
+        return prev;
+      }
+      return active ? prev.filter((r) => r !== role) : [...prev, role];
+    });
   };
 
   const handleExpertiseToggle = (exp: string) => {
-    setSelectedExpertises((prev) =>
-      prev.includes(exp) ? prev.filter((e) => e !== exp) : [...prev, exp]
-    );
+    setSelectedExpertises((prev) => {
+      const active = prev.includes(exp);
+      if (!active && prev.length >= 5) {
+        alert('Maksimal memilih 5 bidang keahlian utama.');
+        return prev;
+      }
+      return active ? prev.filter((e) => e !== exp) : [...prev, exp];
+    });
   };
 
   // ─── Save & Next ─────────────────────────────────────────────────────────────

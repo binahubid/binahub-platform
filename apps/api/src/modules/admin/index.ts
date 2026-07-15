@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware, requireRole } from '../auth/middleware/auth.js';
 import { getDb } from '../../lib/database.js';
+import { rankCandidates } from '@ams/ai';
 import type { AppEnv } from '../../types/env.js';
 
 const admin = new Hono<AppEnv>();
@@ -29,10 +30,10 @@ admin.get('/stats', async (c) => {
     }
   }
 
-  const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true }).is('deleted_at', null);
+  const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true });
 
   const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-  const { count: cvToday } = await db.from('associate_documents').select('*', { count: 'exact', head: true }).eq('type', 'cv').is('deleted_at', null).gte('created_at', dayStart);
+  const { count: cvToday } = await db.from('associate_documents').select('*', { count: 'exact', head: true }).eq('type', 'cv').gte('created_at', dayStart);
 
   return c.json({
     success: true,
@@ -50,7 +51,7 @@ admin.get('/stats', async (c) => {
 });
 
 admin.get('/associates', async (c) => {
-  const { search, status, limit = '50', offset = '0' } = c.req.query();
+  const { search, status, skill, limit = '50', offset = '0' } = c.req.query();
   const db = getDb();
 
   let query = db
@@ -72,15 +73,76 @@ admin.get('/associates', async (c) => {
     query = query.eq('status', status);
   }
 
-  if (search) {
-    // Search by email directly + by profile name via a subquery
-    const { data: matchingProfiles } = await db
-      .from('associate_profiles')
+  if (skill) {
+    const { data: matchingSkills } = await db
+      .from('associate_skills')
       .select('associate_id')
-      .ilike('full_name', `%${search}%`);
-    const profileIds = (matchingProfiles || []).map((p: { associate_id: string }) => p.associate_id);
-    if (profileIds.length > 0) {
-      query = query.or(`email.ilike.%${search}%,id.in.(${profileIds.map((id: string) => `"${id}"`).join(',')})`);
+      .ilike('skill_name', `%${skill}%`);
+    const skillAssociateIds = (matchingSkills || []).map((s: { associate_id: string }) => s.associate_id);
+    if (skillAssociateIds.length > 0) {
+      query = query.in('id', skillAssociateIds);
+    } else {
+      query = query.in('id', ['00000000-0000-0000-0000-000000000000']);
+    }
+  }
+
+  if (search) {
+    const searchLower = search.toLowerCase();
+
+    // 1. Search in profiles (full_name, bio, city, nationality, roles, expertises)
+    const { data: allProfiles } = await db
+      .from('associate_profiles')
+      .select('associate_id, full_name, bio, city, nationality, roles, expertises');
+
+    const profileIds = (allProfiles || [])
+      .filter((p) => {
+        const nameMatch = p.full_name?.toLowerCase().includes(searchLower);
+        const bioMatch = p.bio?.toLowerCase().includes(searchLower);
+        const cityMatch = p.city?.toLowerCase().includes(searchLower);
+        const natMatch = p.nationality?.toLowerCase().includes(searchLower);
+        const rolesMatch = Array.isArray(p.roles) && p.roles.some((role: string) => role.toLowerCase().includes(searchLower));
+        const expMatch = Array.isArray(p.expertises) && p.expertises.some((exp: string) => exp.toLowerCase().includes(searchLower));
+        return nameMatch || bioMatch || cityMatch || natMatch || rolesMatch || expMatch;
+      })
+      .map((p) => p.associate_id);
+
+    // 2. Search in skills (skill_name)
+    const { data: matchingSkills } = await db
+      .from('associate_skills')
+      .select('associate_id')
+      .ilike('skill_name', `%${search}%`);
+    const skillIds = (matchingSkills || []).map((s: { associate_id: string }) => s.associate_id);
+
+    // 3. Search in availability (status / notes)
+    let statusFilter = '';
+    if (searchLower.includes('tersedia') || searchLower.includes('available') || searchLower.includes('open') || searchLower.includes('kolaborasi')) {
+      statusFilter = 'available,open';
+    } else if (searchLower.includes('sibuk') || searchLower.includes('busy') || searchLower.includes('limited') || searchLower.includes('terbatas')) {
+      statusFilter = 'busy,limited';
+    } else if (searchLower.includes('tidak') || searchLower.includes('unavailable')) {
+      statusFilter = 'unavailable';
+    }
+
+    const { data: allAvailabilities } = await db
+      .from('associate_availability')
+      .select('associate_id, notes, status');
+
+    const availIds = (allAvailabilities || [])
+      .filter((a) => {
+        const notesMatch = a.notes?.toLowerCase().includes(searchLower);
+        let statusMatch = false;
+        if (statusFilter) {
+          statusMatch = statusFilter.split(',').includes(a.status || '');
+        }
+        return notesMatch || statusMatch;
+      })
+      .map((a) => a.associate_id);
+
+    // Union the matching associate IDs
+    const matchingIds = Array.from(new Set([...profileIds, ...skillIds, ...availIds]));
+
+    if (matchingIds.length > 0) {
+      query = query.or(`email.ilike.%${search}%,id.in.(${matchingIds.map((id: string) => `"${id}"`).join(',')})`);
     } else {
       query = query.ilike('email', `%${search}%`);
     }
@@ -389,7 +451,7 @@ admin.get('/assignments', async (c) => {
 admin.post('/assignments', async (c) => {
   const user = c.get('user') as { id: string };
   const body = await c.req.json();
-  const { title, client_name, description, start_date, end_date, needed_roles, needed_count } = body;
+  const { title, client_name, description, start_date, end_date, needed_roles, needed_count, mandays, compensation } = body;
 
   if (!title || !client_name) {
     return c.json({ success: false, error: 'title dan client_name wajib diisi' }, 400);
@@ -407,6 +469,8 @@ admin.post('/assignments', async (c) => {
       end_date: end_date || null,
       needed_roles: needed_roles || [],
       needed_count: needed_count || 0,
+      mandays: mandays || 0,
+      compensation: compensation || null,
       created_by: user.id,
     })
     .select()
@@ -433,6 +497,8 @@ admin.patch('/assignments/:id', async (c) => {
   if (body.end_date !== undefined) updateData.end_date = body.end_date;
   if (body.needed_roles !== undefined) updateData.needed_roles = body.needed_roles;
   if (body.needed_count !== undefined) updateData.needed_count = body.needed_count;
+  if (body.mandays !== undefined) updateData.mandays = body.mandays;
+  if (body.compensation !== undefined) updateData.compensation = body.compensation;
 
   const { data, error } = await db
     .from('assignments')
@@ -459,6 +525,77 @@ admin.delete('/assignments/:id', async (c) => {
   }
 
   return c.json({ success: true, message: 'Assignment dihapus' });
+});
+
+admin.get('/assignments/:id/recommendations', async (c) => {
+  const id = c.req.param('id');
+  const db = getDb();
+
+  // 1. Fetch assignment details
+  const { data: assignment, error: assignmentError } = await db
+    .from('assignments')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (assignmentError || !assignment) {
+    return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
+  }
+
+  // 2. Fetch all active associates with profiles and skills
+  const { data: associates, error: associatesError } = await db
+    .from('associates')
+    .select(`
+      id,
+      email,
+      profile:associate_profiles(full_name, bio, roles, expertises),
+      skills:associate_skills(skill_name)
+    `)
+    .eq('status', 'active');
+
+  if (associatesError) {
+    return c.json({ success: false, error: associatesError.message }, 500);
+  }
+
+  // 3. Format candidates list
+  const candidates = (associates || []).map((a: any) => ({
+    id: a.id,
+    name: a.profile?.full_name || a.email,
+    roles: Array.isArray(a.profile?.roles) ? a.profile.roles : [],
+    expertises: Array.isArray(a.profile?.expertises) ? a.profile.expertises : [],
+    skills: Array.isArray(a.skills) ? a.skills.map((s: { skill_name: string }) => s.skill_name) : [],
+    bio: a.profile?.bio || '',
+  }));
+
+  if (candidates.length === 0) {
+    return c.json({ success: true, data: [] });
+  }
+
+  // 4. Call rankCandidates
+  const aiRanks = await rankCandidates(
+    {
+      title: assignment.title,
+      client_name: assignment.client_name,
+      description: assignment.description || '',
+      needed_roles: Array.isArray(assignment.needed_roles) ? assignment.needed_roles : [],
+    },
+    candidates
+  );
+
+  // 5. Map and sort candidates by rank score
+  const rankMap = new Map(aiRanks.map((r: { associate_id: string; score: number; reasoning: string }) => [r.associate_id, r]));
+
+  const recommendations = candidates.map(c => {
+    const rank = rankMap.get(c.id);
+    return {
+      associate_id: c.id,
+      name: c.name,
+      score: rank ? rank.score : 0,
+      reasoning: rank ? rank.reasoning : 'Tidak ada rekomendasi dari AI',
+    };
+  }).sort((a, b) => b.score - a.score);
+
+  return c.json({ success: true, data: recommendations });
 });
 
 admin.post('/assignments/:id/invite', async (c) => {
@@ -519,28 +656,67 @@ admin.get('/assignments/:id/assignees', async (c) => {
   const assignmentId = c.req.param('id');
   const db = getDb();
 
-  const { data, error } = await db
+  // 1. Fetch all assignees for this assignment
+  const { data: assignees, error: assigneesError } = await db
     .from('assignment_assignees')
-    .select(`
-      *,
-      associate:associates(id, email, status),
-      profile:associate_profiles(full_name, headline, photo_url, city)
-    `)
+    .select('*')
     .eq('assignment_id', assignmentId)
     .order('invited_at', { ascending: true });
 
-  if (error) {
-    return c.json({ success: false, error: error.message }, 500);
+  if (assigneesError) {
+    return c.json({ success: false, error: assigneesError.message }, 500);
   }
 
-  return c.json({ success: true, data });
+  if (!assignees || assignees.length === 0) {
+    return c.json({ success: true, data: [] });
+  }
+
+  // 2. Extract all associate IDs
+  const associateIds = assignees.map((a: any) => a.associate_id);
+
+  // 3. Fetch corresponding associates
+  const { data: associates, error: associatesError } = await db
+    .from('associates')
+    .select('id, email, status')
+    .in('id', associateIds);
+
+  if (associatesError) {
+    return c.json({ success: false, error: associatesError.message }, 500);
+  }
+
+  // 4. Fetch corresponding profiles
+  const { data: profiles, error: profilesError } = await db
+    .from('associate_profiles')
+    .select('associate_id, full_name, headline, photo_url, city')
+    .in('associate_id', associateIds);
+
+  if (profilesError) {
+    return c.json({ success: false, error: profilesError.message }, 500);
+  }
+
+  // 5. Match and merge in Javascript
+  const associateMap = new Map(associates.map((a: any) => [a.id, a]));
+  const profileMap = new Map(profiles.map((p: any) => [p.associate_id, p]));
+
+  const mappedData = assignees.map((row: any) => {
+    const assoc = associateMap.get(row.associate_id) || null;
+    const prof = profileMap.get(row.associate_id) || null;
+
+    return {
+      ...row,
+      associate: assoc,
+      profile: prof
+    };
+  });
+
+  return c.json({ success: true, data: mappedData });
 });
 
 admin.patch('/assignments/:id/assignees/:aid', async (c) => {
   const assignmentId = c.req.param('id');
   const assigneeId = c.req.param('aid');
   const body = await c.req.json();
-  const { status, role, notes } = body;
+  const { status, role, notes, evidence_reviewer_notes } = body;
 
   const db = getDb();
 
@@ -552,6 +728,10 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
   }
   if (role !== undefined) updateData.role = role;
   if (notes !== undefined) updateData.notes = notes;
+  if (evidence_reviewer_notes !== undefined) {
+    updateData.evidence_reviewer_notes = evidence_reviewer_notes;
+    updateData.evidence_reviewed_at = new Date().toISOString();
+  }
 
   const { data, error } = await db
     .from('assignment_assignees')
@@ -657,7 +837,7 @@ admin.get('/reports/summary', async (c) => {
   const { count: totalAssociates } = await db.from('associates').select('*', { count: 'exact', head: true });
   const { count: activeAssociates } = await db.from('associates').select('*', { count: 'exact', head: true }).eq('status', 'active');
   const { count: pendingAssociates } = await db.from('associates').select('*', { count: 'exact', head: true }).eq('status', 'pending_review');
-  const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true }).is('deleted_at', null);
+  const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true });
   const { count: totalAssignments } = await db.from('assignments').select('*', { count: 'exact', head: true });
   const { count: activeAssignments } = await db.from('assignments').select('*', { count: 'exact', head: true }).eq('status', 'active');
   const { count: totalReviews } = await db.from('associate_reviews').select('*', { count: 'exact', head: true });
@@ -843,7 +1023,7 @@ admin.get('/associates/:id/cv', async (c) => {
     db.from('associate_profiles').select('*').eq('associate_id', id).single(),
     db.from('associate_experiences').select('*').eq('associate_id', id).order('start_year', { ascending: false }),
     db.from('associate_educations').select('*').eq('associate_id', id).order('start_year', { ascending: false }),
-    db.from('associate_certifications').select('*').eq('associate_id', id).order('issued_date', { ascending: false }),
+    db.from('associate_certifications').select('*').eq('associate_id', id).order('issue_date', { ascending: false }),
     db.from('associate_portfolios').select('*').eq('associate_id', id).order('created_at', { ascending: false }),
     db.from('associate_skills').select('*').eq('associate_id', id).order('proficiency', { ascending: false }),
     db.from('associate_languages').select('*').eq('associate_id', id),

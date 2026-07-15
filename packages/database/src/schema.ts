@@ -209,8 +209,8 @@ export const adminPreferences = pgTable("admin_preferences", {
 
 export const assignmentAssignees = pgTable("assignment_assignees", {
   id: uuid("id").defaultRandom().primaryKey(),
-  assignment_id: uuid("assignment_id").notNull(),
-  associate_id: uuid("associate_id").notNull(),
+  assignment_id: uuid("assignment_id").notNull().references(() => assignments.id, { onDelete: "cascade" }),
+  associate_id: uuid("associate_id").notNull().references(() => associates.id, { onDelete: "cascade" }),
   status: text("status").default("invited").notNull(),
   role: text("role"),
   notes: text("notes"),

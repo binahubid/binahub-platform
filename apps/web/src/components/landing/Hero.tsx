@@ -190,11 +190,11 @@ export function Hero() {
             </span>
 
             <h1 className="mt-6 text-[2.5rem] font-light leading-[1.08] tracking-[-0.025em] text-slate-900 sm:text-5xl lg:text-[3.5rem]">
-              Satu profil profesional untuk seluruh perjalanan associate Anda.
+              Sistem Kelola profil profesional Associate BinaHub.
             </h1>
 
             <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
-              Upload CV sekali. AI menyusun profil Anda. Profil itu digunakan untuk berbagai peluang di ekosistem BinaHub.
+              Platform yang mendukung associate mulai dari pendaftaran, penugasan, dan evaluasi diri.
             </p>
 
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">

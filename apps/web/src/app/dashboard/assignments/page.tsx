@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
@@ -19,21 +19,26 @@ type Assignment = {
 };
 
 const myStatusConfig: Record<string, { label: string; bg: string; text: string }> = {
-  invited: { label: 'Diundang', bg: 'bg-amber-50', text: 'text-amber-700' },
-  applied: { label: 'Melamar', bg: 'bg-blue-50', text: 'text-blue-700' },
-  accepted: { label: 'Diterima', bg: 'bg-emerald-50', text: 'text-emerald-700' },
-  declined: { label: 'Ditolak', bg: 'bg-red-50', text: 'text-red-600' },
-  in_progress: { label: 'Berjalan', bg: 'bg-indigo-50', text: 'text-indigo-700' },
-  completed: { label: 'Selesai', bg: 'bg-slate-100', text: 'text-slate-600' },
-  withdrawn: { label: 'Mundur', bg: 'bg-slate-100', text: 'text-slate-400' },
+  invited: { label: 'Diundang', bg: 'bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20', text: '' },
+  applied: { label: 'Melamar', bg: 'bg-blue-500/10 text-blue-600 ring-1 ring-blue-500/20', text: '' },
+  accepted: { label: 'Diterima', bg: 'bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20', text: '' },
+  declined: { label: 'Ditolak', bg: 'bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20', text: '' },
+  in_progress: { label: 'Berjalan', bg: 'bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/20', text: '' },
+  completed: { label: 'Selesai', bg: 'bg-slate-500/10 text-slate-600 ring-1 ring-slate-500/20', text: '' },
+  withdrawn: { label: 'Mundur', bg: 'bg-slate-500/10 text-slate-400 ring-1 ring-slate-500/10', text: '' },
 };
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
-  draft: { label: 'Draft', bg: 'bg-slate-100', text: 'text-slate-600' },
-  active: { label: 'Active', bg: 'bg-emerald-50', text: 'text-emerald-700' },
-  completed: { label: 'Completed', bg: 'bg-blue-50', text: 'text-blue-700' },
-  cancelled: { label: 'Cancelled', bg: 'bg-red-50', text: 'text-red-600' },
+  draft: { label: 'Draft', bg: 'bg-slate-100 text-slate-600', text: '' },
+  active: { label: 'Aktif', bg: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10', text: '' },
+  completed: { label: 'Selesai', bg: 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/10', text: '' },
+  cancelled: { label: 'Batal', bg: 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/10', text: '' },
 };
+
+function fmtDate(d: string | null | undefined) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export default function AssignmentsPage() {
   const { accessToken } = useAuth();
@@ -76,107 +81,99 @@ export default function AssignmentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Assignments</h1>
-        <p className="mt-1 text-sm text-slate-500">Lihat proyek dan penugasan yang tersedia</p>
+        <h1 className="text-2xl font-bold text-slate-900 leading-tight">Assignments</h1>
+        <p className="mt-1 text-sm text-slate-500">Lihat proyek dan penugasan khusus Anda</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Total</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{stats.total}</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Active</p>
-          <p className="mt-1 text-2xl font-bold text-emerald-600">{stats.active}</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Completed</p>
-          <p className="mt-1 text-2xl font-bold text-blue-600">{stats.completed}</p>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[
+          { label: 'Total Penugasan', val: stats.total, color: 'text-slate-800', border: 'border-slate-200', bg: 'bg-white' },
+          { label: 'Penugasan Aktif', val: stats.active, color: 'text-emerald-600', border: 'border-emerald-100', bg: 'bg-emerald-50/20' },
+          { label: 'Penugasan Selesai', val: stats.completed, color: 'text-indigo-600', border: 'border-indigo-100', bg: 'bg-indigo-50/20' },
+        ].map((item, i) => (
+          <div key={i} className={`rounded-xl border ${item.border} ${item.bg} p-5 shadow-sm transition-all hover:shadow-md`}>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.label}</p>
+            <p className={`mt-2 text-3xl font-extrabold ${item.color}`}>{item.val}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2">
+      {/* Filter Tabs */}
+      <div className="flex gap-1.5 border-b border-slate-200 pb-px">
         {(['all', 'active', 'completed'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`relative pb-3 px-4 text-xs font-semibold transition-all ${
               filter === f
-                ? 'bg-[#0B2C6B] text-white'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                ? 'text-[#0B2C6B] border-b-2 border-[#0B2C6B]'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            {f === 'all' ? 'Semua' : f === 'active' ? 'Active' : 'Completed'}
+            {f === 'all' ? 'Semua Proyek' : f === 'active' ? 'Aktif' : 'Selesai'}
           </button>
         ))}
       </div>
 
-      {/* Assignment List */}
+      {/* List */}
       {filtered.length === 0 ? (
-        <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white">
-          <svg className="h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <p className="mt-4 text-sm font-medium text-slate-900">Belum ada assignment</p>
-          <p className="mt-1 text-xs text-slate-500">Assignment akan muncul di sini setelah admin membuatnya</p>
+        <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="rounded-full bg-slate-50 p-4 border border-slate-100">
+            <svg className="h-8 w-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2" />
+            </svg>
+          </div>
+          <p className="mt-4 text-sm font-bold text-slate-800">Tidak Ada Penugasan</p>
+          <p className="mt-1 text-xs text-slate-400 max-w-sm">Anda belum memiliki penugasan dengan status ini atau belum diundang oleh admin.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-4">
           {filtered.map((a) => {
             const config = statusConfig[a.status] || statusConfig.draft;
             const myConfig = a.my_status ? (myStatusConfig[a.my_status] || null) : null;
             return (
-              <div key={a.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-semibold text-slate-900">{a.title}</h3>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${config.bg} ${config.text}`}>
+              <div key={a.id} className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0 space-y-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-800 group-hover:text-[#0B2C6B] transition-colors">{a.title}</h3>
+                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${config.bg}`}>
                         {config.label}
                       </span>
                       {myConfig && (
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${myConfig.bg} ${myConfig.text}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${myConfig.bg}`}>
                           {myConfig.label}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">{a.client_name}</p>
-                    {a.description && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{a.description}</p>}
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
-                      {a.start_date && (
-                        <span className="flex items-center gap-1">
-                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          {new Date(a.start_date).toLocaleDateString('id-ID')}
-                        </span>
-                      )}
-                      {a.end_date && (
-                        <span>s/d {new Date(a.end_date).toLocaleDateString('id-ID')}</span>
-                      )}
+                    <p className="text-xs font-semibold text-slate-500">{a.client_name}</p>
+                    {a.description && <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{a.description}</p>}
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] text-slate-400 font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <svg className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {fmtDate(a.start_date)} {a.end_date && `s/d ${fmtDate(a.end_date)}`}
+                      </span>
                       {a.needed_roles.length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <span className="flex items-center gap-1.5">
+                          <svg className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                           </svg>
                           {a.needed_roles.join(', ')}
                         </span>
                       )}
-                      {a.needed_count > 0 && (
-                        <span>Dibutuhkan: {a.needed_count} orang</span>
-                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                  <div className="flex items-center flex-shrink-0 sm:self-center">
                     <Link
                       href={`/dashboard/assignments/${a.id}`}
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      className="w-full sm:w-auto text-center rounded-xl bg-slate-50 border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-[#0B2C6B] hover:text-white hover:border-[#0B2C6B] transition-all shadow-sm"
                     >
-                      Detail
+                      Detail Penugasan
                     </Link>
                   </div>
                 </div>

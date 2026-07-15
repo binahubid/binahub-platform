@@ -75,7 +75,7 @@ const getPhotoUrl = (path: string | null | undefined) => {
   if (!path) return undefined;
   if (path.startsWith('http') || path.startsWith('data:')) return path;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  return `${apiUrl}${path}`;
+  return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
 };
 
 function getGreeting() {
@@ -599,7 +599,7 @@ export default function DashboardPage() {
       )}
 
       {/* Profile Hero & Completion Banner */}
-      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B2C6B] via-[#1440a0] to-[#1e3a8a] p-6 sm:p-8 shadow-lg text-white">
+      <div className="overflow-hidden rounded-xl bg-gradient-to-br from-[#0B2C6B] via-[#1440a0] to-[#1e3a8a] p-6 sm:p-8 shadow-lg text-white">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Left/Middle: Profile Block (2 cols on large screens) */}
           <div className="lg:col-span-2 flex flex-col sm:flex-row items-start sm:items-center gap-6 border-b lg:border-b-0 lg:border-r border-white/10 pb-6 lg:pb-0 lg:pr-8">
@@ -689,8 +689,8 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2">
                     {(() => {
                       const status = data?.availability?.status || 'open';
-                      const isAvailable = status === 'open';
-                      const isBusy = status === 'busy';
+                      const isAvailable = status === 'open' || status === 'available';
+                      const isBusy = status === 'busy' || status === 'limited';
                       
                       let badgeClass = 'bg-rose-500/20 border-rose-400/30 text-rose-100';
                       let dotClass = 'bg-rose-400';
@@ -774,14 +774,26 @@ export default function DashboardPage() {
               </div>
             )}
             {hasCV && (
-              <div className="flex-1 flex items-center gap-3 rounded-xl bg-emerald-500/15 border border-emerald-400/20 p-3.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
-                  <svg className="h-4 w-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              <div className="flex-1 flex items-center justify-between gap-3 rounded-xl bg-emerald-500/15 border border-emerald-400/20 p-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+                    <svg className="h-4 w-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-bold text-emerald-100 truncate">CV Terunggah</h3>
+                    <p className="text-[10px] text-emerald-200/70 truncate">Profil terisi otomatis dari CV</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-xs font-bold text-emerald-100 truncate">CV Terunggah</h3>
-                  <p className="text-[10px] text-emerald-200/70 truncate">Profil terisi otomatis dari CV</p>
-                </div>
+                {cvDoc && (
+                  <a
+                    href={`${apiUrl}/api/files/${cvDoc.id}/view${accessToken ? `?token=${accessToken}` : ''}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-shrink-0 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-bold text-emerald-100 hover:text-white transition-colors"
+                  >
+                    Lihat CV
+                  </a>
+                )}
               </div>
             )}
           </div>
@@ -790,7 +802,7 @@ export default function DashboardPage() {
 
       {/* CV Upload Banner - Prominent when no CV */}
       {!hasCV && (
-        <div className="mb-6 rounded-2xl border-2 border-dashed border-[#0B2C6B]/30 bg-gradient-to-r from-[#0B2C6B]/5 to-[#D9A441]/5 p-6">
+        <div className="mb-6 rounded-xl border-2 border-dashed border-[#0B2C6B]/30 bg-gradient-to-r from-[#0B2C6B]/5 to-[#D9A441]/5 p-6">
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] shadow-lg shadow-[#0B2C6B]/25 flex-shrink-0">
               <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -829,7 +841,7 @@ export default function DashboardPage() {
               </svg>
             </div>
           </div>
-          <p className="mt-1 text-[11px] text-slate-400">Pertahankan progres Anda!</p>
+          <p className="mt-1 text-[11px] text-slate-400">Tingkatkan & update progres Anda!</p>
         </div>
 
         <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
@@ -1036,26 +1048,80 @@ export default function DashboardPage() {
                 <h2 className="text-sm font-semibold text-slate-900">Rekomendasi Sistem</h2>
                 <span className="rounded-full bg-[#0B2C6B]/10 px-2 py-0.5 text-[10px] font-semibold text-[#0B2C6B]">Baru</span>
               </div>
-              <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-sm font-medium text-slate-900">Halo {data?.profile?.full_name?.split(' ')[0] || 'Associate'},</p>
-                <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-                  Berdasarkan profil Anda, kami menyarankan untuk menambahkan sertifikasi profesional guna meningkatkan visibilitas Anda kepada reviewer.
-                </p>
-                <div className="mt-4">
-                  <p className="text-xs text-slate-500">Potensi Dampak</p>
-                  <p className="text-sm font-bold text-emerald-600">+20% visibilitas profil</p>
+              
+              {!hasCV ? (
+                <div className="rounded-lg bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-900">Halo {data?.profile?.full_name?.split(' ')[0] || 'Associate'},</p>
+                  <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                    Berdasarkan profil Anda, kami menyarankan untuk mengunggah CV agar sistem AI dapat melengkapi profil Anda secara otomatis.
+                  </p>
+                  <div className="mt-4">
+                    <p className="text-xs text-slate-500">Potensi Dampak</p>
+                    <p className="text-sm font-bold text-[#0B2C6B]">+40% Kelengkapan Profil</p>
+                  </div>
+                  <Link
+                    href="/dashboard/profile?tab=documents"
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    Unggah CV Anda
+                  </Link>
                 </div>
-                <Link
-                  href="/dashboard/profile?tab=certifications"
-                  className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  Tambah Sertifikasi
-                </Link>
-              </div>
+              ) : !hasCertifications ? (
+                <div className="rounded-lg bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-900">Halo {data?.profile?.full_name?.split(' ')[0] || 'Associate'},</p>
+                  <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                    Berdasarkan profil Anda, kami menyarankan untuk menambahkan sertifikasi profesional guna meningkatkan visibilitas Anda kepada reviewer.
+                  </p>
+                  <div className="mt-4">
+                    <p className="text-xs text-slate-500">Potensi Dampak</p>
+                    <p className="text-sm font-bold text-emerald-600">+20% Visibilitas Profil</p>
+                  </div>
+                  <Link
+                    href="/dashboard/profile?tab=certifications"
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    Tambah Sertifikasi
+                  </Link>
+                </div>
+              ) : !hasPortfolio ? (
+                <div className="rounded-lg bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-900">Halo {data?.profile?.full_name?.split(' ')[0] || 'Associate'},</p>
+                  <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                    Berdasarkan profil Anda, kami menyarankan untuk menambahkan portofolio hasil proyek untuk memperkuat bukti kompetensi kerja Anda.
+                  </p>
+                  <div className="mt-4">
+                    <p className="text-xs text-slate-500">Potensi Dampak</p>
+                    <p className="text-sm font-bold text-emerald-600">+15% Ketertarikan Reviewer</p>
+                  </div>
+                  <Link
+                    href="/dashboard/profile?tab=portfolio"
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    Tambah Portofolio
+                  </Link>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-900">Halo {data?.profile?.full_name?.split(' ')[0] || 'Associate'},</p>
+                  <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                    Luar biasa! Profil Anda saat ini sudah sangat lengkap dan siap untuk mendapatkan penugasan proyek dari tim admin BinaHub.
+                  </p>
+                  <div className="mt-4">
+                    <p className="text-xs text-slate-500">Status Profil</p>
+                    <p className="text-sm font-bold text-emerald-600">100% Siap Penugasan</p>
+                  </div>
+                  <Link
+                    href="/dashboard/assignments"
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    Lihat Proyek Aktif
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
-
+ 
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Onboarding Checklist */}
@@ -1064,7 +1130,7 @@ export default function DashboardPage() {
             hasProfile={!!data?.profile?.full_name}
             hasCapability={capabilityScore > 0}
           />
-
+ 
           {/* Profile Strength */}
           <div id="profile-strength">
             <ProfileStrength
@@ -1075,6 +1141,10 @@ export default function DashboardPage() {
               hasCertifications={hasCertifications}
               hasPortfolio={hasPortfolio}
               hasEducation={hasEducation}
+              hasPhoto={!!data?.profile?.photo_url}
+              hasRoles={!!(data?.profile?.roles && data.profile.roles.length > 0)}
+              hasAvailability={!!(data?.availability && (Array.isArray(data.availability) ? data.availability[0]?.status : data.availability?.status))}
+              hasFullName={!!data?.profile?.full_name}
             />
           </div>
 

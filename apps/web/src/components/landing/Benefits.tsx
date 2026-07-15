@@ -2,7 +2,7 @@
 
 const benefits = [
   {
-    title: 'Satu profil profesional',
+    title: 'Sistem Kelola profil',
     description: 'Semua pengalaman, keahlian, dan pencapaian dalam satu tempat terstruktur. Input sekali, pakai berulang kali.',
     category: 'Profil',
   },
@@ -27,7 +27,7 @@ const benefits = [
     category: 'Visibility',
   },
   {
-    title: 'Siap untuk assignment',
+    title: 'Siap untuk penugasan',
     description: 'Dapatkan peluang proyek yang sesuai dengan keahlian, ketersediaan, dan lokasi Anda.',
     category: 'Peluang',
   },

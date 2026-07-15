@@ -177,6 +177,8 @@ const TIMEZONE_OPTIONS = [
   { value: 'Asia/Jayapura', label: 'WIT — Jayapura, Ambon' },
   { value: 'Asia/Singapore', label: 'SGT — Singapore' },
   { value: 'Asia/Kuala_Lumpur', label: 'MYT — Kuala Lumpur' },
+  { value: 'Asia/Riyadh', label: 'AST — Saudi Arabia (Riyadh)' },
+  { value: 'Australia/Sydney', label: 'AEST — Australia (Sydney)' },
 ];
 
 export function StepReviewProfile({
@@ -197,12 +199,10 @@ export function StepReviewProfile({
   const getPhotoUrl = () => {
     if (previewSrc) return previewSrc;
     if (!draft.photo_url) return '';
-    
-    // If it's a relative path starting with /storage, construct direct URL
-    if (draft.photo_url.startsWith('/storage')) {
-      return `${apiUrl}${draft.photo_url}`;
+    if (draft.photo_url.startsWith('http') || draft.photo_url.startsWith('data:')) {
+      return draft.photo_url;
     }
-    return draft.photo_url;
+    return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(draft.photo_url)}`;
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

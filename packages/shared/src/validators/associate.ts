@@ -202,7 +202,7 @@ export const createCertificationSchema = z.object({
   issueDate: z.string().optional(),
   expiryDate: z.string().optional(),
   credentialId: z.string().max(255).optional(),
-  credentialUrl: z.string().url('URL tidak valid').optional()
+  credentialUrl: z.string().max(2000).optional()
 });
 
 export const updateCertificationSchema = z.object({
@@ -211,7 +211,7 @@ export const updateCertificationSchema = z.object({
   issueDate: z.string().optional(),
   expiryDate: z.string().optional(),
   credentialId: z.string().max(255).optional(),
-  credentialUrl: z.string().url('URL tidak valid').optional(),
+  credentialUrl: z.string().max(2000).optional(),
   orderIndex: z.number().int().min(0).optional()
 });
 
@@ -279,16 +279,23 @@ export const deleteLanguageSchema = z.object({
 // AVAILABILITY VALIDATORS
 // ============================================
 
-export const availabilityStatusSchema = z.enum(['available', 'limited', 'unavailable']);
+export const availabilityStatusSchema = z.enum(['available', 'limited', 'unavailable', 'open', 'busy']);
 
 export const updateAvailabilitySchema = z.object({
   status: availabilityStatusSchema.optional(),
+  // camelCase (used by some internal callers)
   maxHoursPerWeek: z.number().int().min(0).max(168).optional(),
   workLocations: z.array(z.string().max(50)).optional(),
   travelReady: z.boolean().optional(),
   preferredEngagements: z.array(z.string().max(100)).optional(),
   availableFrom: z.string().optional(),
-  notes: z.string().max(1000).optional()
+  // snake_case (used by profile/onboarding forms)
+  max_hours_per_week: z.number().int().min(0).max(168).nullable().optional(),
+  work_locations: z.array(z.string().max(50)).optional(),
+  travel_ready: z.boolean().optional(),
+  preferred_engagements: z.array(z.string().max(100)).optional(),
+  available_from: z.string().nullable().optional(),
+  notes: z.string().max(1000).nullable().optional()
 });
 
 // ============================================

@@ -5,7 +5,7 @@ import { useState } from 'react';
 const faqs = [
   {
     question: 'Apa itu BinaHub AMS?',
-    answer: 'BinaHub AMS (Associate Management System) adalah platform untuk mengelola profil profesional, portfolio, dan peluang assignment bagi para associate seperti trainer, coach, consultant, dan fasilitator.',
+    answer: 'BinaHub AMS (Associate Management System) adalah platform untuk mengelola profil profesional, portofolio, dan peluang penugasan/proyek bagi para associate yang terdaftar di database BinaHub.',
   },
   {
     question: 'Apakah platform ini berbayar?',

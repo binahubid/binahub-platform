@@ -10,6 +10,10 @@ type ProfileStrengthProps = {
   hasCertifications: boolean;
   hasPortfolio: boolean;
   hasEducation: boolean;
+  hasPhoto: boolean;
+  hasRoles: boolean;
+  hasAvailability: boolean;
+  hasFullName: boolean;
 };
 
 export function ProfileStrength({
@@ -20,14 +24,22 @@ export function ProfileStrength({
   hasCertifications,
   hasPortfolio,
   hasEducation,
+  hasPhoto,
+  hasRoles,
+  hasAvailability,
+  hasFullName,
 }: ProfileStrengthProps) {
   const items = [
+    { label: 'Isi Nama Lengkap', done: hasFullName, href: '/dashboard/profile?tab=profile' },
+    { label: 'Unggah Foto Profil', done: hasPhoto, href: '/dashboard/profile?tab=profile' },
     { label: 'Unggah CV', done: hasCV, href: '/dashboard/profile?tab=documents' },
+    { label: 'Pilih Peran & Keahlian Utama', done: hasRoles, href: '/dashboard/profile?tab=profile' },
     { label: 'Tambah Pengalaman Kerja', done: hasExperience, href: '/dashboard/profile?tab=experience' },
+    { label: 'Tambah Pendidikan', done: hasEducation, href: '/dashboard/profile?tab=education' },
     { label: 'Tambah Keahlian', done: hasSkills, href: '/dashboard/profile?tab=skills' },
     { label: 'Tambah Sertifikasi', done: hasCertifications, href: '/dashboard/profile?tab=certifications' },
     { label: 'Tambah Portofolio', done: hasPortfolio, href: '/dashboard/profile?tab=portfolio' },
-    { label: 'Tambah Pendidikan', done: hasEducation, href: '/dashboard/profile?tab=education' },
+    { label: 'Status Ketersediaan (Availability)', done: hasAvailability, href: '/dashboard/profile?tab=availability' },
   ];
 
   const getStatus = () => {

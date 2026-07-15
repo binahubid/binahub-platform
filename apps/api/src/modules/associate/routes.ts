@@ -820,7 +820,7 @@ associateRoutes.get('/certifications', async (c) => {
     .from('associate_certifications')
     .select('*')
     .eq('associate_id', user.id)
-    .order('issued_date', { ascending: false });
+    .order('issue_date', { ascending: false });
 
   if (error) {
     return c.json({ success: false, error: error.message }, 500);
@@ -848,7 +848,7 @@ associateRoutes.post('/certifications', async (c) => {
       associate_id: user.id,
       name: validation.data.name,
       issuer: validation.data.issuer,
-      issued_date: validation.data.issueDate || null,
+      issue_date: validation.data.issueDate || null,
       expiry_date: validation.data.expiryDate || null,
       credential_id: validation.data.credentialId || null,
       credential_url: validation.data.credentialUrl || null,
@@ -880,7 +880,7 @@ associateRoutes.put('/certifications/:id', async (c) => {
   const updateData: Record<string, unknown> = {};
   if (validation.data.name !== undefined) updateData.name = validation.data.name;
   if (validation.data.issuer !== undefined) updateData.issuer = validation.data.issuer;
-  if (validation.data.issueDate !== undefined) updateData.issued_date = validation.data.issueDate;
+  if (validation.data.issueDate !== undefined) updateData.issue_date = validation.data.issueDate;
   if (validation.data.expiryDate !== undefined) updateData.expiry_date = validation.data.expiryDate;
   if (validation.data.credentialId !== undefined) updateData.credential_id = validation.data.credentialId;
   if (validation.data.credentialUrl !== undefined) updateData.credential_url = validation.data.credentialUrl;
@@ -904,7 +904,34 @@ associateRoutes.delete('/certifications/:id', async (c) => {
   const user = c.get('user') as AuthUser;
   const id = c.req.param('id');
   const db = getDb();
+
+  // 1. Ambil data sertifikasi terlebih dahulu untuk memeriksa berkas lampiran
+  const { data: certData } = await db
+    .from('associate_certifications')
+    .select('credential_url')
+    .eq('id', id)
+    .eq('associate_id', user.id)
+    .maybeSingle();
+
+  if (certData?.credential_url) {
+    try {
+      const match = certData.credential_url.match(/\/api\/files\/([a-f0-9\-]{36})/i);
+      if (match) {
+        const fileId = match[1];
+        const { data: fileData } = await db.from('files').select('path').eq('id', fileId).maybeSingle();
+        if (fileData?.path) {
+          // Hapus file fisik dari storage
+          await db.storage.from('ams-files').remove([fileData.path]);
+          // Hapus record metadata file
+          await db.from('files').delete().eq('id', fileId);
+        }
+      }
+    } catch (err) {
+      console.error('Gagal menghapus file sertifikasi dari storage:', err);
+    }
+  }
   
+  // 2. Hapus data sertifikasi dari database
   const { error } = await db
     .from('associate_certifications')
     .delete()
@@ -956,7 +983,35 @@ associateRoutes.delete('/portfolios/:id', async (c) => {
   const user = c.get('user') as AuthUser;
   const id = c.req.param('id');
   const db = getDb();
+
+  // 1. Ambil data portofolio terlebih dahulu untuk memeriksa berkas lampiran
+  const { data: portData } = await db
+    .from('associate_portfolios')
+    .select('description')
+    .eq('id', id)
+    .eq('associate_id', user.id)
+    .maybeSingle();
+
+  if (portData?.description) {
+    try {
+      // Cari kecocokan file ID dalam markdown link
+      const fileMatches = [...portData.description.matchAll(/\/api\/files\/([a-f0-9\-]{36})/gi)];
+      for (const match of fileMatches) {
+        const fileId = match[1];
+        const { data: fileData } = await db.from('files').select('path').eq('id', fileId).maybeSingle();
+        if (fileData?.path) {
+          // Hapus file fisik dari storage
+          await db.storage.from('ams-files').remove([fileData.path]);
+          // Hapus record metadata file
+          await db.from('files').delete().eq('id', fileId);
+        }
+      }
+    } catch (err) {
+      console.error('Gagal menghapus file portofolio dari storage:', err);
+    }
+  }
   
+  // 2. Hapus data portofolio dari database
   const { error } = await db
     .from('associate_portfolios')
     .delete()
@@ -991,7 +1046,7 @@ associateRoutes.get('/availability', async (c) => {
   return c.json({ success: true, data: data || null });
 });
 
-associateRoutes.put('/availability', async (c) => {
+const handleUpsertAvailability = async (c: any) => {
   const user = c.get('user') as AuthUser;
   const body = await c.req.json();
   
@@ -1005,24 +1060,27 @@ associateRoutes.put('/availability', async (c) => {
 
   const db = getDb();
   
-  // Upsert availability
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const av = validation.data as any as {
-    status?: string;
-    maxHoursPerWeek?: number;
-    workLocations?: string[];
-    travelReady?: boolean;
-    preferredEngagements?: string[];
-    availableFrom?: string;
-    notes?: string;
-  };
+  const av = validation.data as Record<string, unknown>;
   const availData: Record<string, unknown> = { associate_id: user.id, updated_at: new Date().toISOString() };
+
+  // Support both snake_case (from forms) and camelCase (from internal callers)
   if (av.status !== undefined) availData.status = av.status;
-  if (av.maxHoursPerWeek !== undefined) availData.max_hours_per_week = av.maxHoursPerWeek;
-  if (av.workLocations !== undefined) availData.work_locations = av.workLocations;
-  if (av.travelReady !== undefined) availData.travel_ready = av.travelReady;
-  if (av.preferredEngagements !== undefined) availData.preferred_engagements = av.preferredEngagements;
-  if (av.availableFrom !== undefined) availData.available_from = av.availableFrom;
+
+  const maxHours = av.max_hours_per_week ?? av.maxHoursPerWeek;
+  if (maxHours !== undefined) availData.max_hours_per_week = maxHours;
+
+  const workLocs = av.work_locations ?? av.workLocations;
+  if (workLocs !== undefined) availData.work_locations = workLocs;
+
+  const travelReady = av.travel_ready ?? av.travelReady;
+  if (travelReady !== undefined) availData.travel_ready = travelReady;
+
+  const preferredEngs = av.preferred_engagements ?? av.preferredEngagements;
+  if (preferredEngs !== undefined) availData.preferred_engagements = preferredEngs;
+
+  const availableFrom = av.available_from ?? av.availableFrom;
+  if (availableFrom !== undefined) availData.available_from = availableFrom;
+
   if (av.notes !== undefined) availData.notes = av.notes;
 
   const { data, error } = await db
@@ -1036,7 +1094,10 @@ associateRoutes.put('/availability', async (c) => {
   }
 
   return c.json({ success: true, data });
-});
+};
+
+associateRoutes.post('/availability', handleUpsertAvailability);
+associateRoutes.put('/availability', handleUpsertAvailability);
 
 // ============================================
 // SOCIAL LINKS ROUTES
@@ -1305,9 +1366,25 @@ associateRoutes.get('/assignments', async (c) => {
     return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
   }
 
+  const { data: myInvitations, error: inviteError } = await db
+    .from('assignment_assignees')
+    .select('assignment_id, status, role, notes, invited_at, accepted_at')
+    .eq('associate_id', associate.id);
+
+  if (inviteError) {
+    return c.json({ success: false, error: inviteError.message }, 500);
+  }
+
+  if (!myInvitations || myInvitations.length === 0) {
+    return c.json({ success: true, data: [] });
+  }
+
+  const invitedIds = myInvitations.map((inv: { assignment_id: string }) => inv.assignment_id);
+
   const { data: assignments, error } = await db
     .from('assignments')
     .select('*')
+    .in('id', invitedIds)
     .in('status', ['active', 'draft'])
     .order('created_at', { ascending: false });
 
@@ -1315,13 +1392,8 @@ associateRoutes.get('/assignments', async (c) => {
     return c.json({ success: false, error: error.message }, 500);
   }
 
-  const { data: myAssignments } = await db
-    .from('assignment_assignees')
-    .select('assignment_id, status, role, notes, invited_at, accepted_at')
-    .eq('associate_id', associate.id);
-
   const assigneeMap: Record<string, { status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }> = {};
-  for (const a of (myAssignments || []) as Array<{ assignment_id: string; status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }>) {
+  for (const a of myInvitations as Array<{ assignment_id: string; status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }>) {
     assigneeMap[a.assignment_id] = { status: a.status, role: a.role, notes: a.notes, invited_at: a.invited_at, accepted_at: a.accepted_at };
   }
 
@@ -1341,6 +1413,27 @@ associateRoutes.get('/assignments/:id', async (c) => {
   const assignmentId = c.req.param('id');
   const db = getDb();
 
+  const { data: associate } = await db
+    .from('associates')
+    .select('id')
+    .eq('id', user.id)
+    .single();
+
+  if (!associate) {
+    return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
+  }
+
+  const { data: myAssignment } = await db
+    .from('assignment_assignees')
+    .select('*')
+    .eq('assignment_id', assignmentId)
+    .eq('associate_id', associate.id)
+    .single();
+
+  if (!myAssignment) {
+    return c.json({ success: false, error: 'Anda tidak memiliki akses ke assignment ini' }, 403);
+  }
+
   const { data: assignment, error } = await db
     .from('assignments')
     .select('*')
@@ -1349,23 +1442,6 @@ associateRoutes.get('/assignments/:id', async (c) => {
 
   if (error || !assignment) {
     return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
-  }
-
-  const { data: associate } = await db
-    .from('associates')
-    .select('id')
-    .eq('id', user.id)
-    .single();
-
-  let myAssignment: Record<string, unknown> | null = null;
-  if (associate) {
-    const { data: assignee } = await db
-      .from('assignment_assignees')
-      .select('*')
-      .eq('assignment_id', assignmentId)
-      .eq('associate_id', associate.id)
-      .single();
-    myAssignment = assignee as Record<string, unknown> | null;
   }
 
   const { data: assignees } = await db
@@ -1379,7 +1455,7 @@ associateRoutes.get('/assignments/:id', async (c) => {
     success: true,
     data: {
       ...assignment,
-      my_assignment: myAssignment,
+      my_assignment: myAssignment as Record<string, unknown>,
       accepted_count: acceptedCount,
       total_assignees: (assignees || []).length,
     },
@@ -1452,7 +1528,7 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
   const user = c.get('user') as AuthUser;
   const assignmentId = c.req.param('id');
   const body = await c.req.json();
-  const { status } = body;
+  const { status, evidence_url, evidence_notes } = body;
   const db = getDb();
 
   const validStatuses = ['accepted', 'declined', 'in_progress', 'completed', 'withdrawn'];
@@ -1475,7 +1551,13 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     updated_at: new Date().toISOString(),
   };
   if (status === 'accepted') updateData.accepted_at = new Date().toISOString();
-  if (status === 'completed') updateData.completed_at = new Date().toISOString();
+  if (status === 'completed') {
+    updateData.completed_at = new Date().toISOString();
+    updateData.evidence_submitted_at = new Date().toISOString();
+  }
+
+  if (evidence_url !== undefined) updateData.evidence_url = evidence_url;
+  if (evidence_notes !== undefined) updateData.evidence_notes = evidence_notes;
 
   const { data, error } = await db
     .from('assignment_assignees')
@@ -1496,7 +1578,6 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
   return c.json({ success: true, data, message: `Status diubah ke ${status}` });
 });
 
-// ============================================
 // NOTIFICATIONS (for associates - must be before admin routes)
 // ============================================
 associateRoutes.get('/notifications', async (c) => {
@@ -1505,13 +1586,13 @@ associateRoutes.get('/notifications', async (c) => {
 
   const { data: invitations } = await db
     .from('assignment_assignees')
-    .select('id, assignment_id, status, role, notes, invited_at, accepted_at, updated_at')
+    .select('id, assignment_id, status, role, notes, invited_at, accepted_at, updated_at, notification_read_at')
     .eq('associate_id', user.id)
-    .order('updated_at', { ascending: false })
+    .order('invited_at', { ascending: false })
     .limit(50);
 
   const notifications = [];
-  for (const inv of (invitations || []) as Array<{ id: string; assignment_id: string; status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null; updated_at: string }>) {
+  for (const inv of (invitations || []) as Array<{ id: string; assignment_id: string; status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null; updated_at: string; notification_read_at: string | null }>) {
     const { data: assignment } = await db
       .from('assignments')
       .select('id, title, client_name, status, needed_roles')
@@ -1520,27 +1601,8 @@ associateRoutes.get('/notifications', async (c) => {
 
     if (assignment) {
       const a = assignment as { id: string; title: string; client_name: string | null; status: string; needed_roles: string[] | null };
-      let title = `Undangan ke Assignment: ${a.title}`;
-      let message = `Anda diundang oleh admin untuk bergabung ke assignment "${a.title}"${a.client_name ? ` dari ${a.client_name}` : ''}`;
-      let created_at = inv.invited_at;
-
-      if (inv.status === 'accepted') {
-        title = `Undangan diterima: ${a.title}`;
-        message = `Anda menerima undangan ke assignment "${a.title}"`;
-        created_at = inv.accepted_at || inv.updated_at;
-      } else if (inv.status === 'declined') {
-        title = `Undangan ditolak: ${a.title}`;
-        message = `Anda menolak undangan ke assignment "${a.title}"`;
-        created_at = inv.updated_at;
-      } else if (inv.status === 'in_progress') {
-        title = `Assignment berjalan: ${a.title}`;
-        message = `Assignment "${a.title}" sedang berjalan`;
-        created_at = inv.updated_at;
-      } else if (inv.status === 'completed') {
-        title = `Assignment selesai: ${a.title}`;
-        message = `Assignment "${a.title}" telah selesai`;
-        created_at = inv.updated_at;
-      }
+      const title = `Undangan Assignment: ${a.title}`;
+      const message = `Anda diundang untuk bergabung ke assignment "${a.title}"${a.client_name ? ` dari klien ${a.client_name}` : ''}. Klik untuk melihat detail dan merespons undangan.`;
 
       notifications.push({
         id: inv.id,
@@ -1552,13 +1614,14 @@ associateRoutes.get('/notifications', async (c) => {
         assignment_title: a.title,
         role: inv.role,
         invited_at: inv.invited_at,
-        created_at,
-        read: inv.status !== 'invited',
+        created_at: inv.invited_at,
+        read: inv.notification_read_at !== null,
+        link: `/dashboard/assignments/${inv.assignment_id}`,
       });
     }
   }
 
-  // Prepend welcome notification if associate profile is created (indicates onboarding is complete)
+  // Prepend welcome notification
   const { data: assoc } = await db
     .from('associates')
     .select('created_at, profile:associate_profiles(full_name)')
@@ -1566,13 +1629,14 @@ associateRoutes.get('/notifications', async (c) => {
     .single();
 
   if (assoc) {
-    const fullName = assoc.profile?.full_name || 'Associate';
-    notifications.unshift({
+    const profileObj = Array.isArray(assoc.profile) ? assoc.profile[0] : assoc.profile;
+    const fullName = profileObj?.full_name || 'Associate';
+    notifications.push({
       id: 'welcome-notification',
       type: 'system',
       status: 'read',
       title: 'Selamat Datang di BinaHub! 👋',
-      message: `Halo ${fullName.split(' ')[0]}, selamat datang! Onboarding Anda telah selesai. Profil Anda kini aktif dan siap diajukan ke assignment baru.`,
+      message: `Halo ${fullName.split(' ')[0]}, selamat datang! Profil Anda kini aktif dan siap diajukan ke assignment baru.`,
       created_at: assoc.created_at,
       read: true,
     });
@@ -1589,7 +1653,7 @@ associateRoutes.get('/notifications/count', async (c) => {
     .from('assignment_assignees')
     .select('*', { count: 'exact', head: true })
     .eq('associate_id', user.id)
-    .eq('status', 'invited');
+    .is('notification_read_at', null);
 
   return c.json({ success: true, data: { count: count || 0 } });
 });
@@ -1605,9 +1669,10 @@ associateRoutes.post('/notifications/:id/read', async (c) => {
 
   const { data, error } = await db
     .from('assignment_assignees')
-    .update({ status: 'viewed', updated_at: new Date().toISOString() })
+    .update({ notification_read_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('associate_id', user.id)
+    .is('notification_read_at', null)
     .select();
 
   if (error) {

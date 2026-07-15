@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] — 2026-07-15
+
+### Added
+- **Pencarian Associates Cerdas (Smart Search)**:
+  - Menggabungkan kolom pencarian nama/email dan filter keahlian di `web/admin/associates/page.tsx` menjadi satu kolom input pintar (*smart search*).
+  - Mengintegrasikan logika pencarian dinamis di backend Hono untuk mencocokkan nama, email, bio, kota, negara, peran, bidang kompetensi, keahlian, serta status ketersediaan.
+- **Rekomendasi Kecocokan Kandidat Berbasis AI (1-100%)**:
+  - Menambahkan fungsi pencocokan LLM `rankCandidates` di `@ams/ai` menggunakan client OpenAI untuk membandingkan spesifikasi proyek vs profil associate.
+  - Menambahkan REST API endpoint baru `GET /api/admin/assignments/:id/recommendations` di Hono admin modules.
+  - Merancang antarmuka laci/modal undang associate di admin assignments agar mengurutkan kandidat dari skor tertinggi, menampilkan persentase kecocokan AI, dan memuat kutipan kalimat rekomendasi secara visual.
+- **Formulir Pelaporan Pekerjaan Ramah Gen-X**:
+  - Merombak UI/UX pelaporan pada detail penugasan Associate menjadi alur berurutan yang sangat visual (Langkah 1: Upload Foto Dokumentasi Lapangan, Langkah 2: Ringkasan & Lampiran Dokumen Laporan Akhir) untuk mempermudah kalangan Gen-X.
+- **Redesain Antarmuka Tim Assignment & Konsol Tinjau Laporan**:
+  - Merombak daftar tim di admin assignments menjadi layout card interaktif dengan garis diagram progres horizontal 5 langkah yang interaktif (*invited*, *accepted*, *in_progress*, *completed*, *reviewed*).
+  - Menampilkan foto dokumentasi lapangan, ringkasan tertulis laporan akhir, dan tombol berkas unduhan laporan utama.
+  - Menyediakan konsol penilaian admin untuk menyetujui laporan (`reviewed`) atau meminta revisi (`in_progress`) beserta catatan feedback yang tersimpan dinamis.
+  - Menghapus pemilih dropdown status manual yang redundan.
+  - Memperbaiki foto profil associate yang crash di tim assignment admin.
+
+### Fixed
+- **Penyelesaian Simpan Ketersediaan (Availability Save)**:
+  - Memperbarui Zod schema di `packages/shared/src/validators/associate.ts` agar menerima field *snake_case* dan memperluas ketersediaan enum.
+  - Memperbarui handler Hono `handleUpsertAvailability` di `apps/api/src/modules/associate/routes.ts` untuk membaca field *snake_case* dari form onboarding dan profil, lalu menyimpannya ke database.
+- **Perbaikan Relasi Query Tim Assignment**:
+  - Mengubah struktur query relasi di backend Hono untuk melakukan JavaScript-based merge demi mem-bypass ketiadaan foreign key di tabel `assignment_assignees`, mengembalikan performa data tim yang dinamis.
+
+## [0.6.0] — 2026-07-15
+
+### Added
+- **Attachment Upload di Sertifikasi (Feedback 13)**:
+  - Mengintegrasikan dialog pemilihan berkas PDF/PNG/JPG/WebP langsung pada form sertifikasi baru dan edit sertifikasi di `StepCertifications`.
+  - Mengunggah berkas sertifikat secara otomatis ke bucket storage lewat presigned URL API `/api/files/presigned-url` dan mendaftarkannya ke database registry `files`.
+  - Menyimpan dan menampilkan dokumen sertifikat secara terlampir dan interaktif.
+- **Media Upload & Link Sosmed di Portofolio (Feedback 14)**:
+  - Memperluas component `StepPortfolio` untuk mendukung upload screenshot/foto/dokumentasi proyek dan testimoni (PDF/PNG/JPG/WebP/MP4) maksimal 50MB.
+  - Memperluas tautan portofolio agar menerima link sosial media proyek, portofolio eksternal (Behance/GitHub), maupun tautan postingan LinkedIn.
+- **Menu Pusat Bantuan IT Support & WhatsApp (Feedback 24 & 25)**:
+  - Menambahkan sidebar menu Pusat Bantuan interaktif di Sidebar Admin (`admin/layout.tsx`) dan Sidebar Associate (`dashboard/layout.tsx`).
+  - Menyediakan akses cepat satu-klik untuk menghubungi WA Support (`https://wa.me/628123456789`) dan kirim email IT Support (`support@binahub.com`) langsung dari navigasi utama.
+
+### Changed
+- **Sembunyikan Modul Tes Kemampuan (Feedback 12)**:
+  - Menyembunyikan dan menonaktifkan modul asesmen Tes Kemampuan dari checklist onboarding (`checklist.tsx`) dan context data onboarding (`context.tsx`).
+
 ## [0.5.0] — 2026-07-14
 
 ### Added

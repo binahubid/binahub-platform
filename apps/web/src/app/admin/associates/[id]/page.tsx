@@ -45,6 +45,7 @@ type DetailData = {
     name: string;
     issuer: string;
     issue_date?: string;
+    credential_url?: string;
   }>;
   skills: Array<{
     id: string;
@@ -62,6 +63,12 @@ type DetailData = {
     name: string;
     url?: string;
     created_at: string;
+  }>;
+  portfolios?: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    link_url?: string;
   }>;
   reviews?: Array<{
     id: string;
@@ -85,6 +92,24 @@ export default function AssociateDetailPage() {
   const [reviewing, setReviewing] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+  const resolveFileUrl = (url: string | null | undefined) => {
+    if (!url) return '#';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    return `${apiUrl}${url}`;
+  };
+
+  const extractAttachments = (description: string | null | undefined) => {
+    if (!description) return { cleanDesc: '', files: [] as { name: string; url: string }[] };
+    const files: { name: string; url: string }[] = [];
+    const regex = /\[(?:File\s+)?Lampiran:\s*([^\]]+)\]\(([^)]+)\)/gi;
+    let match;
+    while ((match = regex.exec(description)) !== null) {
+      files.push({ name: match[1], url: resolveFileUrl(match[2]) });
+    }
+    const cleanDesc = description.replace(regex, '').trim();
+    return { cleanDesc, files };
+  };
 
   const fetchDetail = useCallback(async () => {
     if (!user || !accessToken || !params.id) return;
@@ -169,6 +194,7 @@ export default function AssociateDetailPage() {
     { id: 'skills', label: 'Skills' },
     { id: 'education', label: 'Education' },
     { id: 'certifications', label: 'Certifications' },
+    { id: 'portfolio', label: 'Portfolio' },
     { id: 'documents', label: 'Documents' },
     { id: 'reviews', label: `Reviews (${data.reviews?.length || 0})` },
   ];
@@ -195,7 +221,7 @@ export default function AssociateDetailPage() {
           <div className="flex items-end justify-between -mt-12">
             <Avatar
               name={data.profile?.full_name || data.email}
-              src={data.profile?.photo_url}
+              src={data.profile?.photo_url ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(data.profile.photo_url)}` : undefined}
               size="xl"
               className="border-4 border-white shadow-lg"
             />
@@ -429,16 +455,108 @@ export default function AssociateDetailPage() {
           {activeTab === 'certifications' && (
             <div className="space-y-4">
               {data.certifications?.map((cert) => (
-                <div key={cert.id} className="rounded-lg border border-slate-200 p-4">
-                  <p className="font-semibold text-slate-900">{cert.name}</p>
-                  <p className="text-sm text-slate-600">{cert.issuer}</p>
-                  {cert.issue_date && (
-                    <p className="mt-1 text-xs text-slate-400">Diterbitkan {new Date(cert.issue_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}</p>
+                <div key={cert.id} className="rounded-lg border border-slate-200 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-slate-900">{cert.name}</p>
+                    <p className="text-sm text-slate-600">{cert.issuer}</p>
+                    {cert.issue_date && (
+                      <p className="mt-1 text-xs text-slate-400">Diterbitkan {new Date(cert.issue_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}</p>
+                    )}
+                  </div>
+                  {cert.credential_url && (
+                    <div className="mt-2">
+                      {/\.(jpg|jpeg|png|webp)/i.test(cert.credential_url) ? (
+                        <div className="relative group max-w-[200px] rounded-lg overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-50">
+                          <img src={resolveFileUrl(cert.credential_url)} alt={cert.name} className="w-full h-full object-cover" />
+                          <a
+                            href={resolveFileUrl(cert.credential_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            Buka File
+                          </a>
+                        </div>
+                      ) : (
+                        <a
+                          href={resolveFileUrl(cert.credential_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-100 transition-colors"
+                        >
+                          <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className="truncate max-w-[150px] text-[10px]">Lihat Dokumen Sertifikat</span>
+                        </a>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
               {(!data.certifications || data.certifications.length === 0) && (
                 <p className="text-center text-sm text-slate-500">Belum ada sertifikasi.</p>
+              )}
+            </div>
+          )}
+
+          {/* Portfolio Tab */}
+          {activeTab === 'portfolio' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {data.portfolios?.map((port) => {
+                const { cleanDesc, files } = extractAttachments(port.description);
+                return (
+                  <div key={port.id} className="rounded-lg border border-slate-200 p-4 hover:shadow-sm transition-shadow flex flex-col justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-900 truncate" title={port.title}>{port.title}</p>
+                      {cleanDesc && (
+                        <p className="text-xs text-slate-500 mt-1.5 leading-relaxed whitespace-pre-wrap">{cleanDesc}</p>
+                      )}
+                      {files.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Berkas Lampiran</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            {files.map((file, fIdx) => (
+                              <div key={fIdx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-50 flex flex-col justify-between">
+                                {/\.(jpg|jpeg|png|webp)/i.test(file.url) ? (
+                                  <>
+                                    <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                                    <a
+                                      href={file.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
+                                    >
+                                      Buka File
+                                    </a>
+                                  </>
+                                ) : (
+                                  <a
+                                    href={file.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex flex-col items-center justify-center h-full p-3 gap-2 text-center text-[#0B2C6B] hover:bg-slate-100 transition-colors"
+                                  >
+                                    <svg className="h-6 w-6 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span className="truncate max-w-[120px] text-[9px] font-semibold">{file.name}</span>
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {(!data.portfolios || data.portfolios.length === 0) && (
+                <p className="col-span-full text-center text-sm text-slate-500">Belum ada portofolio.</p>
               )}
             </div>
           )}

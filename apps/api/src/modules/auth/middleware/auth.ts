@@ -8,13 +8,21 @@ import type { AppEnv } from '../../../types/env.js';
 // ============================================
 
 export async function authMiddleware(c: Context<AppEnv>, next: Next) {
+  let token = '';
   const authHeader = c.req.header('Authorization');
   
-  if (!authHeader?.startsWith('Bearer ')) {
-    return c.json({ success: false, error: 'Token tidak ditemukan' }, 401);
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.replace('Bearer ', '');
+  } else {
+    const queryToken = c.req.query('token');
+    if (queryToken) {
+      token = queryToken;
+    }
   }
 
-  const token = authHeader.replace('Bearer ', '');
+  if (!token) {
+    return c.json({ success: false, error: 'Token tidak ditemukan' }, 401);
+  }
   
   try {
     const db = getDb();

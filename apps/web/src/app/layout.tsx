@@ -26,7 +26,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "BinaApps AMS - Associate Management System",
-  description: "Satu profil profesional untuk seluruh perjalanan associate Anda. AI CV parsing, assignment matching, dan capability tracking dalam satu platform.",
+  description: "Sistem Kelola profil profesional Associate BinaHub. Platform yang mendukung associate mulai dari pendaftaran, penugasan, dan evaluasi diri.",
   keywords: ["BinaHub", "AMS", "associate", "trainer", "coach", "facilitator", "Indonesia"],
   authors: [{ name: "BinaHub" }],
   icons: {
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "BinaApps AMS - Associate Management System",
-    description: "Satu profil profesional untuk seluruh perjalanan associate Anda.",
+    description: "Sistem Kelola profil profesional Associate BinaHub.",
     type: "website",
     locale: "id_ID",
   },

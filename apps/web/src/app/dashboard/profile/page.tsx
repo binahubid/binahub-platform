@@ -78,7 +78,7 @@ export default function ProfilePage() {
   const getPhotoUrl = (path: string | null | undefined) => {
     if (!path) return undefined;
     if (path.startsWith('http') || path.startsWith('data:')) return path;
-    return `${apiUrl}${path}`;
+    return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
   };
   const [isEditing, setIsEditing] = useState(false);
   const [viewTab, setViewTab] = useState('profile');
@@ -510,7 +510,7 @@ export default function ProfilePage() {
           
           {/* Sidebar Step Navigator */}
           <div className="lg:col-span-1 lg:sticky lg:top-24 space-y-4">
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4 px-1.5">Progress Pengisian</p>
               
               <div className="relative pl-3 space-y-5 border-l border-slate-150">
@@ -600,7 +600,7 @@ export default function ProfilePage() {
               <div>
                 <h2 className="text-base font-bold text-slate-900 mb-1">Sertifikasi & Kredensial</h2>
                 <p className="text-xs text-slate-500 mb-6">Tambahkan sertifikat profesional yang mendukung keahlian Anda</p>
-                <StepCertifications certifications={profileData?.certifications || []} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} />
+                <StepCertifications certifications={profileData?.certifications || []} associateId={profileData?.id || ''} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} showToast={showToastNotification} />
               </div>
             )}
 
@@ -608,7 +608,7 @@ export default function ProfilePage() {
               <div>
                 <h2 className="text-base font-bold text-slate-900 mb-1">Portofolio & Hasil Karya</h2>
                 <p className="text-xs text-slate-500 mb-6">Tambahkan link portofolio hasil karya terbaik Anda</p>
-                <StepPortfolio portfolios={profileData?.portfolios || []} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} />
+                <StepPortfolio portfolios={profileData?.portfolios || []} associateId={profileData?.id || ''} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} showToast={showToastNotification} />
               </div>
             )}
 
@@ -662,8 +662,8 @@ export default function ProfilePage() {
         {/* AI Preview Modal */}
         {showPreviewModal && parsedCVData && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => { setShowPreviewModal(false); setParsedCVData(null); }}>
-            <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl m-4" onClick={(e) => e.stopPropagation()}>
-              <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl">
+            <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-xl bg-white shadow-2xl m-4" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4 rounded-t-xl">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#1440a0]">
                     <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
@@ -782,7 +782,7 @@ export default function ProfilePage() {
         {/* Overwrite Confirmation Modal */}
         {showOverwriteConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 m-4">
+            <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl border border-slate-100 m-4">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600 border border-amber-100 mb-4">
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />

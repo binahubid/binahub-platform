@@ -15,6 +15,8 @@ type Assignment = {
   end_date: string | null;
   needed_roles: string[];
   needed_count: number;
+  mandays?: number;
+  compensation?: string | null;
   created_at: string;
 };
 
@@ -24,17 +26,25 @@ const EMPTY_FORM = {
   description: '',
   start_date: '',
   end_date: '',
-  needed_roles: '',
+  needed_roles: [] as string[],
   needed_count: '0',
+  mandays: '0',
+  compensation: '',
 };
 
 type FormType = typeof EMPTY_FORM;
+
+const ROLE_OPTIONS = [
+  'Trainer', 'Facilitator', 'Coach', 'Mentor', 'Consultant', 'Assessor', 'Speaker', 
+  'Game Master', 'Tour Leader', 'Project Manager', 'EO', 'MC', 
+  'Photographer', 'Videographer', 'Affiliate Marketer', 'AI Consultant'
+];
 
 function FormFields({ form, setForm }: { form: FormType; setForm: (f: FormType) => void }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">Judul *</label>
+        <label className="block text-xs font-medium text-slate-600 mb-1">Nama Proyek *</label>
         <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
       </div>
       <div>
@@ -53,13 +63,39 @@ function FormFields({ form, setForm }: { form: FormType; setForm: (f: FormType) 
         <label className="block text-xs font-medium text-slate-600 mb-1">Tanggal Selesai</label>
         <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
       </div>
+      
+      <div className="sm:col-span-2">
+        <label className="block text-xs font-medium text-slate-600 mb-2">Role yang Dibutuhkan *</label>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 max-h-48 overflow-y-auto p-2 border border-slate-100 rounded-lg bg-slate-50/50">
+          {ROLE_OPTIONS.map((role) => {
+            const isChecked = form.needed_roles.includes(role);
+            return (
+              <label key={role} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...form.needed_roles, role]
+                      : form.needed_roles.filter((r) => r !== role);
+                    setForm({ ...form, needed_roles: next });
+                  }}
+                  className="rounded text-[#0B2C6B] focus:ring-[#0B2C6B]"
+                />
+                {role}
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
       <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">Role yang Dibutuhkan (koma)</label>
-        <input value={form.needed_roles} onChange={(e) => setForm({ ...form, needed_roles: e.target.value })} placeholder="Trainer, Coach, Facilitator" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
+        <label className="block text-xs font-medium text-slate-600 mb-1">Durasi (Mandays) *</label>
+        <input type="number" min="0" value={form.mandays} onChange={(e) => setForm({ ...form, mandays: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
       </div>
       <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">Jumlah Dibutuhkan</label>
-        <input type="number" value={form.needed_count} onChange={(e) => setForm({ ...form, needed_count: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
+        <label className="block text-xs font-medium text-slate-600 mb-1">Kompensasi *</label>
+        <input value={form.compensation} onChange={(e) => setForm({ ...form, compensation: e.target.value })} placeholder="Contoh: Rp 5.000.000 / Proyek" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
       </div>
     </div>
   );
@@ -71,10 +107,10 @@ export default function AdminAssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState<FormType>({ ...EMPTY_FORM, needed_roles: [] });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [editForm, setEditForm] = useState<FormType>({ ...EMPTY_FORM, needed_roles: [] });
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
@@ -97,7 +133,7 @@ export default function AdminAssignmentsPage() {
 
   const handleCreate = async () => {
     if (!form.title || !form.client_name) {
-      toast('warning', 'Judul dan Klien wajib diisi');
+      toast('warning', 'Nama Proyek dan Klien wajib diisi');
       return;
     }
     setSaving(true);
@@ -111,15 +147,17 @@ export default function AdminAssignmentsPage() {
           description: form.description || null,
           start_date: form.start_date || null,
           end_date: form.end_date || null,
-          needed_roles: form.needed_roles ? form.needed_roles.split(',').map((s) => s.trim()).filter(Boolean) : [],
-          needed_count: parseInt(form.needed_count) || 0,
+          needed_roles: form.needed_roles,
+          needed_count: 0,
+          mandays: parseInt(form.mandays) || 0,
+          compensation: form.compensation || null,
         }),
       });
       const d = await resp.json();
       if (d?.success) {
         toast('success', 'Assignment berhasil dibuat');
         setShowForm(false);
-        setForm(EMPTY_FORM);
+        setForm({ ...EMPTY_FORM, needed_roles: [] });
         await fetchAssignments();
       } else {
         toast('error', d?.error || 'Gagal membuat assignment');
@@ -156,7 +194,7 @@ export default function AdminAssignmentsPage() {
       const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}`, { method: 'DELETE', headers });
       const d = await resp.json();
       if (d?.success) {
-        toast('success', 'Assignment dihapus');
+        toast('success', 'Assignment deleted');
         await fetchAssignments();
       } else {
         toast('error', d?.error || 'Gagal menghapus');
@@ -174,8 +212,10 @@ export default function AdminAssignmentsPage() {
       description: a.description || '',
       start_date: a.start_date || '',
       end_date: a.end_date || '',
-      needed_roles: a.needed_roles.join(', '),
+      needed_roles: a.needed_roles || [],
       needed_count: String(a.needed_count),
+      mandays: String(a.mandays || 0),
+      compensation: a.compensation || '',
     });
   };
 
@@ -192,8 +232,10 @@ export default function AdminAssignmentsPage() {
           description: editForm.description || null,
           start_date: editForm.start_date || null,
           end_date: editForm.end_date || null,
-          needed_roles: editForm.needed_roles ? editForm.needed_roles.split(',').map((s) => s.trim()).filter(Boolean) : [],
-          needed_count: parseInt(editForm.needed_count) || 0,
+          needed_roles: editForm.needed_roles,
+          needed_count: 0,
+          mandays: parseInt(editForm.mandays) || 0,
+          compensation: editForm.compensation || null,
         }),
       });
       const d = await resp.json();
@@ -330,7 +372,8 @@ export default function AdminAssignmentsPage() {
                         {a.start_date && <span>Mulai: {new Date(a.start_date).toLocaleDateString('id-ID')}</span>}
                         {a.end_date && <span>Selesai: {new Date(a.end_date).toLocaleDateString('id-ID')}</span>}
                         {a.needed_roles.length > 0 && <span>Role: {a.needed_roles.join(', ')}</span>}
-                        {a.needed_count > 0 && <span>Dibutuhkan: {a.needed_count} orang</span>}
+                        {a.mandays && a.mandays > 0 ? <span>Durasi: {a.mandays} Hari</span> : null}
+                        {a.compensation && <span>Kompensasi: {a.compensation}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">

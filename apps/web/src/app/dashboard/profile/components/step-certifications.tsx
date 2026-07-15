@@ -1,6 +1,4 @@
-'use client';
-
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 type Certification = {
   id: string;
@@ -12,44 +10,151 @@ type Certification = {
 
 type StepCertificationsProps = {
   certifications: Certification[];
+  associateId: string;
   apiUrl: string;
   accessToken: string;
   onRefresh: () => void;
+  showToast: (message: string, type?: 'success' | 'error' | 'warning') => void;
 };
 
-export function StepCertifications({ certifications, apiUrl, accessToken, onRefresh }: StepCertificationsProps) {
+export function StepCertifications({ certifications, associateId, apiUrl, accessToken, onRefresh, showToast }: StepCertificationsProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: '', issuingOrganization: '', credentialId: '', credentialUrl: '' });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Certification>>({});
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !accessToken || !associateId) return;
+
+    // Validate type
+    const allowed = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
+      'application/zip',
+      'application/x-zip-compressed'
+    ];
+    if (!allowed.includes(file.type)) {
+      showToast('Tipe file tidak didukung. Harap unggah PDF, PNG, JPG, Word, Excel, PowerPoint, ZIP, atau Text.', 'error');
+      return;
+    }
+
+    // Validate size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Ukuran file maksimal 5MB.', 'error');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const presignRes = await fetch(`${apiUrl}/api/files/presigned-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          fileName: `certificate-${Date.now()}-${file.name}`,
+          fileType: file.type,
+          fileSize: file.size,
+          ownerId: associateId,
+          ownerType: 'associate',
+          category: 'certificate'
+        }),
+      });
+      const presignData = await presignRes.json();
+      if (!presignData.success) throw new Error(presignData.error || 'Gagal membuat URL unggah');
+
+      // Upload file directly to Supabase storage
+      const uploadRes = await fetch(presignData.data.presignedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file
+      });
+      if (!uploadRes.ok) throw new Error('Gagal mengunggah file ke storage');
+
+      // Register file registry
+      const registerRes = await fetch(`${apiUrl}/api/files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          ownerId: associateId,
+          ownerType: 'associate',
+          category: 'certificate',
+          path: presignData.data.path,
+          originalName: file.name,
+          mime: file.type,
+          size: file.size,
+          visibility: 'private'
+        })
+      });
+      const registerData = await registerRes.json();
+      if (!registerData.success) throw new Error(registerData.error || 'Gagal meregistrasi file');
+
+      // Save the registered download/view path or file registry path
+      const filePath = `/api/files/${registerData.data.id}/view`;
+      if (editingId) {
+        setEditForm((prev) => ({ ...prev, credential_url: filePath }));
+      } else {
+        setForm((prev) => ({ ...prev, credentialUrl: filePath }));
+      }
+      showToast('Sertifikat berhasil diunggah!', 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Gagal mengunggah file sertifikat', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleAdd = async () => {
     if (!form.name || !form.issuingOrganization) return;
     setSaving(true);
     try {
-      await fetch(`${apiUrl}/api/associate/certifications`, {
+      const res = await fetch(`${apiUrl}/api/associate/certifications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name: form.name,
+          issuer: form.issuingOrganization,
+          credentialId: form.credentialId,
+          credentialUrl: form.credentialUrl
+        }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Gagal menyimpan sertifikasi', 'error');
+        return;
+      }
       setForm({ name: '', issuingOrganization: '', credentialId: '', credentialUrl: '' });
       setAdding(false);
       onRefresh();
+      showToast('Sertifikasi berhasil ditambahkan', 'success');
     } catch (e) {
       console.error(e);
+      showToast('Gagal menghubungi server', 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus sertifikasi ini?')) return;
+    if (!confirm('Apakah Anda yakin ingin menghapus data sertifikasi ini? Berkas lampiran di storage juga akan dihapus secara permanen.')) return;
     try {
       await fetch(`${apiUrl}/api/associate/certifications/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      showToast('Sertifikasi berhasil dihapus', 'success');
       onRefresh();
     } catch (e) {
       console.error(e);
@@ -60,20 +165,27 @@ export function StepCertifications({ certifications, apiUrl, accessToken, onRefr
     if (!editingId) return;
     setSaving(true);
     try {
-      await fetch(`${apiUrl}/api/associate/certifications/${editingId}`, {
+      const res = await fetch(`${apiUrl}/api/associate/certifications/${editingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
           name: editForm.name,
-          issuingOrganization: editForm.issuing_organization,
+          issuer: editForm.issuing_organization,
           credentialId: editForm.credential_id,
           credentialUrl: editForm.credential_url,
         }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Gagal memperbarui sertifikasi', 'error');
+        return;
+      }
       setEditingId(null);
       onRefresh();
+      showToast('Sertifikasi berhasil diperbarui', 'success');
     } catch (e) {
       console.error(e);
+      showToast('Gagal menghubungi server', 'error');
     } finally {
       setSaving(false);
     }
@@ -81,6 +193,13 @@ export function StepCertifications({ certifications, apiUrl, accessToken, onRefr
 
   return (
     <div className="space-y-4">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept=".pdf,.png,.jpg,.jpeg"
+        className="hidden"
+      />
       {certifications.length === 0 && !adding ? (
         <div className="rounded-xl border-2 border-dashed border-slate-200 p-8 text-center">
           <svg className="mx-auto h-12 w-12 text-slate-350" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,13 +241,22 @@ export function StepCertifications({ certifications, apiUrl, accessToken, onRefr
                     placeholder="Kredensial ID (Opsional)"
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:outline-none"
                   />
-                  <input
-                    type="text"
-                    value={editForm.credential_url || ''}
-                    onChange={(e) => setEditForm({ ...editForm, credential_url: e.target.value })}
-                    placeholder="Link Kredensial / Sertifikat (Opsional)"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:outline-none"
-                  />
+                  <div className="flex flex-col gap-2">
+                    <label className="block text-xs font-semibold text-slate-500">Berkas Sertifikat (PDF / JPG / PNG)</label>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold bg-white text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                      >
+                        {uploading ? 'Mengunggah...' : 'Pilih Berkas'}
+                      </button>
+                      <span className="text-xs text-slate-500 truncate max-w-xs">
+                        {editForm.credential_url ? 'Sertifikat Terlampir ✓' : 'Belum ada file terlampir'}
+                      </span>
+                    </div>
+                  </div>
                   <div className="flex justify-end gap-2 pt-2">
                     <button
                       onClick={() => setEditingId(null)}
@@ -154,17 +282,36 @@ export function StepCertifications({ certifications, apiUrl, accessToken, onRefr
                       <p className="text-[10px] text-slate-400 mt-1">ID Kredensial: {cert.credential_id}</p>
                     )}
                     {cert.credential_url && (
-                      <a
-                        href={cert.credential_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-[#0B2C6B] hover:underline"
-                      >
-                        Lihat Kredensial
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
+                      <div className="mt-3">
+                        {/\.(jpg|jpeg|png|webp)/i.test(cert.credential_url) ? (
+                          <div className="relative group max-w-xs rounded-lg overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-50">
+                            <img src={cert.credential_url} alt={cert.name} className="w-full h-full object-cover" />
+                            <a
+                              href={cert.credential_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                              Buka File
+                            </a>
+                          </div>
+                        ) : (
+                          <a
+                            href={cert.credential_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-100 transition-colors"
+                          >
+                            <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="truncate max-w-[200px] text-[10px]">Lihat Dokumen Sertifikat</span>
+                          </a>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -227,13 +374,22 @@ export function StepCertifications({ certifications, apiUrl, accessToken, onRefr
             placeholder="Kredensial ID (Opsional)"
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-[#0B2C6B] focus:outline-none"
           />
-          <input
-            type="text"
-            value={form.credentialUrl}
-            onChange={(e) => setForm({ ...form, credentialUrl: e.target.value })}
-            placeholder="Link Kredensial / Sertifikat (Opsional)"
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-[#0B2C6B] focus:outline-none"
-          />
+          <div className="flex flex-col gap-2">
+            <label className="block text-xs font-semibold text-slate-500">Berkas Sertifikat (PDF / JPG / PNG)</label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold bg-white text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                {uploading ? 'Mengunggah...' : 'Pilih Berkas'}
+              </button>
+              <span className="text-xs text-slate-500 truncate max-w-xs">
+                {form.credentialUrl ? 'Sertifikat Terlampir ✓' : 'Belum ada file terlampir'}
+              </span>
+            </div>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
               onClick={() => {

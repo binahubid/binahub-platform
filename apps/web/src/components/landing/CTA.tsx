@@ -18,7 +18,7 @@ export function CTA() {
             </h2>
           </div>
           <p className="max-w-md text-base leading-relaxed text-slate-300">
-            Bergabung dengan ribuan associate yang telah membangun karir mereka di ekosistem BinaHub. Gratis selamanya untuk associate.
+            Bergabung dengan para profesional lain yang telah memulai membangun karir mereka di ekosistem BinaHub.
           </p>
         </div>
 

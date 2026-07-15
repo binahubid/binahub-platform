@@ -16,7 +16,7 @@ export function OnboardingModal() {
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={skipAll} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md rounded-xl bg-white shadow-2xl overflow-hidden">
         {/* Progress bar */}
         <div className="h-1 bg-slate-100">
           <div

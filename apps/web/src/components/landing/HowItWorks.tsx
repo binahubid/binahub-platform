@@ -5,7 +5,7 @@ const steps = [
   { number: '02', title: 'Upload CV', description: 'Unggah CV dalam format PDF atau Word.' },
   { number: '03', title: 'AI Menyusun Profil', description: 'AI mengekstrak pengalaman, keahlian, riwayat karir otomatis.' },
   { number: '04', title: 'Lengkapi Profil', description: 'Tambah portofolio, sertifikasi, dan informasi tambahan.' },
-  { number: '05', title: 'Siap Mendapat Assignment', description: 'Profil Anda aktif dan ditampilkan kepada klien.' },
+  { number: '05', title: 'Siap untuk penugasan', description: 'Profil Anda telah aktif.' },
 ];
 
 export function HowItWorks() {

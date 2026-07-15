@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 type Notification = {
@@ -50,6 +51,7 @@ function markAllNotifsAsRead(ids: string[]) {
 
 export default function NotificationsPage() {
   const { accessToken } = useAuth();
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -95,11 +97,24 @@ export default function NotificationsPage() {
     return notifications;
   }, [notifications, filter, readIds]);
 
-  const handleMarkRead = (id: string) => {
+  const handleMarkRead = async (id: string) => {
     markNotifAsRead(id);
     setReadIds(getReadNotifIds());
+    if (id !== 'welcome-notification' && accessToken) {
+      try {
+        await fetch(`${apiUrl}/api/associate/notifications/${id}/read`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      } catch { /* ignore */ }
+    }
   };
 
+  const handleNotifClick = async (notification: Notification) => {
+    await handleMarkRead(notification.id);
+    const link = getNotificationLink(notification);
+    if (link) router.push(link);
+  };
   const handleMarkAllRead = () => {
     markAllNotifsAsRead(notifications.map((n) => n.id));
     setReadIds(getReadNotifIds());
@@ -201,11 +216,7 @@ export default function NotificationsPage() {
             return (
               <div
                 key={notification.id}
-                onClick={() => {
-                  handleMarkRead(notification.id);
-                  const link = getNotificationLink(notification);
-                  if (link) window.location.href = link;
-                }}
+                onClick={() => handleNotifClick(notification)}
                 className={`flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm transition-all hover:shadow-md cursor-pointer ${
                   isRead ? 'border-slate-200 opacity-60' : 'border-[#0B2C6B]/20 bg-[#0B2C6B]/[0.02]'
                 }`}

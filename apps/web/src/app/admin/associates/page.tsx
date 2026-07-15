@@ -290,16 +290,16 @@ export default function AdminAssociatesPage() {
       {/* Tabs and Search */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Tabs tabs={tabs} activeTab={activeTab} onChange={(t) => { setActiveTab(t); setCurrentPage(1); }} />
-        <form onSubmit={handleSearch} className="flex items-center gap-3">
+        <form onSubmit={handleSearch} className="flex items-center gap-3 w-full sm:w-auto">
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="Cari nama, skill, role..."
-            className="w-full sm:w-64"
+            placeholder="Cari nama, email, peran, atau keahlian..."
+            className="w-full sm:w-80"
           />
           <button
             type="submit"
-            className="flex items-center gap-2 rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0A255A]"
+            className="flex items-center justify-center gap-2 rounded-lg bg-[#0B2C6B] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#0A255A]"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -346,23 +346,40 @@ export default function AdminAssociatesPage() {
                 <tr key={associate.id} className="transition-colors hover:bg-slate-50/60">
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <Avatar name={associate.profile?.full_name || associate.email} src={associate.profile?.photo_url} />
+                      <Avatar name={associate.profile?.full_name || associate.email} src={associate.profile?.photo_url ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(associate.profile.photo_url)}` : undefined} />
                       <div>
                         <p className="text-sm font-medium text-slate-900">{associate.profile?.full_name || '-'}</p>
                         <p className="text-xs text-slate-500">{associate.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <p className="text-sm text-slate-700">{associate.profile?.roles?.join(', ') || '-'}</p>
+                  <td className="px-6 py-4">
+                    {associate.profile?.roles && associate.profile.roles.length > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded-full bg-blue-50 border border-blue-100 px-2.5 py-0.5 text-[10px] font-semibold text-[#0B2C6B] whitespace-nowrap">
+                          {associate.profile.roles[0]}
+                        </span>
+                        {associate.profile.roles.length > 1 && (
+                          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 whitespace-nowrap" title={associate.profile.roles.slice(1).join(', ')}>
+                            +{associate.profile.roles.length - 1}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">-</span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <StatusBadge status={associate.status} />
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     {associate.availability && associate.availability.length > 0 ? (
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${associate.availability[0].status === 'available' ? 'bg-emerald-50 text-emerald-700' : associate.availability[0].status === 'busy' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
-                        {associate.availability[0].status === 'available' ? 'Tersedia' : associate.availability[0].status === 'busy' ? 'Sibuk' : 'Tidak Tersedia'}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        (associate.availability[0].status === 'available' || associate.availability[0].status === 'open') ? 'bg-emerald-50 text-emerald-700' :
+                        (associate.availability[0].status === 'busy' || associate.availability[0].status === 'limited') ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {(associate.availability[0].status === 'available' || associate.availability[0].status === 'open') ? 'Tersedia' :
+                         (associate.availability[0].status === 'busy' || associate.availability[0].status === 'limited') ? 'Sibuk' : 'Tidak Tersedia'}
                       </span>
                     ) : (
                       <span className="text-xs text-slate-400">-</span>

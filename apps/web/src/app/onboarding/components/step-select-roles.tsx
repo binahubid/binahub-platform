@@ -10,15 +10,15 @@ const ROLE_OPTIONS = [
   { value: 'Consultant', icon: <ConsultantIcon /> },
   { value: 'Assessor', icon: <AssessorIcon /> },
   { value: 'Speaker', icon: <SpeakerIcon /> },
-  { value: 'Instructional Designer', icon: <DesignerIcon /> },
-  { value: 'Learning & Development Specialist', icon: <LDIcon /> },
-  { value: 'Organization Development Consultant', icon: <ODIcon /> },
-  { value: 'Leadership Development Specialist', icon: <LeadershipIcon /> },
-  { value: 'Change Management Consultant', icon: <ChangeIcon /> },
-  { value: 'Performance Coach', icon: <PerformanceIcon /> },
-  { value: 'Executive Coach', icon: <ExecutiveIcon /> },
-  { value: 'HR Business Partner', icon: <HRIcon /> },
   { value: 'Game Master', icon: <GameMasterIcon /> },
+  { value: 'Tour Leader', icon: <TrainerIcon /> },
+  { value: 'Project Manager', icon: <FacilitatorIcon /> },
+  { value: 'EO', icon: <CoachIcon /> },
+  { value: 'MC', icon: <SpeakerIcon /> },
+  { value: 'Photographer', icon: <TrainerIcon /> },
+  { value: 'Videographer', icon: <FacilitatorIcon /> },
+  { value: 'Affiliate Marketer', icon: <CoachIcon /> },
+  { value: 'AI Consultant', icon: <ConsultantIcon /> },
 ];
 
 function GameMasterIcon() {
@@ -32,21 +32,17 @@ function GameMasterIcon() {
 
 const EXPERTISE_OPTIONS = [
   { value: 'Leadership Development' },
-  { value: 'Organizational Development' },
-  { value: 'Learning & Development' },
-  { value: 'Change Management' },
-  { value: 'Team Building & Teamwork' },
-  { value: 'Communication & Interpersonal Skills' },
-  { value: 'Soft Skills Training' },
-  { value: 'Corporate Training' },
-  { value: 'Executive Coaching' },
-  { value: 'Human Resource Management' },
-  { value: 'Performance Management' },
-  { value: 'Culture Transformation' },
-  { value: 'Digital Transformation' },
-  { value: 'Design Thinking & Innovation' },
-  { value: 'Conflict Resolution & Mediation' },
-  { value: 'Project Management' },
+  { value: 'Team Development' },
+  { value: 'Learning & Facilitation' },
+  { value: 'Coaching & Mentoring' },
+  { value: 'Assessment & Talent' },
+  { value: 'Organization Development' },
+  { value: 'Performance & Execution' },
+  { value: 'Business Consulting' },
+  { value: 'Learning Design' },
+  { value: 'Measurement & Analytics' },
+  { value: 'AI & Digital Transformation' },
+  { value: 'Spiritual & Character Development' },
 ];
 
 // ─── Inline SVG Icons ─────────────────────────────────────────────────────────
@@ -202,7 +198,7 @@ export function StepSelectRoles({
       <div>
         <div className="mb-3">
           <h3 className="text-sm font-bold text-slate-900">Peran Associate</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Pilih peran utama Anda di BinaHub</p>
+          <p className="text-xs text-slate-500 mt-0.5">Pilih maksimal 7 peran utama yang ingin Anda kontribusikan di BinaHub</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {ROLE_OPTIONS.map(({ value, icon }) => {
@@ -237,7 +233,7 @@ export function StepSelectRoles({
       <div>
         <div className="mb-3">
           <h3 className="text-sm font-bold text-slate-900">Bidang Keahlian Utama</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Topik utama yang menjadi keahlian spesialisasi Anda</p>
+          <p className="text-xs text-slate-500 mt-0.5">Bidang Keahlian Utama (maksimal pilih 5)</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {EXPERTISE_OPTIONS.map(({ value }) => {

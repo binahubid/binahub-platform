@@ -1,6 +1,4 @@
-'use client';
-
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 type Portfolio = {
   id: string;
@@ -11,24 +9,125 @@ type Portfolio = {
 
 type StepPortfolioProps = {
   portfolios: Portfolio[];
+  associateId: string;
   apiUrl: string;
   accessToken: string;
   onRefresh: () => void;
+  showToast: (message: string, type?: 'success' | 'error' | 'warning') => void;
 };
 
-export function StepPortfolio({ portfolios, apiUrl, accessToken, onRefresh }: StepPortfolioProps) {
+export function StepPortfolio({ portfolios, associateId, apiUrl, accessToken, onRefresh, showToast }: StepPortfolioProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', linkUrl: '' });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !accessToken || !associateId) return;
+
+    // Validate type
+    const allowed = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'video/mp4',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
+      'application/zip',
+      'application/x-zip-compressed'
+    ];
+    if (!allowed.includes(file.type)) {
+      showToast('Tipe file tidak didukung. Harap unggah PDF, PNG, JPG, MP4, Word, Excel, PowerPoint, ZIP, atau Text.', 'error');
+      return;
+    }
+
+    // Validate size (50MB max)
+    if (file.size > 50 * 1024 * 1024) {
+      showToast('Ukuran file maksimal 50MB.', 'error');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const presignRes = await fetch(`${apiUrl}/api/files/presigned-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          fileName: `portfolio-${Date.now()}-${file.name}`,
+          fileType: file.type,
+          fileSize: file.size,
+          ownerId: associateId,
+          ownerType: 'associate',
+          category: 'portfolio'
+        }),
+      });
+      const presignData = await presignRes.json();
+      if (!presignData.success) throw new Error(presignData.error || 'Gagal membuat URL unggah');
+
+      // Upload file directly to Supabase storage
+      const uploadRes = await fetch(presignData.data.presignedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file
+      });
+      if (!uploadRes.ok) throw new Error('Gagal mengunggah file ke storage');
+
+      // Register file registry
+      const registerRes = await fetch(`${apiUrl}/api/files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          ownerId: associateId,
+          ownerType: 'associate',
+          category: 'portfolio',
+          path: presignData.data.path,
+          originalName: file.name,
+          mime: file.type,
+          size: file.size,
+          visibility: 'private'
+        })
+      });
+      const registerData = await registerRes.json();
+      if (!registerData.success) throw new Error(registerData.error || 'Gagal meregistrasi file');
+
+      // Append file download/view URL to description
+      const fileUrl = `${apiUrl}/api/files/${registerData.data.id}/view`;
+      setForm((prev) => ({
+        ...prev,
+        description: prev.description 
+          ? `${prev.description}\n\n[File Lampiran: ${file.name}](${fileUrl})` 
+          : `[File Lampiran: ${file.name}](${fileUrl})`
+      }));
+      showToast('Dokumentasi portofolio berhasil diunggah!', 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Gagal mengunggah file portofolio', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleAdd = async () => {
     if (!form.title) return;
     setSaving(true);
     try {
+      // Backend mapping projectUrl & linkUrl
       await fetch(`${apiUrl}/api/associate/portfolios`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          projectUrl: form.linkUrl
+        }),
       });
       setForm({ title: '', description: '', linkUrl: '' });
       setAdding(false);
@@ -41,12 +140,13 @@ export function StepPortfolio({ portfolios, apiUrl, accessToken, onRefresh }: St
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus portofolio ini?')) return;
+    if (!confirm('Apakah Anda yakin ingin menghapus data portofolio ini? Berkas lampiran di storage juga akan dihapus secara permanen.')) return;
     try {
       await fetch(`${apiUrl}/api/associate/portfolios/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      showToast('Portofolio berhasil dihapus', 'success');
       onRefresh();
     } catch (e) {
       console.error(e);
@@ -55,6 +155,13 @@ export function StepPortfolio({ portfolios, apiUrl, accessToken, onRefresh }: St
 
   return (
     <div className="space-y-4">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept=".pdf,.png,.jpg,.jpeg,.webp,.mp4"
+        className="hidden"
+      />
       {portfolios.length === 0 && !adding ? (
         <div className="rounded-xl border-2 border-dashed border-slate-200 p-8 text-center">
           <svg className="mx-auto h-12 w-12 text-slate-350" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,11 +243,27 @@ export function StepPortfolio({ portfolios, apiUrl, accessToken, onRefresh }: St
             rows={3}
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-[#0B2C6B] focus:outline-none resize-none"
           />
+          <div className="flex flex-col gap-2">
+            <label className="block text-xs font-semibold text-slate-500">Unggah Gambar / Dokumen Pendukung (PDF/PNG/JPG/MP4)</label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold bg-white text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                {uploading ? 'Mengunggah...' : 'Pilih Berkas'}
+              </button>
+              <span className="text-xs text-slate-500 truncate max-w-xs">
+                {uploading ? 'Mengunggah file...' : 'Pilih screenshot/testimoni/foto proyek'}
+              </span>
+            </div>
+          </div>
           <input
             type="text"
             value={form.linkUrl}
             onChange={(e) => setForm({ ...form, linkUrl: e.target.value })}
-            placeholder="Tautan / Link Portofolio (misal: GitHub, Behance, Figma)"
+            placeholder="Tautan / Link Portofolio / Link Sosial Media Proyek (misal: GitHub, Behance, LinkedIn Post)"
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-[#0B2C6B] focus:outline-none"
           />
           <div className="flex justify-end gap-2 pt-2">

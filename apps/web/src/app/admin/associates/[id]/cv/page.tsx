@@ -94,7 +94,7 @@ export default function CvPage() {
         <div className="p-8 print:p-6">
           <div className="flex items-start gap-6 border-b-2 border-[#0B2C6B] pb-6">
             {photoUrl ? (
-              <img src={photoUrl} alt={fullName} className="h-24 w-24 rounded-full object-cover flex-shrink-0 print:h-20 print:w-20" />
+              <img src={photoUrl.startsWith('http') || photoUrl.startsWith('data:') ? photoUrl : `${apiUrl}/api/files/view-path?path=${encodeURIComponent(photoUrl)}`} alt={fullName} className="h-24 w-24 rounded-full object-cover flex-shrink-0 print:h-20 print:w-20" />
             ) : (
               <div className="h-24 w-24 rounded-full bg-[#0B2C6B] flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 print:h-20 print:w-20">
                 {fullName.charAt(0).toUpperCase()}
