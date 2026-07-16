@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.4] — 2026-07-16
+
+### Added
+- **Rate Limiter Serverless dengan Shared-State (Postgres-Backed)**:
+  - Mengubah implementasi `rateLimit` di `apps/api/src/middleware/rate-limit.ts` dari in-memory `Map` menjadi database-backed `rate_limits` table lookup.
+  - Hal ini menjamin pembatasan jumlah percobaan login & registrasi yang 100% andal di arsitektur serverless (seperti Vercel) karena state tersimpan secara persisten di database.
+- **Migration SQL Terintegrasi**:
+  - Membuat berkas migrasi resmi `002_import_cv_data_rpc.sql` di `packages/database/migrations/` berisi registrasi RPC `import_cv_data` dan pembuatan tabel `rate_limits` beserta kebijakan keamanannya (RLS) demi ketertiban pelacakan skema DB.
+
+### Changed
+- **Pembersihan Alur Onboarding**:
+  - Menghapus pemanggilan API `POST /api/associate/social-links` selama finalisasi onboarding secara penuh. Karena kolom media sosial tidak dirender atau diminta pada antarmuka onboarding, penghapusan ini mempercepat loading Step Akhir sekaligus melenyapkan log bad request (400) secara tuntas.
+
 ## [0.7.3] — 2026-07-16
 
 ### Fixed

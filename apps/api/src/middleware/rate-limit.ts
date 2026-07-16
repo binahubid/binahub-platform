@@ -1,8 +1,5 @@
 import type { Context, MiddlewareHandler } from 'hono';
-
-type Bucket = { count: number; resetAt: number };
-
-const buckets = new Map<string, Bucket>();
+import { getDb } from '../lib/database.js';
 
 function key(c: Context): string {
   const ip =
@@ -19,38 +16,65 @@ export function rateLimit(opts: {
   const { windowMs, max } = opts;
 
   return async (c, next) => {
-    const now = Date.now();
     const k = key(c);
-    const bucket = buckets.get(k);
+    const db = getDb();
+    const now = new Date();
 
-    if (!bucket || bucket.resetAt <= now) {
-      buckets.set(k, { count: 1, resetAt: now + windowMs });
-      await next();
-      return;
-    }
+    try {
+      // 1. Fetch current rate limit record from Postgres
+      const { data: record, error } = await db
+        .from('rate_limits')
+        .select('*')
+        .eq('key', k)
+        .maybeSingle();
 
-    bucket.count += 1;
-    if (bucket.count > max) {
-      const retryAfter = Math.ceil((bucket.resetAt - now) / 1000);
-      c.header('Retry-After', String(retryAfter));
-      return c.json(
-        {
-          success: false,
-          error: 'Terlalu banyak permintaan. Coba lagi nanti.',
-        },
-        429
-      );
+      if (error) {
+        console.error('Rate limit DB fetch error:', error);
+        // Fallback gracefully on DB failure
+        await next();
+        return;
+      }
+
+      if (!record || new Date(record.reset_at) <= now) {
+        // Upsert new rate limit window bucket
+        const resetAt = new Date(Date.now() + windowMs).toISOString();
+        const { error: upsertError } = await db
+          .from('rate_limits')
+          .upsert({ key: k, count: 1, reset_at: resetAt }, { onConflict: 'key' });
+
+        if (upsertError) {
+          console.error('Rate limit upsert error:', upsertError);
+        }
+        await next();
+        return;
+      }
+
+      // Increment hit count
+      const newCount = record.count + 1;
+      const { error: updateError } = await db
+        .from('rate_limits')
+        .update({ count: newCount })
+        .eq('key', k);
+
+      if (updateError) {
+        console.error('Rate limit update error:', updateError);
+      }
+
+      if (newCount > max) {
+        const retryAfter = Math.ceil((new Date(record.reset_at).getTime() - Date.now()) / 1000);
+        c.header('Retry-After', String(retryAfter));
+        return c.json(
+          {
+            success: false,
+            error: 'Terlalu banyak permintaan. Coba lagi nanti.',
+          },
+          429
+        );
+      }
+    } catch (err) {
+      console.error('Rate limit middleware exception:', err);
     }
 
     await next();
   };
 }
-
-export function cleanupRateLimitBuckets(): void {
-  const now = Date.now();
-  for (const [k, b] of buckets) {
-    if (b.resetAt <= now) buckets.delete(k);
-  }
-}
-
-setInterval(cleanupRateLimitBuckets, 5 * 60 * 1000).unref?.();
