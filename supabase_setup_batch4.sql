@@ -6,97 +6,115 @@
 
 -- 1. MIGRATION 002: IMPORT CV DATA RPC
 CREATE OR REPLACE FUNCTION import_cv_data(
-  p_associate_id UUID,
-  p_full_name TEXT,
-  p_headline TEXT,
-  p_bio TEXT,
-  p_phone TEXT,
-  p_email TEXT,
-  p_skills TEXT[],
-  p_experiences JSONB,
-  p_educations JSONB
-) RETURNS VOID AS $$
-DECLARE
-  v_exp JSONB;
-  v_edu JSONB;
-  v_skill TEXT;
+  p_associate_id uuid,
+  p_profile jsonb,
+  p_experiences jsonb,
+  p_educations jsonb,
+  p_skills jsonb,
+  p_languages jsonb,
+  p_certifications jsonb
+) RETURNS void AS $$
 BEGIN
-  -- Insert/Update profile
-  INSERT INTO associate_profiles (associate_id, full_name, headline, bio, phone, created_at, updated_at)
-  VALUES (p_associate_id, p_full_name, p_headline, p_bio, p_phone, NOW(), NOW())
-  ON CONFLICT (associate_id) DO UPDATE
-  SET full_name = EXCLUDED.full_name,
-      headline = EXCLUDED.headline,
-      bio = EXCLUDED.bio,
-      phone = EXCLUDED.phone,
-      updated_at = NOW();
+  -- 1. Update/Upsert associate_profiles
+  INSERT INTO associate_profiles (
+    associate_id, 
+    full_name, 
+    phone, 
+    city, 
+    headline, 
+    bio, 
+    nationality, 
+    date_of_birth, 
+    gender, 
+    updated_at
+  )
+  VALUES (
+    p_associate_id,
+    COALESCE(p_profile->>'fullName', (SELECT full_name FROM associate_profiles WHERE associate_id = p_associate_id)),
+    COALESCE(p_profile->>'phone', (SELECT phone FROM associate_profiles WHERE associate_id = p_associate_id)),
+    COALESCE(p_profile->>'city', (SELECT city FROM associate_profiles WHERE associate_id = p_associate_id)),
+    COALESCE(p_profile->>'headline', (SELECT headline FROM associate_profiles WHERE associate_id = p_associate_id)),
+    COALESCE(p_profile->>'bio', (SELECT bio FROM associate_profiles WHERE associate_id = p_associate_id)),
+    COALESCE(p_profile->>'nationality', (SELECT nationality FROM associate_profiles WHERE associate_id = p_associate_id)),
+    COALESCE(p_profile->>'dateOfBirth', (SELECT date_of_birth FROM associate_profiles WHERE associate_id = p_associate_id)),
+    COALESCE(p_profile->>'gender', (SELECT gender FROM associate_profiles WHERE associate_id = p_associate_id)),
+    now()
+  )
+  ON CONFLICT (associate_id) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    phone = EXCLUDED.phone,
+    city = EXCLUDED.city,
+    headline = EXCLUDED.headline,
+    bio = EXCLUDED.bio,
+    nationality = EXCLUDED.nationality,
+    date_of_birth = EXCLUDED.date_of_birth,
+    gender = EXCLUDED.gender,
+    updated_at = EXCLUDED.updated_at;
 
-  -- Update email on associates table
-  UPDATE associates SET email = p_email WHERE id = p_associate_id;
-
-  -- Clear existing data for fresh import
-  DELETE FROM associate_skills WHERE associate_id = p_associate_id;
+  -- 2. Clear and Insert experiences
   DELETE FROM associate_experiences WHERE associate_id = p_associate_id;
+  IF p_experiences IS NOT NULL AND jsonb_array_length(p_experiences) > 0 THEN
+    INSERT INTO associate_experiences (associate_id, organization, position, description, start_date, end_date, is_current)
+    SELECT 
+      p_associate_id,
+      (val->>'organization'),
+      (val->>'position'),
+      COALESCE(val->>'description', ''),
+      (val->>'startDate'),
+      (val->>'endDate'),
+      COALESCE((val->>'isCurrent')::boolean, (val->>'endDate') IS NULL)
+    FROM jsonb_array_elements(p_experiences) AS val;
+  END IF;
+
+  -- 3. Clear and Insert educations
   DELETE FROM associate_educations WHERE associate_id = p_associate_id;
-
-  -- Insert skills
-  IF p_skills IS NOT NULL THEN
-    FOREACH v_skill IN ARRAY p_skills LOOP
-      INSERT INTO associate_skills (associate_id, name, created_at)
-      VALUES (p_associate_id, v_skill, NOW());
-    END LOOP;
+  IF p_educations IS NOT NULL AND jsonb_array_length(p_educations) > 0 THEN
+    INSERT INTO associate_educations (associate_id, institution, degree, field_of_study, start_year, end_year)
+    SELECT 
+      p_associate_id,
+      (val->>'institution'),
+      (val->>'degree'),
+      COALESCE(val->>'fieldOfStudy', ''),
+      (val->>'startYear')::integer,
+      (val->>'endYear')::integer
+    FROM jsonb_array_elements(p_educations) AS val;
   END IF;
 
-  -- Insert experiences
-  IF p_experiences IS NOT NULL THEN
-    FOR v_exp IN SELECT * FROM jsonb_array_elements(p_experiences) LOOP
-      INSERT INTO associate_experiences (
-        associate_id,
-        organization,
-        role,
-        start_date,
-        end_date,
-        description,
-        created_at,
-        updated_at
-      ) VALUES (
-        p_associate_id,
-        v_exp->>'organization',
-        v_exp->>'role',
-        v_exp->>'start_date',
-        v_exp->>'end_date',
-        v_exp->>'description',
-        NOW(),
-        NOW()
-      );
-    END LOOP;
+  -- 4. Clear and Insert skills
+  DELETE FROM associate_skills WHERE associate_id = p_associate_id;
+  IF p_skills IS NOT NULL AND jsonb_array_length(p_skills) > 0 THEN
+    INSERT INTO associate_skills (associate_id, skill_name, category, proficiency, years_experience)
+    SELECT 
+      p_associate_id,
+      (val->>'skillName'),
+      COALESCE(val->>'category', 'technical'),
+      COALESCE(val->>'proficiency', 'intermediate'),
+      (val->>'yearsExperience')::integer
+    FROM jsonb_array_elements(p_skills) AS val;
   END IF;
 
-  -- Insert educations
-  IF p_educations IS NOT NULL THEN
-    FOR v_edu IN SELECT * FROM jsonb_array_elements(p_educations) LOOP
-      INSERT INTO associate_educations (
-        associate_id,
-        institution,
-        degree,
-        field_of_study,
-        start_date,
-        end_date,
-        description,
-        created_at,
-        updated_at
-      ) VALUES (
-        p_associate_id,
-        v_edu->>'institution',
-        v_edu->>'degree',
-        v_edu->>'field_of_study',
-        v_edu->>'start_date',
-        v_edu->>'end_date',
-        v_edu->>'description',
-        NOW(),
-        NOW()
-      );
-    END LOOP;
+  -- 5. Clear and Insert languages
+  DELETE FROM associate_languages WHERE associate_id = p_associate_id;
+  IF p_languages IS NOT NULL AND jsonb_array_length(p_languages) > 0 THEN
+    INSERT INTO associate_languages (associate_id, language, proficiency)
+    SELECT 
+      p_associate_id,
+      (val->>'language'),
+      COALESCE(val->>'proficiency', 'conversational')
+    FROM jsonb_array_elements(p_languages) AS val;
+  END IF;
+
+  -- 6. Clear and Insert certifications
+  DELETE FROM associate_certifications WHERE associate_id = p_associate_id;
+  IF p_certifications IS NOT NULL AND jsonb_array_length(p_certifications) > 0 THEN
+    INSERT INTO associate_certifications (associate_id, name, issuer, issue_date, expiry_date)
+    SELECT 
+      p_associate_id,
+      (val->>'name'),
+      (val->>'issuer'),
+      (val->>'issueDate'),
+      (val->>'expiryDate')
+    FROM jsonb_array_elements(p_certifications) AS val;
   END IF;
 END;
 $$ LANGUAGE plpgsql;
