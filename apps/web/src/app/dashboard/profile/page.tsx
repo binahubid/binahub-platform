@@ -300,122 +300,70 @@ export default function ProfilePage() {
     try {
       const parsed = parsedCVData;
 
-      // 1. Clear existing profile lists to avoid duplication
-      if (profileData) {
-        // Clear experiences
-        for (const exp of profileData.experiences || []) {
-          await fetch(`${apiUrl}/api/associate/experiences/${exp.id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }).catch(() => {});
-        }
-        // Clear educations
-        for (const edu of profileData.educations || []) {
-          await fetch(`${apiUrl}/api/associate/educations/${edu.id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }).catch(() => {});
-        }
-        // Clear skills
-        for (const sk of profileData.skills || []) {
-          await fetch(`${apiUrl}/api/associate/skills/${sk.id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }).catch(() => {});
-        }
-        // Clear languages
-        for (const lang of profileData.languages || []) {
-          await fetch(`${apiUrl}/api/associate/languages/${lang.id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }).catch(() => {});
-        }
-      }
+      // Map parsed CV data payload to match backend schema format
+      const payload = {
+        profile: {
+          fullName: parsed.fullName,
+          phone: parsed.phone,
+          city: parsed.location,
+          headline: parsed.headline,
+          bio: parsed.bio,
+          nationality: parsed.nationality,
+          dateOfBirth: parsed.dateOfBirth,
+          gender: parsed.gender
+        },
+        experiences: (parsed.experience || []).map((exp: any) => ({
+          company: exp.company,
+          position: exp.position,
+          description: exp.description || '',
+          startDate: exp.startDate || new Date().toISOString().substring(0, 7),
+          endDate: exp.endDate || null,
+          isCurrent: !exp.endDate
+        })),
+        educations: (parsed.education || []).map((edu: any) => ({
+          institution: edu.institution,
+          degree: edu.degree,
+          fieldOfStudy: edu.fieldOfStudy || '',
+          startYear: edu.startYear || new Date().getFullYear() - 4,
+          endYear: edu.endYear || new Date().getFullYear()
+        })),
+        skills: (parsed.skills || []).map((sk: any) => ({
+          skillName: sk.name,
+          category: sk.category || 'technical',
+          proficiency: sk.proficiency || 'intermediate',
+          yearsExperience: sk.yearsExperience || null
+        })),
+        languages: (parsed.languages || []).map((lang: any) => ({
+          language: lang.language,
+          proficiency: lang.proficiency || 'conversational'
+        })),
+        certifications: (parsed.certifications || []).map((cert: any) => ({
+          name: cert.name,
+          issuer: cert.issuer,
+          issueDate: cert.issueDate || null,
+          expiryDate: cert.expiryDate || null
+        }))
+      };
 
-      // 2. Save new profile data
-      const updatedProfile: Record<string, any> = {};
-      if (parsed.fullName) updatedProfile.fullName = parsed.fullName;
-      if (parsed.phone) updatedProfile.phone = parsed.phone;
-      if (parsed.location) updatedProfile.city = parsed.location;
-      if (parsed.headline) updatedProfile.headline = parsed.headline;
-      if (parsed.bio) updatedProfile.bio = parsed.bio;
+      // Perform a single transactional API request to import everything
+      const res = await fetch(`${apiUrl}/api/associate/import-cv`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify(payload),
+      });
 
-      if (Object.keys(updatedProfile).length > 0) {
-        await fetch(`${apiUrl}/api/associate/profile`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify(updatedProfile),
-        });
-      }
-
-      // 3. Insert new lists
-      if (parsed.experience && Array.isArray(parsed.experience)) {
-        for (const exp of parsed.experience) {
-          await fetch(`${apiUrl}/api/associate/experiences`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({
-              organization: exp.company,
-              position: exp.position,
-              description: exp.description || '',
-              startDate: exp.startDate || new Date().toISOString().substring(0, 7),
-              endDate: exp.endDate || undefined,
-              isCurrent: !exp.endDate
-            }),
-          }).catch(e => console.error('Failed to auto-create experience:', e));
-        }
-      }
-
-      if (parsed.education && Array.isArray(parsed.education)) {
-        for (const edu of parsed.education) {
-          await fetch(`${apiUrl}/api/associate/educations`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({
-              institution: edu.institution,
-              degree: edu.degree,
-              fieldOfStudy: edu.fieldOfStudy || '',
-              startYear: edu.startYear || new Date().getFullYear() - 4,
-              endYear: edu.endYear || new Date().getFullYear(),
-            }),
-          }).catch(e => console.error('Failed to auto-create education:', e));
-        }
-      }
-
-      if (parsed.skills && Array.isArray(parsed.skills)) {
-        for (const sk of parsed.skills) {
-          await fetch(`${apiUrl}/api/associate/skills`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({
-              skillName: sk.name,
-              category: sk.category || 'technical',
-              proficiency: sk.proficiency || 'intermediate',
-              yearsExperience: sk.yearsExperience || undefined,
-            }),
-          }).catch(e => console.error('Failed to auto-create skill:', e));
-        }
-      }
-
-      if (parsed.languages && Array.isArray(parsed.languages)) {
-        for (const lang of parsed.languages) {
-          await fetch(`${apiUrl}/api/associate/languages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({
-              language: lang.language,
-              proficiency: lang.proficiency || 'conversational',
-            }),
-          }).catch(e => console.error('Failed to auto-create language:', e));
-        }
+      const resJson = await res.json();
+      if (!resJson.success) {
+        throw new Error(resJson.error || 'Gagal menyimpan data impor CV');
       }
 
       await fetchProfile();
       setShowPreviewModal(false);
       setParsedCVData(null);
       showToastNotification('Profil berhasil diperbarui dengan data CV yang baru!', 'success');
-    } catch (e) {
-      showToastNotification('Gagal mengimpor data dari CV', 'error');
+    } catch (e: any) {
+      console.error('Import error:', e);
+      showToastNotification(e.message || 'Gagal mengimpor data dari CV', 'error');
     } finally {
       setImporting(false);
     }

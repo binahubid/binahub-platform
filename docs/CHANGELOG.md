@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.1] — 2026-07-16
+
+### Added
+- **Endpoint Konfirmasi Unggah CV Transaksional**:
+  - Menambahkan endpoint `POST /api/files/associate/:id/cv/confirm` di backend Hono untuk melakukan validasi pasca-unggah, pendaftaran dokumen CV ke `associate_documents`, soft-delete data lama di `files`, serta memicu event `CVUploaded` secara aman.
+- **Endpoint Impor Hasil Parsing CV Tunggal**:
+  - Menambahkan REST API endpoint `POST /api/associate/import-cv` di backend Hono untuk memfasilitasi integrasi parsing yang transaksional.
+- **Dukungan Sertifikasi Hasil Parsing AI**:
+  - Memperluas skema Drizzle dan pemetaan parser data AI agar memproses data `certifications` hasil pembacaan CV ke basis data secara otomatis.
+
+### Changed
+- **Impor CV Atomik & Cepat**:
+  - Mengubah logika `executeImport` di frontend `web/dashboard/profile/page.tsx` dari loop sequential REST request yang lambat dan rawan kegagalan parsial menjadi satu panggilan API transaksional `POST /api/associate/import-cv` (rollback otomatis terjamin via database Pl/pgSQL RPC `import_cv_data`).
+- **Validasi Transisi Status Tugas (State Machine)**:
+  - Memperketat validasi status tugas pada endpoint `PATCH /assignments/:id/status` di backend Hono untuk membatasi transisi status tugas (`invited`, `accepted`, `in_progress`, `completed`, `reviewed`, `declined`, `withdrawn`) agar sesuai dengan flowchart bisnis penugasan dan mencegah loncatan status ilegal.
+
+### Security
+- **Proteksi IDOR Pendaftaran Berkas**:
+  - Menambahkan validasi otorisasi di endpoint `POST /api/files` untuk menjamin bahwa `ownerId` berkas harus cocok dengan user yang sedang terautentikasi (`user.id`) atau pengguna adalah `admin`.
+- **Proteksi Berkas Privat**:
+  - Mengetatkan akses pada endpoint pengalihan berkas `GET /api/files/view-path`. Berkas dengan visibilitas `private` (seperti CV/PDF) kini wajib memiliki token otentikasi di query/header dan lolos validasi kepemilikan berkas (owner/admin) sebelum diizinkan mengunduh, sementara berkas `public` (seperti foto avatar) tetap dapat diakses publik.
+
 ## [0.7.0] — 2026-07-15
 
 ### Added

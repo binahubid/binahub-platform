@@ -36,6 +36,8 @@ export const associateProfiles = pgTable("associate_profiles", {
   timezone: text("timezone"),
   nationality: text("nationality"),
   photo_url: text("photo_url"),
+  date_of_birth: text("date_of_birth"),
+  gender: text("gender"),
   roles: jsonb("roles").$type<string[]>().default([]).notNull(),
   expertises: jsonb("expertises").$type<string[]>().default([]).notNull(),
   created_at: timestamp("created_at").defaultNow().notNull(),

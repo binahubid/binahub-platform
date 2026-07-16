@@ -103,24 +103,39 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
       setUploadProgress(40);
 
       // Step 2: Upload to storage
-      await fetch(presignData.data.presignedUrl, {
+      const uploadRes = await fetch(presignData.data.presignedUrl, {
         method: 'PUT',
         headers: { 'Content-Type': file.type },
         body: file,
       });
 
+      if (!uploadRes.ok) {
+        throw new Error('Gagal mengunggah berkas CV ke storage server');
+      }
+
       setUploadProgress(70);
 
-      // Step 3: Trigger CV parsing with AI directly using the registered file ID
+      // Step 3: Confirm upload in backend (deletes old CV and registers document)
+      const confirmRes = await fetch(`${apiUrl}/api/files/associate/${associateId}/cv/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ fileId: presignData.data.fileId }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmData.success) {
+        throw new Error(confirmData.error || 'Gagal mengonfirmasi unggahan CV');
+      }
+
+      // Step 4: Trigger CV parsing with AI directly using the registered file ID
       if (presignData.data?.fileId) {
         onParseCV(presignData.data.fileId);
       }
       
       setUploadProgress(100);
       await onRefresh();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload error:', err);
-      alert('Terjadi kesalahan saat upload');
+      alert(err.message || 'Terjadi kesalahan saat upload');
     } finally {
       setUploading(false);
       setUploadProgress(0);

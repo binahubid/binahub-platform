@@ -92,6 +92,11 @@ fileRoutes.post('/', authMiddleware, async (c) => {
     }, 400);
   }
 
+  // Prevent registration IDOR: Verify caller owns the registration or is admin
+  if (validation.data.ownerId !== user.id && user.role !== 'admin') {
+    return c.json({ success: false, error: 'Tidak memiliki akses untuk mendaftarkan berkas ke pemilik ini' }, 403);
+  }
+
   const db = getDb();
   const { data, error } = await db
     .from('files')
@@ -120,7 +125,7 @@ fileRoutes.post('/', authMiddleware, async (c) => {
 });
 
 // ============================================
-// VIEW FILE BY STORAGE PATH (Public redirect)
+// VIEW FILE BY STORAGE PATH (Public or Auth check)
 // ============================================
 
 fileRoutes.get('/view-path', async (c) => {
@@ -130,6 +135,59 @@ fileRoutes.get('/view-path', async (c) => {
   }
   const db = getDb();
   try {
+    // 1. Fetch file record to check its visibility
+    const { data: file, error: fileError } = await db
+      .from('files')
+      .select('*')
+      .eq('path', path)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (fileError) {
+      return c.text('Gagal memverifikasi akses berkas', 500);
+    }
+
+    // Default to private if file metadata is not found (for safety)
+    const isPrivate = !file || file.visibility === 'private';
+
+    if (isPrivate) {
+      // Authenticate token manually (needed since <img> tag requests do not send Auth headers)
+      let token = '';
+      const authHeader = c.req.header('Authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.replace('Bearer ', '');
+      } else {
+        const queryToken = c.req.query('token');
+        if (queryToken) {
+          token = queryToken;
+        }
+      }
+
+      if (!token) {
+        return c.text('Autentikasi diperlukan untuk melihat dokumen ini', 401);
+      }
+
+      const { data: { user }, error: authError } = await db.auth.getUser(token);
+      if (authError || !user) {
+        return c.text('Token tidak valid', 401);
+      }
+
+      const userRole = (user.app_metadata?.role) || 'associate';
+
+      if (file) {
+        // Enforce ownership checks
+        if (file.owner_id !== user.id && file.uploaded_by !== user.id && userRole !== 'admin') {
+          return c.text('Tidak memiliki akses ke berkas ini', 403);
+        }
+      } else {
+        // If file not registered, default to admin-only
+        if (userRole !== 'admin') {
+          return c.text('Tidak memiliki akses ke berkas ini', 403);
+        }
+      }
+    }
+
+    // 2. Generate signed URL for public file or verified private file
     const { data, error } = await db.storage
       .from('ams-files')
       .createSignedUrl(path, 3600); // 1 hour expiry
@@ -352,7 +410,7 @@ fileRoutes.get('/', authMiddleware, async (c) => {
 // CV-SPECIFIC ENDPOINTS
 // ============================================
 
-// Upload CV (get presigned URL + register)
+// Upload CV (get presigned URL + register pending file)
 fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
   const associateId = c.req.param('id');
   const user = c.get('user') as AuthUser;
@@ -390,21 +448,6 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
 
   try {
     const db = getDb();
-    
-    // Soft-delete old CVs before registering the new one
-    await db
-      .from('files')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('owner_id', associateId)
-      .eq('owner_type', 'associate')
-      .eq('category', 'cv')
-      .is('deleted_at', null);
-
-    await db
-      .from('associate_documents')
-      .delete()
-      .eq('associate_id', associateId)
-      .eq('type', 'cv');
 
     // Create presigned URL
     const { data: presignedData, error: presignedError } = await db.storage
@@ -415,7 +458,7 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
       return c.json({ success: false, error: presignedError.message }, 500);
     }
 
-    // Register file in database
+    // Register pending file in database
     const { data: fileData, error: fileError } = await db
       .from('files')
       .insert({
@@ -438,29 +481,6 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
       return c.json({ success: false, error: fileError.message }, 500);
     }
 
-    // Register CV file in associate_documents to display in UI
-    const { error: docError } = await db
-      .from('associate_documents')
-      .insert({
-        id: fileData.id,
-        associate_id: associateId,
-        type: 'cv',
-        name: fileName,
-        url: path
-      });
-
-    if (docError) {
-      console.error('Failed to register associate document:', docError);
-    }
-
-    // Enqueue CVUploaded event
-    await db.rpc('enqueue_transformation_event', {
-      p_type: 'CVUploaded',
-      p_aggregate_type: 'file',
-      p_aggregate_id: fileData.id,
-      p_payload: { associate_id: associateId, file_id: fileData.id, file_name: fileName }
-    });
-
     return c.json({
       success: true,
       data: {
@@ -473,6 +493,84 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
   } catch (error) {
     console.error('CV upload error:', error);
     return c.json({ success: false, error: 'Gagal mengunggah CV' }, 500);
+  }
+});
+
+// Confirm CV Upload (soft-delete old ones, register to documents, and trigger parsing)
+fileRoutes.post('/associate/:id/cv/confirm', authMiddleware, async (c) => {
+  const associateId = c.req.param('id');
+  const user = c.get('user') as AuthUser;
+  const body = await c.req.json();
+  const { fileId } = body;
+
+  if (!fileId) {
+    return c.json({ success: false, error: 'fileId wajib diisi' }, 400);
+  }
+
+  // Check if user owns this associate profile
+  if (user.id !== associateId && user.role !== 'admin') {
+    return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
+  }
+
+  const db = getDb();
+  try {
+    // 1. Verify that the file exists and is registered to this associate
+    const { data: file, error: fileError } = await db
+      .from('files')
+      .select('*')
+      .eq('id', fileId)
+      .eq('owner_id', associateId)
+      .eq('category', 'cv')
+      .single();
+
+    if (fileError || !file) {
+      return c.json({ success: false, error: 'Berkas CV tidak ditemukan atau tidak valid' }, 404);
+    }
+
+    // 2. Soft-delete old CVs from files
+    await db
+      .from('files')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('owner_id', associateId)
+      .eq('owner_type', 'associate')
+      .eq('category', 'cv')
+      .neq('id', fileId)
+      .is('deleted_at', null);
+
+    // 3. Hard-delete old CVs from associate_documents
+    await db
+      .from('associate_documents')
+      .delete()
+      .eq('associate_id', associateId)
+      .eq('type', 'cv');
+
+    // 4. Register the new CV in associate_documents
+    const { error: docError } = await db
+      .from('associate_documents')
+      .insert({
+        id: file.id,
+        associate_id: associateId,
+        type: 'cv',
+        name: file.original_name,
+        url: file.path
+      });
+
+    if (docError) {
+      console.error('Failed to register associate document:', docError);
+    }
+
+    // 5. Enqueue CVUploaded event
+    await db.rpc('enqueue_transformation_event', {
+      p_type: 'CVUploaded',
+      p_aggregate_type: 'file',
+      p_aggregate_id: file.id,
+      p_payload: { associate_id: associateId, file_id: file.id, file_name: file.original_name }
+    });
+
+    return c.json({ success: true, data: { fileId: file.id } });
+  } catch (error) {
+    console.error('CV confirm error:', error);
+    return c.json({ success: false, error: 'Gagal mengonfirmasi unggahan CV' }, 500);
   }
 });
 

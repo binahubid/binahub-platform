@@ -315,6 +315,37 @@ associateRoutes.post('/', async (c) => {
   return c.json({ success: true, data: associate }, 201);
 });
 
+// Import CV payload and run Pl/pgSQL RPC transactionally
+associateRoutes.post('/import-cv', async (c) => {
+  const user = c.get('user') as AuthUser;
+  const body = await c.req.json();
+  const { profile, experiences, educations, skills, languages, certifications } = body;
+
+  const db = getDb();
+
+  try {
+    const { error } = await db.rpc('import_cv_data', {
+      p_associate_id: user.id,
+      p_profile: profile || {},
+      p_experiences: experiences || [],
+      p_educations: educations || [],
+      p_skills: skills || [],
+      p_languages: languages || [],
+      p_certifications: certifications || []
+    });
+
+    if (error) {
+      console.error('RPC import_cv_data failed:', error);
+      return c.json({ success: false, error: error.message }, 500);
+    }
+
+    return c.json({ success: true, message: 'Data CV berhasil diimpor' });
+  } catch (error) {
+    console.error('Import CV handler exception:', error);
+    return c.json({ success: false, error: 'Gagal memproses impor data CV' }, 500);
+  }
+});
+
 // Update profile
 associateRoutes.put('/profile', async (c) => {
   const user = c.get('user') as AuthUser;
@@ -1546,6 +1577,38 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
   }
 
+  // 1. Fetch current assignee state to validate state machine transition
+  const { data: currentAssignee, error: fetchError } = await db
+    .from('assignment_assignees')
+    .select('status')
+    .eq('assignment_id', assignmentId)
+    .eq('associate_id', associate.id)
+    .maybeSingle();
+
+  if (fetchError || !currentAssignee) {
+    return c.json({ success: false, error: 'Anda tidak terdaftar di assignment ini' }, 404);
+  }
+
+  const currentStatus = currentAssignee.status;
+
+  const transitionMap: Record<string, string[]> = {
+    invited: ['accepted', 'declined'],
+    accepted: ['in_progress', 'withdrawn'],
+    in_progress: ['completed', 'withdrawn'],
+    completed: [], // Completed (Laporan Dikirim) cannot be modified by the associate; awaits admin review
+    reviewed: [], // Reviewed (Disetujui) is a terminal state
+    declined: [], // Declined is a terminal state
+    withdrawn: [], // Withdrawn is a terminal state
+  };
+
+  const allowedNext = transitionMap[currentStatus] || [];
+  if (!allowedNext.includes(status)) {
+    return c.json({ 
+      success: false, 
+      error: `Transisi status tidak valid dari '${currentStatus}' ke '${status}'` 
+    }, 400);
+  }
+
   const updateData: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),
@@ -1569,10 +1632,6 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
 
   if (error) {
     return c.json({ success: false, error: error.message }, 500);
-  }
-
-  if (!data) {
-    return c.json({ success: false, error: 'Anda tidak terdaftar di assignment ini' }, 404);
   }
 
   return c.json({ success: true, data, message: `Status diubah ke ${status}` });

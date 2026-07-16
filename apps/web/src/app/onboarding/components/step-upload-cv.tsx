@@ -135,13 +135,30 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
       setProgress(30);
       setStatusText('Mengunggah CV...');
 
-      await fetch(presignData.data.presignedUrl, {
+      const uploadRes = await fetch(presignData.data.presignedUrl, {
         method: 'PUT',
         headers: { 'Content-Type': file.type },
         body: file,
       });
 
-      setProgress(60);
+      if (!uploadRes.ok) {
+        throw new Error('Gagal mengunggah berkas CV ke storage server');
+      }
+
+      setProgress(50);
+      setStatusText('Mengonfirmasi unggahan...');
+
+      const confirmRes = await fetch(`${apiUrl}/api/files/associate/${associateId}/cv/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ fileId: presignData.data.fileId }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmData.success) {
+        throw new Error(confirmData.error || 'Gagal mengonfirmasi unggahan CV');
+      }
+
+      setProgress(70);
       setState('parsing');
       setStatusText('Sistem sedang membaca dan menganalisis CV...');
 
