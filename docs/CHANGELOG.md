@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.2] — 2026-07-16
+
+### Added
+- **Fitur Tambah & Edit Riwayat Manual di Onboarding**:
+  - Menambahkan formulir inline interaktif di `step-history.tsx` untuk menambah baru dan mengubah (*edit*) riwayat pengalaman kerja serta pendidikan secara manual selama onboarding.
+
+### Changed
+- **Penyimpanan Onboarding Kolektif di Akhir (Deferred Onboarding Save)**:
+  - Mengubah UX onboarding agar melakukan transisi halaman secara instan (hanya di tingkat client) untuk langkah 1, 2, dan 3.
+  - Memindahkan seluruh proses penyimpanan data onboarding ke langkah akhir (Step 4) sehingga data ditulis ke server sekaligus menggunakan transaksi terpadu (menghemat puluhan request API menjadi satu alur loading).
+- **Animasi Loading Premium & Interaktif**:
+  - Mendesain overlay animasi penyimpanan onboarding yang premium dengan glowing pulse aura, spinner modern, indicator bar, serta ulasan teks status real-time ("Menyimpan data diri...", "Menyinkronkan riwayat...", dll).
+- **Perbaikan Garis Koneksi Stepper Onboarding**:
+  - Membatasi garis penghubung vertical oranye pada panel navigasi kiri onboarding agar terkunci dari pusat lingkaran pertama ke pusat lingkaran terakhir saja, mencegah garis meluber ke bawah.
+
+### Fixed
+- **Solusi Foto Profil Crash (Leading Slash Cleanup)**:
+  - Menghilangkan penambahan leading slash (`/`) saat meregistrasikan URL foto profil di `step-review-profile.tsx` untuk menjaga konsistensi dengan database files.
+  - Menambahkan pembersihan otomatis leading slash pada API `GET /api/files/view-path` di backend untuk menjamin kompatibilitas lookup basis data dan resolusi gambar yang bebas crash bagi akun lama maupun baru.
+
 ## [0.7.1] — 2026-07-16
 
 ### Added

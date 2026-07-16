@@ -182,6 +182,7 @@ export default function OnboardingPage() {
 
   // Saving state
   const [saving, setSaving] = useState(false);
+  const [savingPhase, setSavingPhase] = useState<'profile' | 'social' | 'availability' | 'history' | 'done' | null>(null);
   const [error, setError] = useState('');
 
   // ─── Auth Guard ─────────────────────────────────────────────────────────────
@@ -338,197 +339,133 @@ export default function OnboardingPage() {
 
   // ─── Save & Next ─────────────────────────────────────────────────────────────
 
-  const handleNext = async () => {
+  const handleCompleteOnboarding = async () => {
+    setError('');
+    setSaving(true);
+    setSavingPhase('profile');
+
+    try {
+      // 1. Save profile details + roles + expertises in one single API PUT request
+      const profileRes = await fetch(`${apiUrl}/api/associate/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          fullName: draft.full_name,
+          preferredName: draft.preferred_name || undefined,
+          headline: draft.headline,
+          bio: draft.bio,
+          phone: draft.phone,
+          city: draft.city,
+          timezone: draft.timezone || undefined,
+          nationality: draft.nationality,
+          dateOfBirth: draft.date_of_birth || undefined,
+          gender: draft.gender || undefined,
+          photoUrl: draft.photo_url || undefined,
+          roles: selectedRoles,
+          expertises: selectedExpertises,
+        }),
+      });
+
+      const profileJson = await profileRes.json();
+      if (!profileRes.ok || !profileJson.success) {
+        throw new Error(profileJson.error || 'Gagal menyimpan data profil dasar');
+      }
+
+      // 2. Save social links
+      setSavingPhase('social');
+      if (draft.linkedin) {
+        await fetch(`${apiUrl}/api/associate/social-links`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify({ platform: 'linkedin', url: draft.linkedin, isPrimary: true }),
+        }).catch((e) => console.error('Failed to save linkedin:', e));
+      }
+      if (draft.website) {
+        await fetch(`${apiUrl}/api/associate/social-links`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify({ platform: 'website', url: draft.website, isPrimary: false }),
+        }).catch((e) => console.error('Failed to save website:', e));
+      }
+
+      // 3. Save Availability
+      setSavingPhase('availability');
+      const availRes = await fetch(`${apiUrl}/api/associate/availability`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          status: availability.status,
+          travel_ready: availability.travel_ready,
+          max_hours_per_week: availability.max_hours_per_week ? parseInt(availability.max_hours_per_week) : null,
+          notes: availability.notes || '',
+        }),
+      });
+      const availJson = await availRes.json();
+      if (!availRes.ok || !availJson.success) {
+        throw new Error(availJson.error || 'Gagal menyimpan status ketersediaan');
+      }
+
+      // 4. Save history lists transactionally (experiences, educations, skills, languages, certifications)
+      setSavingPhase('history');
+      const payload = {
+        profile: {}, // Empty since profile is already saved in step 1
+        experiences: experiencesList,
+        educations: educationsList,
+        skills: skillsList.map(sk => ({
+          skillName: sk.name,
+          category: sk.category,
+          proficiency: sk.proficiency
+        })),
+        languages: languagesList,
+        certifications: certificationsList
+      };
+
+      const importRes = await fetch(`${apiUrl}/api/associate/import-cv`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify(payload),
+      });
+
+      const importJson = await importRes.json();
+      if (!importRes.ok || !importJson.success) {
+        throw new Error(importJson.error || 'Gagal menyimpan riwayat kompetensi & profesional');
+      }
+
+      setSavingPhase('done');
+      setCurrentStep(5);
+    } catch (e: any) {
+      console.error('Onboarding complete error:', e);
+      setError(e.message || 'Terjadi kesalahan saat menyelesaikan profil');
+    } finally {
+      setSaving(false);
+      setSavingPhase(null);
+    }
+  };
+
+  const handleNext = () => {
     setError('');
 
     if (currentStep === 1) {
-      // Save profile data & photo
       if (!draft.full_name.trim()) {
         setError('Nama lengkap wajib diisi.');
         return;
       }
-      setSaving(true);
-      try {
-        const res = await fetch(`${apiUrl}/api/associate/profile`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({
-            fullName: draft.full_name,
-            preferredName: draft.preferred_name || undefined,
-            headline: draft.headline,
-            bio: draft.bio,
-            phone: draft.phone,
-            city: draft.city,
-            timezone: draft.timezone || undefined,
-            nationality: draft.nationality,
-            dateOfBirth: draft.date_of_birth || undefined,
-            gender: draft.gender || undefined,
-            photoUrl: draft.photo_url || undefined,
-          }),
-        });
-        const json = await res.json();
-        if (!res.ok || !json.success) {
-          setError(json.error || 'Gagal menyimpan profil');
-          return;
-        }
-
-        // Save social links
-        if (draft.linkedin) {
-          await fetch(`${apiUrl}/api/associate/social-links`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({ platform: 'linkedin', url: draft.linkedin, isPrimary: true }),
-          }).catch(() => {});
-        }
-        if (draft.website) {
-          await fetch(`${apiUrl}/api/associate/social-links`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({ platform: 'website', url: draft.website, isPrimary: false }),
-          }).catch(() => {});
-        }
-
-        setCurrentStep(2);
-      } catch {
-        setError('Gagal menghubungi server');
-      } finally {
-        setSaving(false);
-      }
+      setCurrentStep(2);
       return;
     }
 
     if (currentStep === 2) {
-      // Save roles, expertises & verified skills list to avoid redundancy
-      setSaving(true);
-      try {
-        await fetch(`${apiUrl}/api/associate/profile`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({
-            roles: selectedRoles,
-            expertises: selectedExpertises,
-          }),
-        });
-
-        // Save skills list
-        if (skillsList.length > 0) {
-          for (const sk of skillsList) {
-            await fetch(`${apiUrl}/api/associate/skills`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-              body: JSON.stringify({
-                skillName: sk.name,
-                category: sk.category,
-                proficiency: sk.proficiency,
-              }),
-            }).catch(() => {});
-          }
-        }
-
-        setCurrentStep(3);
-      } catch {
-        setError('Gagal menyimpan peran & keahlian');
-      } finally {
-        setSaving(false);
-      }
+      setCurrentStep(3);
       return;
     }
 
     if (currentStep === 3) {
-      // Save Availability
-      setSaving(true);
-      try {
-        await fetch(`${apiUrl}/api/associate/availability`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({
-            status: availability.status,
-            travel_ready: availability.travel_ready,
-            max_hours_per_week: availability.max_hours_per_week ? parseInt(availability.max_hours_per_week) : null,
-            notes: availability.notes || '',
-          }),
-        });
-        setCurrentStep(4);
-      } catch {
-        setError('Gagal menyimpan status ketersediaan');
-      } finally {
-        setSaving(false);
-      }
+      setCurrentStep(4);
       return;
     }
 
     if (currentStep === 4) {
-      // Save history lists: experiences, educations, languages, certifications
-      setSaving(true);
-      try {
-        if (experiencesList.length > 0) {
-          for (const exp of experiencesList) {
-            await fetch(`${apiUrl}/api/associate/experiences`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-              body: JSON.stringify({
-                organization: exp.organization,
-                position: exp.position,
-                industry: exp.industry || undefined,
-                description: exp.description || '',
-                startDate: exp.startDate || new Date().toISOString().substring(0, 7),
-                endDate: exp.endDate || undefined,
-                isCurrent: exp.isCurrent,
-              }),
-            }).catch(() => {});
-          }
-        }
-
-        if (educationsList.length > 0) {
-          for (const edu of educationsList) {
-            await fetch(`${apiUrl}/api/associate/educations`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-              body: JSON.stringify({
-                institution: edu.institution,
-                degree: edu.degree,
-                fieldOfStudy: edu.fieldOfStudy || '',
-                startYear: edu.startYear || undefined,
-                endYear: edu.endYear || undefined,
-              }),
-            }).catch(() => {});
-          }
-        }
-
-        if (languagesList.length > 0) {
-          for (const lang of languagesList) {
-            await fetch(`${apiUrl}/api/associate/languages`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-              body: JSON.stringify({
-                language: lang.language,
-                proficiency: lang.proficiency || 'conversational',
-              }),
-            }).catch(() => {});
-          }
-        }
-
-        if (certificationsList.length > 0) {
-          for (const cert of certificationsList) {
-            await fetch(`${apiUrl}/api/associate/certifications`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-              body: JSON.stringify({
-                name: cert.name,
-                issuer: cert.issuer,
-                issueDate: cert.issueDate || undefined,
-                expiryDate: cert.expiryDate || undefined,
-              }),
-            }).catch(() => {});
-          }
-        }
-
-        setCurrentStep(5);
-      } catch {
-        setError('Gagal menyimpan riwayat profesional');
-      } finally {
-        setSaving(false);
-      }
+      handleCompleteOnboarding();
       return;
     }
 
@@ -565,15 +502,18 @@ export default function OnboardingPage() {
 
         {/* Steps */}
         <nav className="flex-1 relative flex flex-col justify-between max-h-[420px]">
-          {/* Vertical Step Connection Line */}
-          <div className="absolute left-[15px] top-[16px] bottom-[16px] w-[2px] bg-white/20 z-0" />
-          <div
-            className="absolute left-[15px] top-[16px] w-[2px] bg-[#D9A441] z-0 transition-all duration-500"
-            style={{
-              height: `${(currentStep / (STEPS.length - 1)) * 100}%`,
-              maxHeight: '100%'
-            }}
-          />
+          {/* Vertical Step Connection Line Wrapper */}
+          <div className="absolute left-[15px] top-[16px] bottom-[16px] w-[2px] z-0">
+            {/* Background Line */}
+            <div className="absolute inset-0 bg-white/20" />
+            {/* Active Orange Line */}
+            <div
+              className="absolute top-0 left-0 w-full bg-[#D9A441] transition-all duration-500"
+              style={{
+                height: `${(currentStep / (STEPS.length - 1)) * 100}%`
+              }}
+            />
+          </div>
 
           {STEPS.map((step, idx) => {
             const isCompleted = idx < currentStep;
@@ -644,7 +584,49 @@ export default function OnboardingPage() {
         {/* Card content */}
         <div className="flex-1 flex items-start justify-center p-5 sm:p-8 lg:p-12">
           <div className="w-full max-w-xl">
-            <div className="rounded-2xl bg-white shadow-sm border border-slate-200">
+            <div className="relative rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
+              {/* Premium Loading Overlay for Deferred Save */}
+              {saving && (
+                <div className="absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm transition-all duration-300">
+                  <div className="relative mb-6">
+                    {/* Glowing pulse aura */}
+                    <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-[#0B2C6B] to-[#D9A441] opacity-60 blur-md animate-pulse" />
+                    {/* Ring spinner */}
+                    <div className="relative bg-white rounded-full p-4.5 shadow-xl border border-slate-100">
+                      <svg className="h-10 w-10 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-sm font-bold text-slate-800 tracking-wide">Menyelesaikan Profil Anda</h3>
+                  <p className="mt-1.5 text-xs text-slate-500 font-medium min-h-[16px] animate-pulse">
+                    {savingPhase === 'profile' && 'Menyimpan data diri & foto profil...'}
+                    {savingPhase === 'social' && 'Menghubungkan akun profesional...'}
+                    {savingPhase === 'availability' && 'Mengonfigurasi ketersediaan jadwal...'}
+                    {savingPhase === 'history' && 'Menyinkronkan riwayat kerja & kompetensi...'}
+                    {savingPhase === 'done' && 'Hampir selesai...'}
+                    {!savingPhase && 'Sedang mengirim data...'}
+                  </p>
+
+                  {/* Micro Progress Bar */}
+                  <div className="mt-6 w-44 h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-[#0B2C6B] to-[#D9A441] transition-all duration-500 rounded-full"
+                      style={{
+                        width: 
+                          savingPhase === 'profile' ? '20%' :
+                          savingPhase === 'social' ? '40%' :
+                          savingPhase === 'availability' ? '60%' :
+                          savingPhase === 'history' ? '80%' :
+                          savingPhase === 'done' ? '95%' : '10%'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {!isDoneStep && (
                 <div className="px-6 pt-6 pb-5 border-b border-slate-100">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-[#D9A441] mb-1">

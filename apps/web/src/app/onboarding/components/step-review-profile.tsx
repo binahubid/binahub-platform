@@ -246,9 +246,8 @@ export function StepReviewProfile({
         body: file,
       });
 
-      // Save relative path to DB (e.g. "/storage/v1/object/public/ams-files/...")
-      const pathWithPrefix = presignData.data.path.startsWith('/') ? presignData.data.path : `/${presignData.data.path}`;
-      onChange({ photo_url: pathWithPrefix });
+      // Save relative path to DB exactly as registered in files table (without leading slash)
+      onChange({ photo_url: presignData.data.path });
     } catch {
       setPhotoError('Gagal mengunggah foto profil.');
     } finally {

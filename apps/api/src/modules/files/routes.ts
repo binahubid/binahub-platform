@@ -129,10 +129,16 @@ fileRoutes.post('/', authMiddleware, async (c) => {
 // ============================================
 
 fileRoutes.get('/view-path', async (c) => {
-  const path = c.req.query('path');
+  let path = c.req.query('path');
   if (!path) {
     return c.text('Path tidak valid', 400);
   }
+  
+  // Robustness fix: remove leading slash if present to align with database registry path column format
+  if (path.startsWith('/')) {
+    path = path.substring(1);
+  }
+
   const db = getDb();
   try {
     // 1. Fetch file record to check its visibility
