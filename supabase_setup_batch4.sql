@@ -55,7 +55,7 @@ BEGIN
     INSERT INTO associate_experiences (associate_id, organization, position, description, start_date, end_date, is_current)
     SELECT 
       p_associate_id,
-      (val->>'company'),
+      (val->>'organization'),
       (val->>'position'),
       COALESCE(val->>'description', ''),
       (val->>'startDate'),

@@ -371,20 +371,29 @@ export default function OnboardingPage() {
         throw new Error(profileJson.error || 'Gagal menyimpan data profil dasar');
       }
 
-      // 2. Save social links
+      // 2. Save social links (with URL sanitization to ensure protocol matches Zod url schema)
       setSavingPhase('social');
+      const sanitizeUrl = (urlStr: string) => {
+        if (!urlStr) return '';
+        const trimmed = urlStr.trim();
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          return trimmed;
+        }
+        return `https://${trimmed}`;
+      };
+
       if (draft.linkedin) {
         await fetch(`${apiUrl}/api/associate/social-links`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({ platform: 'linkedin', url: draft.linkedin, isPrimary: true }),
+          body: JSON.stringify({ platform: 'linkedin', url: sanitizeUrl(draft.linkedin), isPrimary: true }),
         }).catch((e) => console.error('Failed to save linkedin:', e));
       }
       if (draft.website) {
         await fetch(`${apiUrl}/api/associate/social-links`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({ platform: 'website', url: draft.website, isPrimary: false }),
+          body: JSON.stringify({ platform: 'website', url: sanitizeUrl(draft.website), isPrimary: false }),
         }).catch((e) => console.error('Failed to save website:', e));
       }
 

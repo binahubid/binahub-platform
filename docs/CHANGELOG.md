@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.3] — 2026-07-16
+
+### Fixed
+- **Perbaikan Pemetaan Kunci JSON Pengalaman Kerja (import_cv_data RPC)**:
+  - Mengubah pemetaan nama kunci JSON pada Pl/pgSQL RPC `import_cv_data` dari `company` menjadi `organization` agar selaras dengan skema database dan state frontend, melenyapkan error *not-null constraint violation*.
+- **Pembersihan Otomatis URL Sosial Media Onboarding**:
+  - Menyematkan sanitasi URL otomatis di frontend onboarding yang menjamin setiap masukan LinkedIn/Website memiliki prefiks protokol `https://` guna menghindari kegagalan validasi Zod (status 400) di backend.
+
 ## [0.7.2] — 2026-07-16
 
 ### Added
