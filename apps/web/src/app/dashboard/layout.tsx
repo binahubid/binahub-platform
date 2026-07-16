@@ -44,18 +44,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [notifCount, setNotifCount] = useState(0);
 
-  const ASSOC_NOTIF_READ_KEY = 'assoc_notif_read_ids';
-
-  const getReadCount = useCallback(async (totalCount: number) => {
-    try {
-      const raw = localStorage.getItem(ASSOC_NOTIF_READ_KEY);
-      const readIds: string[] = raw ? JSON.parse(raw) : [];
-      return Math.max(0, totalCount - readIds.length);
-    } catch {
-      return totalCount;
-    }
-  }, []);
-
   const fetchNotifCount = useCallback(async () => {
     if (!accessToken) return;
     try {
@@ -66,12 +54,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         const json = await res.json();
         if (json.success) {
           const total = json.data.count || 0;
-          const unread = await getReadCount(total);
-          setNotifCount(unread);
+          setNotifCount(total);
         }
       }
     } catch { /* ignore */ }
-  }, [accessToken, getReadCount]);
+  }, [accessToken]);
 
   useEffect(() => {
     if (user && user.app_metadata?.role !== 'admin') {

@@ -1512,7 +1512,7 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
 
   const { data: assignment } = await db
     .from('assignments')
-    .select('id, status')
+    .select('id, title, created_by, status')
     .eq('id', assignmentId)
     .single();
 
@@ -1552,6 +1552,26 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
     return c.json({ success: false, error: error.message }, 500);
   }
 
+  // Insert notification for the admin who created the assignment
+  if (assignment.created_by) {
+    const { data: profile } = await db
+      .from('associate_profiles')
+      .select('full_name')
+      .eq('associate_id', associate.id)
+      .single();
+    const assocName = profile?.full_name || 'Seorang Associate';
+
+    await db.from('notifications').insert({
+      recipient_id: assignment.created_by,
+      recipient_role: 'admin',
+      type: 'applied',
+      title: `${assocName} mendaftar ke assignment`,
+      message: `${assocName} mendaftar sendiri ke assignment "${assignment.title}". Klik untuk meninjau pendaftaran.`,
+      link: `/admin/assignments/${assignmentId}`,
+      reference_id: assignmentId,
+    });
+  }
+
   return c.json({ success: true, data, message: 'Berhasil apply ke assignment' }, 201);
 });
 
@@ -1577,10 +1597,10 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
   }
 
-  // 1. Fetch current assignee state to validate state machine transition
+  // 1. Fetch current assignee state to validate state machine transition and get metadata
   const { data: currentAssignee, error: fetchError } = await db
     .from('assignment_assignees')
-    .select('status')
+    .select('status, invited_by')
     .eq('assignment_id', assignmentId)
     .eq('associate_id', associate.id)
     .maybeSingle();
@@ -1634,6 +1654,54 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     return c.json({ success: false, error: error.message }, 500);
   }
 
+  // 2. Fetch assignment info and associate profile to construct notification
+  const { data: assignment } = await db
+    .from('assignments')
+    .select('title, created_by')
+    .eq('id', assignmentId)
+    .single();
+
+  const { data: profile } = await db
+    .from('associate_profiles')
+    .select('full_name')
+    .eq('associate_id', associate.id)
+    .single();
+
+  const assocName = profile?.full_name || 'Seorang Associate';
+  const adminRecipient = currentAssignee.invited_by || (assignment ? (assignment as any).created_by : null);
+
+  // Trigger notification for the responsible admin
+  if (adminRecipient && assignment) {
+    let notifTitle = '';
+    let notifMsg = '';
+
+    if (status === 'accepted') {
+      notifTitle = `${assocName} menerima undangan`;
+      notifMsg = `${assocName} menerima undangan ke assignment "${assignment.title}".`;
+    } else if (status === 'declined') {
+      notifTitle = `${assocName} menolak undangan`;
+      notifMsg = `${assocName} menolak undangan ke assignment "${assignment.title}".`;
+    } else if (status === 'completed') {
+      notifTitle = `Laporan Dikirim: ${assocName}`;
+      notifMsg = `${assocName} telah menyelesaikan pekerjaan dan mengirimkan laporan akhir untuk assignment "${assignment.title}". Silakan tinjau laporan ini.`;
+    } else if (status === 'withdrawn') {
+      notifTitle = `${assocName} mengundurkan diri`;
+      notifMsg = `${assocName} mengundurkan diri dari assignment "${assignment.title}".`;
+    }
+
+    if (notifTitle && notifMsg) {
+      await db.from('notifications').insert({
+        recipient_id: adminRecipient,
+        recipient_role: 'admin',
+        type: status,
+        title: notifTitle,
+        message: notifMsg,
+        link: `/admin/assignments/${assignmentId}`,
+        reference_id: assignmentId,
+      });
+    }
+  }
+
   return c.json({ success: true, data, message: `Status diubah ke ${status}` });
 });
 
@@ -1643,76 +1711,70 @@ associateRoutes.get('/notifications', async (c) => {
   const user = c.get('user') as AuthUser;
   const db = getDb();
 
-  const { data: invitations } = await db
-    .from('assignment_assignees')
-    .select('id, assignment_id, status, role, notes, invited_at, accepted_at, updated_at, notification_read_at')
-    .eq('associate_id', user.id)
-    .order('invited_at', { ascending: false })
+  const { data: dbNotifications, error } = await db
+    .from('notifications')
+    .select('*')
+    .eq('recipient_id', user.id)
+    .eq('recipient_role', 'associate')
+    .order('created_at', { ascending: false })
     .limit(50);
 
-  const notifications = [];
-  for (const inv of (invitations || []) as Array<{ id: string; assignment_id: string; status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null; updated_at: string; notification_read_at: string | null }>) {
-    const { data: assignment } = await db
-      .from('assignments')
-      .select('id, title, client_name, status, needed_roles')
-      .eq('id', inv.assignment_id)
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+
+  const mapped = (dbNotifications || []).map((notif: any) => ({
+    id: notif.id,
+    type: notif.type,
+    title: notif.title,
+    message: notif.message,
+    read: notif.read_at !== null,
+    created_at: notif.created_at,
+    link: notif.link || undefined,
+    reference_id: notif.reference_id || undefined,
+  }));
+
+  // Prepend welcome notification if empty
+  if (mapped.length === 0) {
+    const { data: assoc } = await db
+      .from('associates')
+      .select('created_at, profile:associate_profiles(full_name)')
+      .eq('id', user.id)
       .single();
 
-    if (assignment) {
-      const a = assignment as { id: string; title: string; client_name: string | null; status: string; needed_roles: string[] | null };
-      const title = `Undangan Assignment: ${a.title}`;
-      const message = `Anda diundang untuk bergabung ke assignment "${a.title}"${a.client_name ? ` dari klien ${a.client_name}` : ''}. Klik untuk melihat detail dan merespons undangan.`;
-
-      notifications.push({
-        id: inv.id,
-        type: 'invitation',
-        status: inv.status,
-        title,
-        message,
-        assignment_id: inv.assignment_id,
-        assignment_title: a.title,
-        role: inv.role,
-        invited_at: inv.invited_at,
-        created_at: inv.invited_at,
-        read: inv.notification_read_at !== null,
-        link: `/dashboard/assignments/${inv.assignment_id}`,
+    if (assoc) {
+      const profileObj = Array.isArray(assoc.profile) ? assoc.profile[0] : assoc.profile;
+      const fullName = profileObj?.full_name || 'Associate';
+      mapped.push({
+        id: 'welcome-notification',
+        type: 'system',
+        title: 'Selamat Datang di BinaHub! 👋',
+        message: `Halo ${fullName.split(' ')[0]}, selamat datang! Profil Anda kini aktif dan siap diajukan ke assignment baru.`,
+        created_at: assoc.created_at,
+        read: true,
+        link: undefined,
+        reference_id: undefined,
       });
     }
   }
 
-  // Prepend welcome notification
-  const { data: assoc } = await db
-    .from('associates')
-    .select('created_at, profile:associate_profiles(full_name)')
-    .eq('id', user.id)
-    .single();
-
-  if (assoc) {
-    const profileObj = Array.isArray(assoc.profile) ? assoc.profile[0] : assoc.profile;
-    const fullName = profileObj?.full_name || 'Associate';
-    notifications.push({
-      id: 'welcome-notification',
-      type: 'system',
-      status: 'read',
-      title: 'Selamat Datang di BinaHub! 👋',
-      message: `Halo ${fullName.split(' ')[0]}, selamat datang! Profil Anda kini aktif dan siap diajukan ke assignment baru.`,
-      created_at: assoc.created_at,
-      read: true,
-    });
-  }
-
-  return c.json({ success: true, data: notifications });
+  return c.json({ success: true, data: mapped });
 });
 
 associateRoutes.get('/notifications/count', async (c) => {
   const user = c.get('user') as AuthUser;
   const db = getDb();
 
-  const { count } = await db
-    .from('assignment_assignees')
+  const { count, error } = await db
+    .from('notifications')
     .select('*', { count: 'exact', head: true })
-    .eq('associate_id', user.id)
-    .is('notification_read_at', null);
+    .eq('recipient_id', user.id)
+    .eq('recipient_role', 'associate')
+    .is('read_at', null);
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
 
   return c.json({ success: true, data: { count: count || 0 } });
 });
@@ -1727,11 +1789,12 @@ associateRoutes.post('/notifications/:id/read', async (c) => {
   }
 
   const { data, error } = await db
-    .from('assignment_assignees')
-    .update({ notification_read_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
     .eq('id', id)
-    .eq('associate_id', user.id)
-    .is('notification_read_at', null)
+    .eq('recipient_id', user.id)
+    .eq('recipient_role', 'associate')
+    .is('read_at', null)
     .select();
 
   if (error) {

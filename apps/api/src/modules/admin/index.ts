@@ -21,14 +21,21 @@ admin.get('/stats', async (c) => {
   const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { count: newThisWeek } = await db.from('associates').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo);
 
-  let incompleteProfiles = 0;
-  const { data: profiles } = await db.from('associate_profiles').select('bio, phone, photo_url');
-  if (profiles) {
-    for (const p of profiles) {
-      const pr = p as Record<string, unknown>;
-      if (!pr.bio || !pr.phone || !pr.photo_url) incompleteProfiles++;
-    }
-  }
+  // Optimized query running directly on the database side (instead of fetching all rows to memory)
+  const { count: incompleteCount } = await db
+    .from('associate_profiles')
+    .select('*', { count: 'exact', head: true })
+    .or('bio.is.null,phone.is.null,photo_url.is.null');
+
+  const incompleteProfiles = incompleteCount || 0;
+
+  // Add KPI for reports pending review
+  const { count: pendingReportsCount } = await db
+    .from('assignment_assignees')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'completed');
+
+  const pendingReports = pendingReportsCount || 0;
 
   const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true });
 
@@ -46,6 +53,7 @@ admin.get('/stats', async (c) => {
       incomplete_profiles: incompleteProfiles,
       total_documents: totalDocuments || 0,
       cv_uploaded_today: cvToday || 0,
+      pending_reports: pendingReports,
     },
   });
 });
@@ -612,7 +620,7 @@ admin.post('/assignments/:id/invite', async (c) => {
 
   const { data: assignment } = await db
     .from('assignments')
-    .select('id, status')
+    .select('id, title, status')
     .eq('id', assignmentId)
     .single();
 
@@ -647,6 +655,23 @@ admin.post('/assignments/:id/invite', async (c) => {
 
   if (error) {
     return c.json({ success: false, error: error.message }, 500);
+  }
+
+  const assignmentTitle = assignment?.title || 'Assignment Baru';
+
+  // Insert notifications for each invited associate
+  if (data && Array.isArray(data)) {
+    for (const record of data) {
+      await db.from('notifications').insert({
+        recipient_id: record.associate_id,
+        recipient_role: 'associate',
+        type: 'invitation',
+        title: `Undangan Baru: ${assignmentTitle}`,
+        message: `Anda telah diundang untuk bergabung di assignment "${assignmentTitle}". Silakan periksa detailnya.`,
+        link: `/dashboard/assignments/${assignmentId}`,
+        reference_id: assignmentId,
+      });
+    }
   }
 
   return c.json({ success: true, data, invited: newIds.length }, 201);
@@ -747,6 +772,36 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
 
   if (!data) {
     return c.json({ success: false, error: 'Assignee tidak ditemukan' }, 404);
+  }
+
+  // Insert notification for the associate when assignment is reviewed or status changes
+  const { data: assignment } = await db.from('assignments').select('title').eq('id', assignmentId).single();
+  const assignmentTitle = assignment?.title || 'Assignment';
+  
+  let notifTitle = '';
+  let notifMsg = '';
+  let notifType = '';
+
+  if (status === 'reviewed') {
+    notifTitle = `Laporan Disetujui! 🎉`;
+    notifMsg = `Laporan Anda untuk assignment "${assignmentTitle}" telah disetujui oleh admin.`;
+    notifType = 'reviewed';
+  } else if (evidence_reviewer_notes !== undefined || status === 'in_progress') {
+    notifTitle = `Revisi Diperlukan ⚠️`;
+    notifMsg = `Admin meminta revisi untuk laporan assignment "${assignmentTitle}". Catatan: "${evidence_reviewer_notes || notes || ''}"`;
+    notifType = 'revision_requested';
+  }
+
+  if (notifTitle && notifMsg) {
+    await db.from('notifications').insert({
+      recipient_id: data.associate_id,
+      recipient_role: 'associate',
+      type: notifType,
+      title: notifTitle,
+      message: notifMsg,
+      link: `/dashboard/assignments/${assignmentId}`,
+      reference_id: assignmentId,
+    });
   }
 
   return c.json({ success: true, data });
@@ -1055,179 +1110,69 @@ admin.get('/notifications', async (c) => {
   const user = c.get('user') as { id: string };
   const db = getDb();
 
-  const notifications: Array<{
-    id: string;
-    type: string;
-    title: string;
-    message: string;
-    assignment_id: string;
-    assignment_title: string;
-    associate_id: string;
-    associate_name: string;
-    status: string;
-    created_at: string;
-  }> = [];
+  const { data: dbNotifications, error } = await db
+    .from('notifications')
+    .select('*')
+    .eq('recipient_id', user.id)
+    .eq('recipient_role', 'admin')
+    .order('created_at', { ascending: false })
+    .limit(50);
 
-  // 1. Associates who accepted invitations
-  const { data: acceptedAssignees } = await db
-    .from('assignment_assignees')
-    .select('id, assignment_id, associate_id, status, accepted_at')
-    .eq('invited_by', user.id)
-    .in('status', ['accepted', 'in_progress'])
-    .order('accepted_at', { ascending: false })
-    .limit(20);
-
-  if (acceptedAssignees) {
-    for (const a of acceptedAssignees as Array<{
-      id: string; assignment_id: string; associate_id: string;
-      status: string; accepted_at: string | null;
-    }>) {
-      const { data: assignment } = await db
-        .from('assignments')
-        .select('id, title')
-        .eq('id', a.assignment_id)
-        .single();
-      const { data: profile } = await db
-        .from('associate_profiles')
-        .select('full_name')
-        .eq('associate_id', a.associate_id)
-        .single();
-      if (assignment && profile) {
-        notifications.push({
-          id: `accepted-${a.id}`,
-          type: 'accepted',
-          title: `${profile.full_name} menerima undangan`,
-          message: `${profile.full_name} menerima undangan ke assignment "${(assignment as { title: string }).title}"`,
-          assignment_id: a.assignment_id,
-          assignment_title: (assignment as { title: string }).title,
-          associate_id: a.associate_id,
-          associate_name: profile.full_name,
-          status: a.status,
-          created_at: a.accepted_at || new Date().toISOString(),
-        });
-      }
-    }
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
   }
 
-  // 2. Associates who declined invitations
-  const { data: declinedAssignees } = await db
-    .from('assignment_assignees')
-    .select('id, assignment_id, associate_id, status, updated_at')
-    .eq('invited_by', user.id)
-    .eq('status', 'declined')
-    .order('updated_at', { ascending: false })
-    .limit(20);
+  const mapped = (dbNotifications || []).map((notif: any) => ({
+    id: notif.id,
+    type: notif.type,
+    title: notif.title,
+    message: notif.message,
+    read: notif.read_at !== null,
+    created_at: notif.created_at,
+    link: notif.link || undefined,
+    reference_id: notif.reference_id || undefined,
+  }));
 
-  if (declinedAssignees) {
-    for (const a of declinedAssignees as Array<{
-      id: string; assignment_id: string; associate_id: string;
-      status: string; updated_at: string;
-    }>) {
-      const { data: assignment } = await db
-        .from('assignments')
-        .select('id, title')
-        .eq('id', a.assignment_id)
-        .single();
-      const { data: profile } = await db
-        .from('associate_profiles')
-        .select('full_name')
-        .eq('associate_id', a.associate_id)
-        .single();
-      if (assignment && profile) {
-        notifications.push({
-          id: `declined-${a.id}`,
-          type: 'declined',
-          title: `${profile.full_name} menolak undangan`,
-          message: `${profile.full_name} menolak undangan ke assignment "${(assignment as { title: string }).title}"`,
-          assignment_id: a.assignment_id,
-          assignment_title: (assignment as { title: string }).title,
-          associate_id: a.associate_id,
-          associate_name: profile.full_name,
-          status: a.status,
-          created_at: a.updated_at,
-        });
-      }
-    }
-  }
-
-  // 3. New associate applications (applied status)
-  const { data: appliedAssignees } = await db
-    .from('assignment_assignees')
-    .select('id, assignment_id, associate_id, status, invited_at')
-    .eq('invited_by', user.id)
-    .eq('status', 'applied')
-    .order('invited_at', { ascending: false })
-    .limit(20);
-
-  if (appliedAssignees) {
-    for (const a of appliedAssignees as Array<{
-      id: string; assignment_id: string; associate_id: string;
-      status: string; invited_at: string;
-    }>) {
-      const { data: assignment } = await db
-        .from('assignments')
-        .select('id, title')
-        .eq('id', a.assignment_id)
-        .single();
-      const { data: profile } = await db
-        .from('associate_profiles')
-        .select('full_name')
-        .eq('associate_id', a.associate_id)
-        .single();
-      if (assignment && profile) {
-        notifications.push({
-          id: `applied-${a.id}`,
-          type: 'applied',
-          title: `${profile.full_name} mendaftar ke assignment`,
-          message: `${profile.full_name} mendaftar sendiri ke assignment "${(assignment as { title: string }).title}"`,
-          assignment_id: a.assignment_id,
-          assignment_title: (assignment as { title: string }).title,
-          associate_id: a.associate_id,
-          associate_name: profile.full_name,
-          status: a.status,
-          created_at: a.invited_at,
-        });
-      }
-    }
-  }
-
-  // Sort by created_at descending
-  notifications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-  return c.json({ success: true, data: notifications.slice(0, 50) });
+  return c.json({ success: true, data: mapped });
 });
 
 admin.get('/notifications/count', async (c) => {
   const user = c.get('user') as { id: string };
   const db = getDb();
 
-  const { count: appliedCount } = await db
-    .from('assignment_assignees')
+  const { count, error } = await db
+    .from('notifications')
     .select('*', { count: 'exact', head: true })
-    .eq('invited_by', user.id)
-    .eq('status', 'applied');
+    .eq('recipient_id', user.id)
+    .eq('recipient_role', 'admin')
+    .is('read_at', null);
 
-  const { count: acceptedCount } = await db
-    .from('assignment_assignees')
-    .select('*', { count: 'exact', head: true })
-    .eq('invited_by', user.id)
-    .eq('status', 'accepted');
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
 
-  const { count: declinedCount } = await db
-    .from('assignment_assignees')
-    .select('*', { count: 'exact', head: true })
-    .eq('invited_by', user.id)
-    .eq('status', 'declined');
+  return c.json({ success: true, data: { count: count || 0 } });
+});
 
-  return c.json({
-    success: true,
-    data: {
-      count: (appliedCount || 0) + (acceptedCount || 0) + (declinedCount || 0),
-      applied: appliedCount || 0,
-      accepted: acceptedCount || 0,
-      declined: declinedCount || 0,
-    },
-  });
+admin.post('/notifications/:id/read', async (c) => {
+  const user = c.get('user') as { id: string };
+  const id = c.req.param('id');
+  const db = getDb();
+
+  const { data, error } = await db
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('recipient_id', user.id)
+    .eq('recipient_role', 'admin')
+    .is('read_at', null)
+    .select();
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 400);
+  }
+
+  return c.json({ success: true, data });
 });
 
 // ============================================

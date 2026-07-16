@@ -14,6 +14,7 @@ type Notification = {
   invited_at?: string;
   link?: string;
   assignment_id?: string;
+  read?: boolean;
 };
 
 const typeConfig = {
@@ -25,43 +26,14 @@ const typeConfig = {
   system: { icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', bg: 'bg-slate-100', color: 'text-slate-500' },
 };
 
-const ASSOC_NOTIF_READ_KEY = 'assoc_notif_read_ids';
-
-function getReadNotifIds(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(ASSOC_NOTIF_READ_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function markNotifAsRead(id: string) {
-  const readIds = getReadNotifIds();
-  readIds.add(id);
-  localStorage.setItem(ASSOC_NOTIF_READ_KEY, JSON.stringify([...readIds]));
-}
-
-function markAllNotifsAsRead(ids: string[]) {
-  const readIds = getReadNotifIds();
-  ids.forEach((id) => readIds.add(id));
-  localStorage.setItem(ASSOC_NOTIF_READ_KEY, JSON.stringify([...readIds]));
-}
-
 export default function NotificationsPage() {
   const { accessToken } = useAuth();
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
-  useEffect(() => {
-    setReadIds(getReadNotifIds());
-  }, []);
 
   const fetchNotifications = useCallback(async () => {
     if (!accessToken) return;
@@ -84,29 +56,31 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  useEffect(() => {
-    setReadIds(getReadNotifIds());
+  const unreadCount = useMemo(() => {
+    return notifications.filter((n: any) => !n.read).length;
   }, [notifications]);
 
-  const unreadCount = useMemo(() => {
-    return notifications.filter((n) => !readIds.has(n.id)).length;
-  }, [notifications, readIds]);
-
   const filtered = useMemo(() => {
-    if (filter === 'unread') return notifications.filter((n) => !readIds.has(n.id));
+    if (filter === 'unread') return notifications.filter((n: any) => !n.read);
     return notifications;
-  }, [notifications, filter, readIds]);
+  }, [notifications, filter]);
 
   const handleMarkRead = async (id: string) => {
-    markNotifAsRead(id);
-    setReadIds(getReadNotifIds());
     if (id !== 'welcome-notification' && accessToken) {
       try {
-        await fetch(`${apiUrl}/api/associate/notifications/${id}/read`, {
+        const res = await fetch(`${apiUrl}/api/associate/notifications/${id}/read`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessToken}` },
         });
+        if (res.ok) {
+          // Re-fetch count for header and refresh page notifications
+          fetchNotifications();
+          window.dispatchEvent(new Event('update-notif-count'));
+        }
       } catch { /* ignore */ }
+    } else {
+      // For welcome-notification or system notifications, update UI locally
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     }
   };
 
@@ -115,9 +89,18 @@ export default function NotificationsPage() {
     const link = getNotificationLink(notification);
     if (link) router.push(link);
   };
-  const handleMarkAllRead = () => {
-    markAllNotifsAsRead(notifications.map((n) => n.id));
-    setReadIds(getReadNotifIds());
+
+  const handleMarkAllRead = async () => {
+    if (!accessToken) return;
+    const unreadNotifs = notifications.filter((n: any) => !n.read && n.id !== 'welcome-notification');
+    for (const notif of unreadNotifs) {
+      await fetch(`${apiUrl}/api/associate/notifications/${notif.id}/read`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(() => {});
+    }
+    fetchNotifications();
+    window.dispatchEvent(new Event('update-notif-count'));
   };
 
   const getTimeAgo = (dateStr: string) => {
@@ -212,7 +195,7 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {filtered.map((notification) => {
             const config = typeConfig[notification.type] || typeConfig.system;
-            const isRead = readIds.has(notification.id);
+            const isRead = notification.read || false;
             return (
               <div
                 key={notification.id}

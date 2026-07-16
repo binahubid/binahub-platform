@@ -13,6 +13,7 @@ type Stats = {
   incomplete_profiles: number;
   total_documents: number;
   cv_uploaded_today: number;
+  pending_reports?: number;
 };
 
 type PendingAssociate = {
@@ -43,6 +44,7 @@ export default function AdminDashboard() {
     total: 0, pending_review: 0, active: 0, draft: 0,
     new_this_week: 0, incomplete_profiles: 0,
     total_documents: 0, cv_uploaded_today: 0,
+    pending_reports: 0,
   });
   const [pending, setPending] = useState<PendingAssociate[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -108,7 +110,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <StatBox
           label="Associate Aktif"
           value={stats.active.toLocaleString('id-ID')}
@@ -124,6 +126,14 @@ export default function AdminDashboard() {
           icon="clock"
           iconBg="bg-amber-100"
           iconColor="text-amber-600"
+        />
+        <StatBox
+          label="Laporan Baru"
+          value={(stats.pending_reports || 0).toLocaleString('id-ID')}
+          sub="Tugas perlu review"
+          icon="document"
+          iconBg="bg-indigo-50"
+          iconColor="text-indigo-600"
         />
         <StatBox
           label="Profile Lengkap"

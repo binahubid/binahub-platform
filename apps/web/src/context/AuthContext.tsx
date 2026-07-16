@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { type SupabaseClient, type User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase-client";
 
 type AuthContextType = {
   user: User | null;
@@ -10,11 +11,6 @@ type AuthContextType = {
   supabase: SupabaseClient;
   signOut: () => Promise<void>;
 };
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

@@ -298,7 +298,7 @@ export default function AssignmentDetailPage() {
                 </span>
                 {myStatus && !isDeclined && (
                   <span className="inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-400/20 text-amber-200 ring-1 ring-amber-400/30">
-                    {myStatus === 'invited' ? 'Diundang' : myStatus === 'accepted' ? 'Diterima' : myStatus === 'in_progress' ? 'Berjalan' : myStatus === 'completed' ? 'Laporan Dikirim' : myStatus}
+                    {myStatus === 'invited' ? 'Diundang' : myStatus === 'accepted' ? 'Diterima' : myStatus === 'in_progress' ? 'Berjalan' : myStatus === 'completed' ? 'Laporan Dikirim' : myStatus === 'reviewed' ? 'Disetujui' : myStatus}
                   </span>
                 )}
               </div>
@@ -554,6 +554,31 @@ export default function AssignmentDetailPage() {
               <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-4 flex items-center gap-3">
                 <svg className="h-5 w-5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <p className="text-sm text-indigo-700">Admin sedang memeriksa laporan Anda. Anda akan menerima notifikasi setelah review selesai.</p>
+              </div>
+            </div>
+          )}
+
+          {myStatus === 'reviewed' && (
+            <div className="p-6 space-y-5">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center shadow-md animate-pulse">
+                  <svg className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Pekerjaan Selesai & Disetujui! ✅</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">Admin telah meninjau dan menyetujui laporan akhir Anda. Terima kasih atas kontribusi Anda!</p>
+                  {my.evidence_reviewed_at && <p className="text-xs text-slate-400 mt-1">Disetujui: {new Date(my.evidence_reviewed_at).toLocaleString('id-ID')}</p>}
+                </div>
+              </div>
+              {my.evidence_reviewer_notes && (
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Catatan Penilai (Admin)</p>
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{my.evidence_reviewer_notes}</p>
+                </div>
+              )}
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 flex items-center gap-3">
+                <svg className="h-5 w-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                <p className="text-sm text-emerald-800 font-semibold">Tugas diselesaikan dengan sukses. Nilai performa Anda telah terhitung.</p>
               </div>
             </div>
           )}
