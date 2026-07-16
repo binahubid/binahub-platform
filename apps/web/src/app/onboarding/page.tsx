@@ -382,14 +382,25 @@ export default function OnboardingPage() {
         return `https://${trimmed}`;
       };
 
-      if (draft.linkedin) {
+      const isValidUrl = (urlStr: string) => {
+        if (!urlStr) return false;
+        const trimmed = urlStr.trim().toLowerCase();
+        if (['null', 'n/a', 'none', '-', 'tidak ada', 'tidak dicantumkan'].includes(trimmed)) {
+          return false;
+        }
+        // Basic URL regex ensuring TLD format matches
+        const urlRegex = /^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-./?%&=]*)?$/i;
+        return urlRegex.test(trimmed);
+      };
+
+      if (draft.linkedin && isValidUrl(draft.linkedin)) {
         await fetch(`${apiUrl}/api/associate/social-links`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
           body: JSON.stringify({ platform: 'linkedin', url: sanitizeUrl(draft.linkedin), isPrimary: true }),
         }).catch((e) => console.error('Failed to save linkedin:', e));
       }
-      if (draft.website) {
+      if (draft.website && isValidUrl(draft.website)) {
         await fetch(`${apiUrl}/api/associate/social-links`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
