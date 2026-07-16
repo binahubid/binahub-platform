@@ -6,28 +6,31 @@ import Link from 'next/link';
 
 type AdminNotification = {
   id: string;
-  type: 'accepted' | 'declined' | 'applied';
+  type: string;
   title: string;
   message: string;
-  assignment_id: string;
-  assignment_title: string;
-  associate_id: string;
-  associate_name: string;
-  status: string;
+  read: boolean;
   created_at: string;
+  link?: string;
+  reference_id?: string;
 };
 
-const typeConfig = {
+const typeConfig: Record<string, { label: string; bg: string; color: string; icon: string }> = {
   accepted: { label: 'Diterima', bg: 'bg-emerald-50', color: 'text-emerald-700', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
   declined: { label: 'Ditolak', bg: 'bg-red-50', color: 'text-red-700', icon: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z' },
   applied: { label: 'Mendaftar', bg: 'bg-blue-50', color: 'text-blue-700', icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z' },
+  completed: { label: 'Laporan', bg: 'bg-indigo-50', color: 'text-indigo-700', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  withdrawn: { label: 'Mundur', bg: 'bg-amber-50', color: 'text-amber-700', icon: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z' },
+  reviewed: { label: 'Direview', bg: 'bg-emerald-50', color: 'text-emerald-700', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+  revision_requested: { label: 'Revisi', bg: 'bg-yellow-50', color: 'text-yellow-700', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
+  invitation: { label: 'Undangan', bg: 'bg-purple-50', color: 'text-purple-700', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
 };
 
 export default function AdminNotificationsPage() {
   const { accessToken } = useAuth();
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'accepted' | 'declined' | 'applied'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -52,12 +55,24 @@ export default function AdminNotificationsPage() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  const filtered = filter === 'all' ? notifications : notifications.filter((n) => n.type === filter);
+  const filtered = filter === 'all' ? notifications : notifications.filter((n) => !n.read);
   const counts = {
     all: notifications.length,
-    accepted: notifications.filter((n) => n.type === 'accepted').length,
-    declined: notifications.filter((n) => n.type === 'declined').length,
-    applied: notifications.filter((n) => n.type === 'applied').length,
+    unread: notifications.filter((n) => !n.read).length,
+  };
+
+  const handleMarkRead = async (id: string) => {
+    if (accessToken) {
+      try {
+        const res = await fetch(`${apiUrl}/api/admin/notifications/${id}/read`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (res.ok) {
+          fetchNotifications();
+        }
+      } catch { /* ignore */ }
+    }
   };
 
   const getTimeAgo = (dateStr: string) => {
@@ -88,27 +103,53 @@ export default function AdminNotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Notifikasi</h1>
-        <p className="mt-1 text-sm text-slate-500">Respon associate terhadap undangan assignment</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Notifikasi</h1>
+          <p className="mt-1 text-sm text-slate-500">Daftar semua notifikasi talent operations BinaHub</p>
+        </div>
+        {counts.unread > 0 && (
+          <button
+            onClick={async () => {
+              if (!accessToken) return;
+              const unreadNotifs = notifications.filter((n) => !n.read);
+              for (const n of unreadNotifs) {
+                await fetch(`${apiUrl}/api/admin/notifications/${n.id}/read`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                }).catch(() => {});
+              }
+              fetchNotifications();
+            }}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            Tandai semua dibaca
+          </button>
+        )}
       </div>
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap gap-2">
-        {(['all', 'applied', 'accepted', 'declined'] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              filter === f
-                ? 'bg-[#0B2C6B] text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            {f === 'all' ? 'Semua' : f === 'applied' ? 'Mendaftar' : f === 'accepted' ? 'Diterima' : 'Ditolak'}
-            {' '}({counts[f]})
-          </button>
-        ))}
+        <button
+          onClick={() => setFilter('all')}
+          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            filter === 'all'
+              ? 'bg-[#0B2C6B] text-white'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          Semua ({counts.all})
+        </button>
+        <button
+          onClick={() => setFilter('unread')}
+          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            filter === 'unread'
+              ? 'bg-[#0B2C6B] text-white'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          Belum Dibaca ({counts.unread})
+        </button>
       </div>
 
       {/* Notification List */}
@@ -120,18 +161,22 @@ export default function AdminNotificationsPage() {
             </svg>
             <h2 className="mt-4 text-lg font-semibold text-slate-900">Belum Ada Notifikasi</h2>
             <p className="mt-2 text-sm text-slate-500 text-center max-w-sm">
-              Notifikasi akan muncul ketika associate menerima, menolak, atau mendaftar ke assignment.
+              Notifikasi baru akan muncul di sini.
             </p>
           </div>
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map((notification) => {
-            const config = typeConfig[notification.type];
+            const config = typeConfig[notification.type] || { label: 'Notifikasi', bg: 'bg-slate-50', color: 'text-slate-700', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' };
+            const targetLink = notification.link || (notification.reference_id ? `/admin/assignments/${notification.reference_id}` : '#');
             return (
               <div
                 key={notification.id}
-                className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md"
+                onClick={() => handleMarkRead(notification.id)}
+                className={`flex items-start gap-4 rounded-xl border border-slate-200 p-4 shadow-sm transition-all hover:shadow-md ${
+                  notification.read ? 'bg-white opacity-60' : 'bg-blue-50/20 border-blue-100'
+                }`}
               >
                 <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${config.bg}`}>
                   <svg className={`h-5 w-5 ${config.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,22 +189,19 @@ export default function AdminNotificationsPage() {
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${config.bg} ${config.color}`}>
                       {config.label}
                     </span>
+                    {!notification.read && <div className="h-1.5 w-1.5 rounded-full bg-[#0B2C6B]" />}
                   </div>
                   <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{notification.message}</p>
                   <div className="mt-2 flex items-center gap-3">
                     <span className="text-[11px] text-slate-400">{getTimeAgo(notification.created_at)}</span>
-                    <Link
-                      href={`/admin/assignments/${notification.assignment_id}`}
-                      className="text-[11px] font-medium text-[#0B2C6B] hover:underline"
-                    >
-                      Lihat Assignment →
-                    </Link>
-                    <Link
-                      href={`/admin/associates/${notification.associate_id}`}
-                      className="text-[11px] font-medium text-slate-500 hover:underline"
-                    >
-                      Lihat Profil
-                    </Link>
+                    {targetLink !== '#' && (
+                      <Link
+                        href={targetLink}
+                        className="text-[11px] font-medium text-[#0B2C6B] hover:underline"
+                      >
+                        Buka Tautan →
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

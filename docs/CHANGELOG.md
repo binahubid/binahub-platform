@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.6] — 2026-07-16
+
+### Added
+- **Log Aktivitas Lapangan & Progres Mandiri**:
+  - Menambahkan endpoint `POST /api/associate/assignments/:id/progress-log` dan `GET /assignments/:id/progress-logs` untuk menyimpan catatan harian dan foto kegiatan secara berkelanjutan tanpa mengubah status tugas ke selesai.
+  - Menambahkan endpoint admin `GET /assignments/:id/assignees/:aid/progress-logs` untuk memantau aktivitas harian associate.
+  - Merancang UI timeline progres harian pada halaman detail penugasan associate dan konsol panel admin.
+
+### Fixed
+- **Resolusi Crash Notifikasi Baru**:
+  - Menambahkan pemetaan jenis notifikasi baru (`completed`, `reviewed`, `revision_requested`, `withdrawn`, `invitation`) pada halaman notifikasi admin dan layout dropdown notifikasi untuk mencegah crash UI.
+  - Mengamankan pemanggilan `notifTypeConfig` dengan fallback default jika tipe tidak dikenali.
+  - Memperbaiki penanganan status notifikasi dibaca agar tersinkronisasi langsung dengan backend database.
+- **Resolusi Token File Akses & Avatar**:
+  - Mengubah fungsi `uploadFile` agar URL download menyertakan token otentikasi.
+  - Menyematkan pembungkus URL dinamis `getFileUrlWithToken` untuk menginjeksi token aktif pada rendering file dan foto pendukung.
+
+## [0.7.5] — 2026-07-16
+
+### Added
+- **Sistem Notifikasi Terpusat**:
+  - Membuat tabel `notifications` sentral di database untuk menyimpan data notifikasi associate dan admin.
+  - Mengimplementasikan endpoint notifikasi API yang andal, serta sinkronisasi badge notifikasi real-time di layout dashboard tanpa ketergantungan localStorage.
+
 ## [0.7.4] — 2026-07-16
 
 ### Added

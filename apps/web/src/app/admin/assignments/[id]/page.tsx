@@ -5,6 +5,24 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../components/ui';
+
+const getFileUrlWithToken = (urlStr: string | null | undefined, token: string | null) => {
+  if (!urlStr) return '';
+  if (!token) return urlStr;
+  try {
+    const url = new URL(urlStr);
+    url.searchParams.set('token', token);
+    return url.toString();
+  } catch {
+    if (urlStr.includes('?')) {
+      if (urlStr.includes('token=')) {
+        return urlStr.replace(/token=[^&]+/, `token=${token}`);
+      }
+      return `${urlStr}&token=${token}`;
+    }
+    return `${urlStr}?token=${token}`;
+  }
+};
 type Assignment = {
   id: string;
   title: string;
@@ -125,9 +143,34 @@ export default function AssignmentDetailPage() {
   const [recommendations, setRecommendations] = useState<Array<{ associate_id: string; score: number; reasoning: string }>>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
 
+  const [assigneeProgressLogs, setAssigneeProgressLogs] = useState<Record<string, any[]>>({});
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
   const getHeaders = useCallback(() => ({ Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }), [accessToken]);
+
+  const fetchProgressLogsForAssociate = useCallback(async (associateId: string) => {
+    if (!accessToken) return;
+    try {
+      const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}/assignees/${associateId}/progress-logs`, { headers: getHeaders() });
+      const data = await resp.json();
+      if (data.success) {
+        setAssigneeProgressLogs(prev => ({ ...prev, [associateId]: data.data || [] }));
+      }
+    } catch (e) {
+      console.error('Failed to fetch progress logs:', e);
+    }
+  }, [apiUrl, id, accessToken, getHeaders]);
+
+  useEffect(() => {
+    if (assignees.length > 0 && accessToken) {
+      assignees.forEach((a) => {
+        if (a.status === 'in_progress' || a.status === 'completed' || a.status === 'reviewed') {
+          fetchProgressLogsForAssociate(a.associate_id);
+        }
+      });
+    }
+  }, [assignees, accessToken, fetchProgressLogsForAssociate]);
 
   const fetchRecommendations = useCallback(async () => {
     if (!accessToken) return;
@@ -642,9 +685,8 @@ export default function AssignmentDetailPage() {
                       </div>
                     </div>
                   </div>
-
                   {/* Submission Evidence Panel */}
-                  {(a.evidence_submitted_at || photos.length > 0 || report || a.evidence_url) && (
+                  {(a.evidence_submitted_at || photos.length > 0 || report || a.evidence_url || (assigneeProgressLogs[a.associate_id] && assigneeProgressLogs[a.associate_id].length > 0)) && (
                     <div className="ml-0 sm:ml-13 rounded-xl border border-slate-200 bg-slate-50/50 p-5 space-y-4 shadow-inner">
                       <div className="flex items-center justify-between border-b border-slate-100 pb-2 flex-wrap gap-2">
                         <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
@@ -656,14 +698,47 @@ export default function AssignmentDetailPage() {
                         )}
                       </div>
 
+                      {/* Progress Logs Timeline for Admin */}
+                      {assigneeProgressLogs[a.associate_id] && assigneeProgressLogs[a.associate_id].length > 0 && (
+                        <div className="space-y-3 pb-2 border-b border-slate-100">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Log Aktivitas & Progres Lapangan ({assigneeProgressLogs[a.associate_id].length})</p>
+                          <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                            {assigneeProgressLogs[a.associate_id].map((log: any) => (
+                              <div key={log.id} className="rounded-lg bg-white border border-slate-200 p-3 text-xs space-y-1.5 shadow-sm">
+                                <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold">
+                                  <span>Log Kegiatan</span>
+                                  <span>{new Date(log.created_at).toLocaleString('id-ID')}</span>
+                                </div>
+                                <p className="text-slate-700 whitespace-pre-wrap">{log.notes}</p>
+                                {log.photo_urls && Array.isArray(log.photo_urls) && log.photo_urls.length > 0 && (
+                                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-1 pt-1">
+                                    {log.photo_urls.map((photoUrl: string, pIdx: number) => (
+                                      <a 
+                                        key={pIdx} 
+                                        href={getFileUrlWithToken(photoUrl, accessToken)} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="relative rounded overflow-hidden border border-slate-200 aspect-square bg-slate-50 block hover:opacity-85 transition"
+                                      >
+                                        <img src={getFileUrlWithToken(photoUrl, accessToken)} alt="Progres" className="w-full h-full object-cover" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Photos Documentation */}
                       <div className="space-y-1.5">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Foto Dokumentasi Kegiatan (Saat Kerja)</p>
                         {photos.length > 0 ? (
                           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
                             {photos.map((pUrl, pIdx) => (
-                              <a key={pIdx} href={pUrl} target="_blank" rel="noopener noreferrer" className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 hover:opacity-90 transition shadow-sm">
-                                <img src={pUrl} alt="" className="w-full h-full object-cover" />
+                              <a key={pIdx} href={getFileUrlWithToken(pUrl, accessToken)} target="_blank" rel="noopener noreferrer" className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 hover:opacity-90 transition shadow-sm">
+                                <img src={getFileUrlWithToken(pUrl, accessToken)} alt="" className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                   <span className="text-white text-[10px] font-bold">Buka Foto ↗</span>
                                 </div>
@@ -691,7 +766,7 @@ export default function AssignmentDetailPage() {
                       {a.evidence_url && (
                         <div className="pt-2">
                           <a
-                            href={a.evidence_url}
+                            href={getFileUrlWithToken(a.evidence_url, accessToken)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors"

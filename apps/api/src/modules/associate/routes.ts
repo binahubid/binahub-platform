@@ -1561,7 +1561,7 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
       .single();
     const assocName = profile?.full_name || 'Seorang Associate';
 
-    await db.from('notifications').insert({
+    const { error: notifError } = await db.from('notifications').insert({
       recipient_id: assignment.created_by,
       recipient_role: 'admin',
       type: 'applied',
@@ -1570,6 +1570,9 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
       link: `/admin/assignments/${assignmentId}`,
       reference_id: assignmentId,
     });
+    if (notifError) {
+      console.error('Failed to create admin notification for assignment apply:', notifError);
+    }
   }
 
   return c.json({ success: true, data, message: 'Berhasil apply ke assignment' }, 201);
@@ -1690,7 +1693,7 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     }
 
     if (notifTitle && notifMsg) {
-      await db.from('notifications').insert({
+      const { error: notifError } = await db.from('notifications').insert({
         recipient_id: adminRecipient,
         recipient_role: 'admin',
         type: status,
@@ -1699,6 +1702,9 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
         link: `/admin/assignments/${assignmentId}`,
         reference_id: assignmentId,
       });
+      if (notifError) {
+        console.error('Failed to create admin notification for assignment status change:', notifError);
+      }
     }
   }
 
@@ -2062,4 +2068,96 @@ associateRoutes.post('/:id/reactivate', async (c) => {
   }
 
   return c.json({ success: true, data, message: 'Associate berhasil diaktifkan kembali' });
+});
+
+// ============================================
+// ASSIGNMENT PROGRESS LOGS
+// ============================================
+
+associateRoutes.post('/assignments/:id/progress-log', async (c) => {
+  const user = c.get('user') as AuthUser;
+  const assignmentId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { notes, photo_urls } = body;
+  const db = getDb();
+
+  if (!notes || typeof notes !== 'string' || !notes.trim()) {
+    return c.json({ success: false, error: 'Catatan progres wajib diisi' }, 400);
+  }
+
+  // 1. Fetch associate ID
+  const { data: associate } = await db
+    .from('associates')
+    .select('id')
+    .eq('id', user.id)
+    .single();
+
+  if (!associate) {
+    return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
+  }
+
+  // 2. Verify assignee status is in_progress
+  const { data: assignee, error: checkError } = await db
+    .from('assignment_assignees')
+    .select('status')
+    .eq('assignment_id', assignmentId)
+    .eq('associate_id', associate.id)
+    .maybeSingle();
+
+  if (checkError || !assignee) {
+    return c.json({ success: false, error: 'Anda tidak terdaftar di assignment ini' }, 404);
+  }
+
+  if (assignee.status !== 'in_progress') {
+    return c.json({ success: false, error: 'Anda hanya bisa mengirim log progres untuk assignment yang sedang berjalan (in_progress)' }, 400);
+  }
+
+  // 3. Insert progress log
+  const { data, error } = await db
+    .from('assignment_progress_logs')
+    .insert({
+      assignment_id: assignmentId,
+      associate_id: associate.id,
+      notes: notes.trim(),
+      photo_urls: photo_urls || [],
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+
+  return c.json({ success: true, data, message: 'Log progres berhasil disimpan' }, 201);
+});
+
+associateRoutes.get('/assignments/:id/progress-logs', async (c) => {
+  const user = c.get('user') as AuthUser;
+  const assignmentId = c.req.param('id');
+  const db = getDb();
+
+  // 1. Fetch associate ID
+  const { data: associate } = await db
+    .from('associates')
+    .select('id')
+    .eq('id', user.id)
+    .single();
+
+  if (!associate) {
+    return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
+  }
+
+  // 2. Fetch all progress logs for this assignment & associate
+  const { data, error } = await db
+    .from('assignment_progress_logs')
+    .select('*')
+    .eq('assignment_id', assignmentId)
+    .eq('associate_id', associate.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+
+  return c.json({ success: true, data });
 });

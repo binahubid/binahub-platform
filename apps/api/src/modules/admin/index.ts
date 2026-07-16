@@ -662,7 +662,7 @@ admin.post('/assignments/:id/invite', async (c) => {
   // Insert notifications for each invited associate
   if (data && Array.isArray(data)) {
     for (const record of data) {
-      await db.from('notifications').insert({
+      const { error: notifError } = await db.from('notifications').insert({
         recipient_id: record.associate_id,
         recipient_role: 'associate',
         type: 'invitation',
@@ -671,6 +671,9 @@ admin.post('/assignments/:id/invite', async (c) => {
         link: `/dashboard/assignments/${assignmentId}`,
         reference_id: assignmentId,
       });
+      if (notifError) {
+        console.error(`Failed to create invite notification for associate ${record.associate_id}:`, notifError);
+      }
     }
   }
 
@@ -681,12 +684,23 @@ admin.get('/assignments/:id/assignees', async (c) => {
   const assignmentId = c.req.param('id');
   const db = getDb();
 
-  // 1. Fetch all assignees for this assignment
+  // 1. Fetch assignment details
+  const { data: assignment, error: assignmentError } = await db
+    .from('assignments')
+    .select('*')
+    .eq('id', assignmentId)
+    .single();
+
+  if (assignmentError || !assignment) {
+    return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
+  }
+
+  // 2. Fetch assignees linked to this assignment
   const { data: assignees, error: assigneesError } = await db
     .from('assignment_assignees')
     .select('*')
     .eq('assignment_id', assignmentId)
-    .order('invited_at', { ascending: true });
+    .order('created_at', { ascending: false });
 
   if (assigneesError) {
     return c.json({ success: false, error: assigneesError.message }, 500);
@@ -696,27 +710,22 @@ admin.get('/assignments/:id/assignees', async (c) => {
     return c.json({ success: true, data: [] });
   }
 
-  // 2. Extract all associate IDs
-  const associateIds = assignees.map((a: any) => a.associate_id);
+  // 3. Extract associate IDs to batch-fetch profiles
+  const associateIds = assignees.map((row: any) => row.associate_id);
 
-  // 3. Fetch corresponding associates
+  // 4. Batch fetch associates & associate_profiles
   const { data: associates, error: associatesError } = await db
     .from('associates')
     .select('id, email, status')
     .in('id', associateIds);
 
-  if (associatesError) {
-    return c.json({ success: false, error: associatesError.message }, 500);
-  }
-
-  // 4. Fetch corresponding profiles
   const { data: profiles, error: profilesError } = await db
     .from('associate_profiles')
-    .select('associate_id, full_name, headline, photo_url, city')
+    .select('associate_id, full_name, headline, phone, photo_url')
     .in('associate_id', associateIds);
 
-  if (profilesError) {
-    return c.json({ success: false, error: profilesError.message }, 500);
+  if (associatesError || profilesError || !associates || !profiles) {
+    return c.json({ success: false, error: 'Gagal mengambil informasi profil associate' }, 500);
   }
 
   // 5. Match and merge in Javascript
@@ -793,7 +802,7 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
   }
 
   if (notifTitle && notifMsg) {
-    await db.from('notifications').insert({
+    const { error: notifError } = await db.from('notifications').insert({
       recipient_id: data.associate_id,
       recipient_role: 'associate',
       type: notifType,
@@ -802,6 +811,9 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
       link: `/dashboard/assignments/${assignmentId}`,
       reference_id: assignmentId,
     });
+    if (notifError) {
+      console.error(`Failed to create review/revision notification for associate ${data.associate_id}:`, notifError);
+    }
   }
 
   return c.json({ success: true, data });
@@ -1342,6 +1354,25 @@ admin.delete('/development-plans/:id', async (c) => {
 
   if (error) return c.json({ success: false, error: error.message }, 500);
   return c.json({ success: true, message: 'Development plan berhasil dihapus' });
+});
+
+admin.get('/assignments/:id/assignees/:aid/progress-logs', async (c) => {
+  const assignmentId = c.req.param('id');
+  const associateId = c.req.param('aid');
+  const db = getDb();
+
+  const { data, error } = await db
+    .from('assignment_progress_logs')
+    .select('*')
+    .eq('assignment_id', assignmentId)
+    .eq('associate_id', associateId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+
+  return c.json({ success: true, data });
 });
 
 export default admin;

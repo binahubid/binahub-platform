@@ -1,13 +1,28 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../components/ui';
 
-
-
+const getFileUrlWithToken = (urlStr: string | null | undefined, token: string | null) => {
+  if (!urlStr) return '';
+  if (!token) return urlStr;
+  try {
+    const url = new URL(urlStr);
+    url.searchParams.set('token', token);
+    return url.toString();
+  } catch {
+    if (urlStr.includes('?')) {
+      if (urlStr.includes('token=')) {
+        return urlStr.replace(/token=[^&]+/, `token=${token}`);
+      }
+      return `${urlStr}&token=${token}`;
+    }
+    return `${urlStr}?token=${token}`;
+  }
+};
 type AssignmentDetail = {
   id: string;
   title: string;
@@ -97,11 +112,30 @@ export default function AssignmentDetailPage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const evidenceFileRef = useRef<HTMLInputElement>(null);
 
+  // Activity progress log states
+  const [progressLogs, setProgressLogs] = useState<any[]>([]);
+  const [newLogNotes, setNewLogNotes] = useState('');
+  const [newLogPhotos, setNewLogPhotos] = useState<{ url: string; name: string }[]>([]);
+  const [submittingLog, setSubmittingLog] = useState(false);
+  const newLogPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
 
-  const fetchDetail = async () => {
+  const fetchProgressLogs = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${apiUrl}/api/associate/assignments/${id}/progress-logs`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) setProgressLogs(json.data || []);
+      }
+    } catch { /* ignore */ }
+  }, [accessToken, id, apiUrl]);
+
+  const fetchDetail = useCallback(async () => {
     try {
       const resp = await fetch(`${apiUrl}/api/associate/assignments/${id}`, { headers });
       const data = await resp.json();
@@ -117,12 +151,63 @@ export default function AssignmentDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiUrl, id, headers]);
 
   useEffect(() => {
     if (!accessToken) return;
     fetchDetail();
-  }, [accessToken, apiUrl, id]);
+    fetchProgressLogs();
+  }, [accessToken, fetchDetail, fetchProgressLogs]);
+
+  const handleProgressLogSubmit = async () => {
+    if (!newLogNotes.trim()) {
+      toast('error', 'Silakan isi catatan progres terlebih dahulu');
+      return;
+    }
+    setSubmittingLog(true);
+    try {
+      const resp = await fetch(`${apiUrl}/api/associate/assignments/${id}/progress-log`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          notes: newLogNotes,
+          photo_urls: newLogPhotos.map(p => p.url)
+        }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        toast('success', 'Log progres berhasil disimpan');
+        setNewLogNotes('');
+        setNewLogPhotos([]);
+        fetchProgressLogs();
+      } else {
+        toast('error', data.error || 'Gagal menyimpan log progres');
+      }
+    } catch {
+      toast('error', 'Gagal terhubung ke server');
+    } finally {
+      setSubmittingLog(false);
+    }
+  };
+
+  const handleNewLogPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !accessToken || !user) return;
+    setUploadingFile(true);
+    try {
+      for (const file of files) {
+        if (file.size > 20 * 1024 * 1024) { toast('error', `${file.name} terlalu besar (maks 20MB)`); continue; }
+        const url = await uploadFile(file, 'other');
+        setNewLogPhotos(prev => [...prev, { url, name: file.name }]);
+      }
+      toast('success', 'Foto kegiatan berhasil diunggah');
+    } catch (err: unknown) {
+      toast('error', (err as Error).message || 'Gagal mengunggah foto');
+    } finally {
+      setUploadingFile(false);
+      if (newLogPhotoInputRef.current) newLogPhotoInputRef.current.value = '';
+    }
+  };
 
   const handleApply = async () => {
     setActing(true);
@@ -185,7 +270,7 @@ export default function AssignmentDetailPage() {
     });
     const regData = await regRes.json();
     if (!regData.success) throw new Error(regData.error || 'Gagal registrasi file');
-    return `${apiUrl}/api/files/${regData.data.id}/view`;
+    return `${apiUrl}/api/files/${regData.data.id}/view?token=${accessToken}`;
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -439,89 +524,169 @@ export default function AssignmentDetailPage() {
                   </div>
                 </div>
               )}
-              <div className="p-6 bg-slate-50/50 border-b border-slate-100">
-                <h2 className="text-base font-bold text-slate-900">Form Laporan Pekerjaan</h2>
-                <p className="text-xs text-slate-500 mt-1">Harap lengkapi dua langkah pelaporan di bawah ini secara berurutan:</p>
-              </div>
 
-              {/* STEP 1: Laporan Saat Kerja (Foto Dokumentasi) */}
-              <div className="p-6 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B2C6B] text-white text-xs font-bold shadow-sm">1</div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">Laporan Saat Kerja (Foto Kegiatan)</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Ambil atau unggah foto saat kegiatan berlangsung di lapangan</p>
+              {/* CARD 1: Log Aktivitas Harian/Lapangan */}
+              <div className="p-6 space-y-6">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Log Aktivitas & Progres Lapangan</h2>
+                  <p className="text-xs text-slate-500 mt-1">Gunakan form ini untuk mencatat perkembangan pekerjaan Anda kapan saja. Log ini langsung tersimpan dan tidak mengubah status penugasan Anda.</p>
+                </div>
+
+                <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Catatan Kegiatan / Hambatan</label>
+                    <textarea 
+                      value={newLogNotes} 
+                      onChange={(e) => setNewLogNotes(e.target.value)} 
+                      placeholder="Contoh: Hari ini melakukan survey lokasi A, kendala cuaca hujan deras..." 
+                      rows={3} 
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm" 
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Foto Dokumentasi Kegiatan (Opsional)</label>
+                    <div onClick={() => !uploadingFile && newLogPhotoInputRef.current?.click()} className="cursor-pointer rounded-xl border-2 border-dashed border-slate-200 hover:border-[#0B2C6B]/50 hover:bg-[#0B2C6B]/[0.02] transition-all p-5 flex flex-col items-center gap-1.5 group bg-white shadow-sm">
+                      {uploadingFile
+                        ? <svg className="h-6 w-6 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                        : <svg className="h-6 w-6 text-slate-400 group-hover:text-[#0B2C6B]/40 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      }
+                      <p className="text-xs font-bold text-[#0B2C6B] group-hover:underline transition-colors">{uploadingFile ? 'Sedang Mengunggah...' : 'Klik untuk Ambil/Unggah Foto Progres'}</p>
+                      <input ref={newLogPhotoInputRef} type="file" accept="image/*" multiple onChange={handleNewLogPhotoUpload} className="hidden" />
+                    </div>
+
+                    {newLogPhotos.length > 0 && (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
+                        {newLogPhotos.map((photo, idx) => (
+                          <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 shadow-sm">
+                            <img src={getFileUrlWithToken(photo.url, accessToken)} alt={photo.name} className="w-full h-full object-cover animate-fade-in" />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <button onClick={() => setNewLogPhotos(prev => prev.filter((_, i) => i !== idx))} className="text-white text-[10px] font-bold bg-red-500 rounded px-2 py-1 shadow-sm">Hapus</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button 
+                      onClick={handleProgressLogSubmit} 
+                      disabled={submittingLog || uploadingFile}
+                      className="px-5 py-2.5 rounded-xl bg-[#0B2C6B] text-xs font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-md flex items-center gap-1.5"
+                    >
+                      {submittingLog && <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
+                      Simpan Log Progres
+                    </button>
                   </div>
                 </div>
-                
-                <div onClick={() => !uploadingFile && photoInputRef.current?.click()} className="cursor-pointer rounded-xl border-2 border-dashed border-slate-200 hover:border-[#0B2C6B]/50 hover:bg-[#0B2C6B]/[0.02] transition-all p-6 flex flex-col items-center gap-2 group bg-white shadow-sm">
-                  {uploadingFile
-                    ? <svg className="h-7 w-7 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                    : <svg className="h-8 w-8 text-slate-400 group-hover:text-[#0B2C6B]/40 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  }
-                  <p className="text-xs font-bold text-[#0B2C6B] group-hover:underline transition-colors">{uploadingFile ? 'Sedang Mengunggah...' : 'Klik untuk Ambil Foto / Upload Foto'}</p>
-                  <p className="text-[10px] text-slate-400">Format: JPG, PNG &middot; Bisa upload lebih dari 1 foto</p>
-                  <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
-                </div>
 
-                {uploadedPhotos.length > 0 && (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
-                    {uploadedPhotos.map((photo, idx) => (
-                      <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 shadow-sm">
-                        <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <button onClick={() => setUploadedPhotos(prev => prev.filter((_, i) => i !== idx))} className="text-white text-[10px] font-bold bg-red-500 rounded px-2 py-1 shadow-sm">Hapus</button>
-                        </div>
-                      </div>
-                    ))}
+                {/* Timeline Log Progres yang Sudah Ada */}
+                {progressLogs.length > 0 && (
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Riwayat Aktivitas Lapangan ({progressLogs.length})</h3>
+                    <div className="flow-root">
+                      <ul className="-mb-8">
+                        {progressLogs.map((log, logIdx) => (
+                          <li key={log.id}>
+                            <div className="relative pb-8">
+                              {logIdx !== progressLogs.length - 1 ? (
+                                <span className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-slate-200" aria-hidden="true" />
+                              ) : null}
+                              <div className="relative flex space-x-3">
+                                <div>
+                                  <span className="h-8 w-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center ring-8 ring-white">
+                                    <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                  </span>
+                                </div>
+                                <div className="flex-1 min-w-0 pt-1.5">
+                                  <div className="text-xs text-slate-500 flex items-center justify-between gap-4">
+                                    <span className="font-semibold text-slate-800">Log Aktivitas</span>
+                                    <span>{new Date(log.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                  </div>
+                                  <p className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{log.notes}</p>
+                                  
+                                  {log.photo_urls && Array.isArray(log.photo_urls) && log.photo_urls.length > 0 && (
+                                    <div className="mt-2 grid grid-cols-4 sm:grid-cols-6 gap-2">
+                                      {log.photo_urls.map((photoUrl: string, pIdx: number) => (
+                                        <a 
+                                          key={pIdx} 
+                                          href={getFileUrlWithToken(photoUrl, accessToken)} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="relative rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-50 block shadow-xs hover:opacity-80 transition"
+                                        >
+                                          <img src={getFileUrlWithToken(photoUrl, accessToken)} alt="Dokumentasi" className="w-full h-full object-cover" />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* STEP 2: Laporan Setelah Kerja (Berkas & Catatan) */}
-              <div className="p-6 bg-slate-50/50 space-y-4 border-t border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B2C6B] text-white text-xs font-bold shadow-sm">2</div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">Laporan Setelah Kerja (Hasil & Berkas)</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Tulis ringkasan hasil kerja dan upload dokumen laporan akhir</p>
+              {/* CARD 2: Kirim Laporan Akhir (Final Submission) */}
+              <div className="p-6 bg-slate-50/30 space-y-5 border-t border-slate-100">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Kirim Laporan Akhir</h2>
+                  <p className="text-xs text-slate-500 mt-1">Lakukan langkah ini HANYA jika seluruh pekerjaan telah selesai. Status penugasan akan berubah menjadi <strong>Laporan Dikirim (Completed)</strong> dan menunggu persetujuan admin.</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Kesimpulan / Laporan Akhir</label>
+                    <textarea 
+                      value={evidenceNotes} 
+                      onChange={(e) => setEvidenceNotes(e.target.value)} 
+                      placeholder="Tuliskan di sini ringkasan akhir hasil pekerjaan Anda untuk diserahkan ke admin..." 
+                      rows={4} 
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm" 
+                    />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Ringkasan Pekerjaan</label>
-                  <textarea 
-                    value={evidenceNotes} 
-                    onChange={(e) => setEvidenceNotes(e.target.value)} 
-                    placeholder="Tuliskan di sini apa saja yang telah dikerjakan atau hasil akhir kegiatan..." 
-                    rows={4} 
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm" 
-                  />
-                </div>
-
-                <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                  <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Berkas Laporan Pendukung</p>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button type="button" onClick={() => evidenceFileRef.current?.click()} disabled={uploadingFile} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm">
-                      <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                      {uploadingFile ? 'Mengunggah Berkas...' : 'Upload Berkas Laporan'}
-                    </button>
-                    <input ref={evidenceFileRef} type="file" onChange={handleEvidenceFileUpload} className="hidden" />
-                    {evidenceUrl ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                        &#10003; Berkas berhasil dilampirkan
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-400">PDF, Word, Excel, dll (Opsional)</span>
+                  <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-150 shadow-sm">
+                    <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Berkas Laporan Pendukung / Dokumen Final</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button type="button" onClick={() => evidenceFileRef.current?.click()} disabled={uploadingFile} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm">
+                        <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                        {uploadingFile ? 'Mengunggah Berkas...' : 'Upload Berkas Laporan'}
+                      </button>
+                      <input ref={evidenceFileRef} type="file" onChange={handleEvidenceFileUpload} className="hidden" />
+                      {evidenceUrl ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                          &#10003; Berkas berhasil dilampirkan
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">PDF, Word, Excel, ZIP (Opsional)</span>
+                      )}
+                    </div>
+                    {evidenceUrl && (
+                      <div className="pt-1.5">
+                        <a 
+                          href={getFileUrlWithToken(evidenceUrl, accessToken)} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-xs text-[#0B2C6B] hover:underline font-bold"
+                        >
+                          Lihat file terlampir
+                        </a>
+                      </div>
                     )}
                   </div>
-                </div>
 
-                <div className="pt-2">
-                  <button onClick={submitFinalReport} disabled={acting || uploadingFile} className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                    Kirim Laporan & Selesai Bekerja
-                  </button>
+                  <div className="pt-2">
+                    <button onClick={submitFinalReport} disabled={acting || uploadingFile} className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                      Kirim Laporan & Selesai Bekerja
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

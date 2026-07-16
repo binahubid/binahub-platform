@@ -49,37 +49,14 @@ type SearchResult = {
 
 type AdminNotification = {
   id: string;
-  type: 'accepted' | 'declined' | 'applied';
+  type: string;
   title: string;
   message: string;
-  assignment_id: string;
-  associate_name: string;
+  read: boolean;
   created_at: string;
+  link?: string;
+  reference_id?: string;
 };
-
-const NOTIF_READ_KEY = 'admin_notif_read_ids';
-
-function getReadNotifIds(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(NOTIF_READ_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function markNotifAsRead(id: string) {
-  const readIds = getReadNotifIds();
-  readIds.add(id);
-  localStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...readIds]));
-}
-
-function markAllNotifsAsRead(ids: string[]) {
-  const readIds = getReadNotifIds();
-  ids.forEach((id) => readIds.add(id));
-  localStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...readIds]));
-}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, accessToken, loading, signOut } = useAuth();
@@ -91,18 +68,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [searchFocused, setSearchFocused] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const searchRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = user?.app_metadata?.role === 'admin';
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
-  // Load read IDs from localStorage
-  useEffect(() => {
-    setReadIds(getReadNotifIds());
-  }, []);
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
@@ -126,28 +97,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isAdmin, fetchNotifications]);
 
-  // Recalculate readIds when notifications change
-  useEffect(() => {
-    setReadIds(getReadNotifIds());
-  }, [notifications]);
-
   const unreadCount = useMemo(() => {
-    return notifications.filter((n) => !readIds.has(n.id)).length;
-  }, [notifications, readIds]);
+    return notifications.filter((n) => !n.read).length;
+  }, [notifications]);
 
   const handleNotifBellClick = useCallback(() => {
     setNotifDropdownOpen((prev) => !prev);
   }, []);
 
-  const handleNotifMarkRead = useCallback((id: string) => {
-    markNotifAsRead(id);
-    setReadIds(getReadNotifIds());
-  }, []);
+  const handleNotifMarkRead = useCallback(async (id: string) => {
+    if (accessToken) {
+      try {
+        const res = await fetch(`${apiUrl}/api/admin/notifications/${id}/read`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (res.ok) {
+          fetchNotifications();
+        }
+      } catch { /* ignore */ }
+    }
+  }, [accessToken, apiUrl, fetchNotifications]);
 
-  const handleNotifMarkAllRead = useCallback(() => {
-    markAllNotifsAsRead(notifications.map((n) => n.id));
-    setReadIds(getReadNotifIds());
-  }, [notifications]);
+  const handleNotifMarkAllRead = useCallback(async () => {
+    if (accessToken) {
+      const unread = notifications.filter((n) => !n.read);
+      for (const n of unread) {
+        await fetch(`${apiUrl}/api/admin/notifications/${n.id}/read`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }).catch(() => {});
+      }
+      fetchNotifications();
+    }
+  }, [accessToken, apiUrl, notifications, fetchNotifications]);
 
   // Close notif dropdown on outside click
   useEffect(() => {
@@ -250,10 +233,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   };
 
-  const notifTypeConfig = {
+  const notifTypeConfig: Record<string, { label: string; bg: string; color: string }> = {
     accepted: { label: 'Diterima', bg: 'bg-emerald-50', color: 'text-emerald-700' },
     declined: { label: 'Ditolak', bg: 'bg-red-50', color: 'text-red-700' },
     applied: { label: 'Mendaftar', bg: 'bg-blue-50', color: 'text-blue-700' },
+    completed: { label: 'Laporan', bg: 'bg-indigo-50', color: 'text-indigo-700' },
+    withdrawn: { label: 'Mundur', bg: 'bg-amber-50', color: 'text-amber-700' },
+    reviewed: { label: 'Direview', bg: 'bg-emerald-50', color: 'text-emerald-700' },
+    revision_requested: { label: 'Revisi', bg: 'bg-yellow-50', color: 'text-yellow-700' },
+    invitation: { label: 'Undangan', bg: 'bg-purple-50', color: 'text-purple-700' },
   };
 
   return (
@@ -513,12 +501,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
                       ) : (
                         notifications.slice(0, 10).map((n) => {
-                          const isRead = readIds.has(n.id);
-                          const config = notifTypeConfig[n.type];
+                          const isRead = n.read || false;
+                          const config = notifTypeConfig[n.type] || { label: 'Notifikasi', bg: 'bg-slate-50', color: 'text-slate-700' };
+                          const targetLink = n.link || (n.reference_id ? `/admin/assignments/${n.reference_id}` : '#');
                           return (
                             <div
                               key={n.id}
-                              onClick={() => { handleNotifMarkRead(n.id); setNotifDropdownOpen(false); router.push(`/admin/assignments/${n.assignment_id}`); }}
+                              onClick={() => { handleNotifMarkRead(n.id); setNotifDropdownOpen(false); if (targetLink !== '#') router.push(targetLink); }}
                               className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-slate-50 border-b border-slate-50 last:border-0 ${
                                 isRead ? 'opacity-60' : ''
                               }`}
