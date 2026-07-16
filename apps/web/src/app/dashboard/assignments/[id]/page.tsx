@@ -113,6 +113,7 @@ export default function AssignmentDetailPage() {
   const evidenceFileRef = useRef<HTMLInputElement>(null);
 
   // Activity progress log states
+  const [activeTab, setActiveTab] = useState<'log' | 'report'>('log');
   const [progressLogs, setProgressLogs] = useState<any[]>([]);
   const [newLogNotes, setNewLogNotes] = useState('');
   const [newLogPhotos, setNewLogPhotos] = useState<{ url: string; name: string }[]>([]);
@@ -434,8 +435,8 @@ export default function AssignmentDetailPage() {
           <div className="relative flex items-start justify-between">
             <div className="absolute top-4 left-8 right-8 h-0.5 bg-slate-100" />
             {WORKFLOW_STEPS.map((step, idx) => {
-              const done = stepIndex > idx;
-              const active = stepIndex === idx;
+              const done = idx < stepIndex || myStatus === 'reviewed';
+              const active = idx === stepIndex && myStatus !== 'reviewed';
               return (
                 <div key={step.key} className="relative z-10 flex flex-col items-center flex-1 gap-2">
                   <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all shadow-sm ${done ? 'border-[#0B2C6B] bg-[#0B2C6B]' : active ? 'border-[#0B2C6B] bg-white ring-4 ring-[#0B2C6B]/10' : 'border-slate-200 bg-white'}`}>
@@ -525,170 +526,200 @@ export default function AssignmentDetailPage() {
                 </div>
               )}
 
-              {/* CARD 1: Log Aktivitas Harian/Lapangan */}
-              <div className="p-6 space-y-6">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">Log Aktivitas & Progres Lapangan</h2>
-                  <p className="text-xs text-slate-500 mt-1">Gunakan form ini untuk mencatat perkembangan pekerjaan Anda kapan saja. Log ini langsung tersimpan dan tidak mengubah status penugasan Anda.</p>
-                </div>
+              {/* Tab Navigation Bar */}
+              <div className="border-b border-slate-200 bg-white">
+                <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+                  <button
+                    onClick={() => setActiveTab('log')}
+                    className={`border-b-2 py-4 px-1 text-xs font-bold uppercase tracking-wider transition-all ${
+                      activeTab === 'log'
+                        ? 'border-[#0B2C6B] text-[#0B2C6B]'
+                        : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    Log Aktivitas Harian
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('report')}
+                    className={`border-b-2 py-4 px-1 text-xs font-bold uppercase tracking-wider transition-all ${
+                      activeTab === 'report'
+                        ? 'border-[#0B2C6B] text-[#0B2C6B]'
+                        : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    Kirim Laporan Akhir
+                  </button>
+                </nav>
+              </div>
 
-                <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Catatan Kegiatan / Hambatan</label>
-                    <textarea 
-                      value={newLogNotes} 
-                      onChange={(e) => setNewLogNotes(e.target.value)} 
-                      placeholder="Contoh: Hari ini melakukan survey lokasi A, kendala cuaca hujan deras..." 
-                      rows={3} 
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm" 
-                    />
+              {/* TAB 1: Log Aktivitas Harian/Lapangan */}
+              {activeTab === 'log' && (
+                <div className="p-6 space-y-6">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">Log Aktivitas & Progres Lapangan</h2>
+                    <p className="text-xs text-slate-500 mt-1">Gunakan form ini untuk mencatat perkembangan pekerjaan Anda kapan saja. Log ini langsung tersimpan dan tidak mengubah status penugasan Anda.</p>
                   </div>
 
-                  <div className="space-y-3">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Foto Dokumentasi Kegiatan (Opsional)</label>
-                    <div onClick={() => !uploadingFile && newLogPhotoInputRef.current?.click()} className="cursor-pointer rounded-xl border-2 border-dashed border-slate-200 hover:border-[#0B2C6B]/50 hover:bg-[#0B2C6B]/[0.02] transition-all p-5 flex flex-col items-center gap-1.5 group bg-white shadow-sm">
-                      {uploadingFile
-                        ? <svg className="h-6 w-6 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                        : <svg className="h-6 w-6 text-slate-400 group-hover:text-[#0B2C6B]/40 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                      }
-                      <p className="text-xs font-bold text-[#0B2C6B] group-hover:underline transition-colors">{uploadingFile ? 'Sedang Mengunggah...' : 'Klik untuk Ambil/Unggah Foto Progres'}</p>
-                      <input ref={newLogPhotoInputRef} type="file" accept="image/*" multiple onChange={handleNewLogPhotoUpload} className="hidden" />
+                  <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Catatan Kegiatan / Hambatan</label>
+                      <textarea 
+                        value={newLogNotes} 
+                        onChange={(e) => setNewLogNotes(e.target.value)} 
+                        placeholder="Contoh: Hari ini melakukan survey lokasi A, kendala cuaca hujan deras..." 
+                        rows={3} 
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm" 
+                      />
                     </div>
 
-                    {newLogPhotos.length > 0 && (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
-                        {newLogPhotos.map((photo, idx) => (
-                          <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 shadow-sm">
-                            <img src={getFileUrlWithToken(photo.url, accessToken)} alt={photo.name} className="w-full h-full object-cover animate-fade-in" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <button onClick={() => setNewLogPhotos(prev => prev.filter((_, i) => i !== idx))} className="text-white text-[10px] font-bold bg-red-500 rounded px-2 py-1 shadow-sm">Hapus</button>
-                            </div>
-                          </div>
-                        ))}
+                    <div className="space-y-3">
+                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Foto Dokumentasi Kegiatan (Opsional)</label>
+                      <div onClick={() => !uploadingFile && newLogPhotoInputRef.current?.click()} className="cursor-pointer rounded-xl border-2 border-dashed border-slate-200 hover:border-[#0B2C6B]/50 hover:bg-[#0B2C6B]/[0.02] transition-all p-5 flex flex-col items-center gap-1.5 group bg-white shadow-sm">
+                        {uploadingFile
+                          ? <svg className="h-6 w-6 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                          : <svg className="h-6 w-6 text-slate-400 group-hover:text-[#0B2C6B]/40 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        }
+                        <p className="text-xs font-bold text-[#0B2C6B] group-hover:underline transition-colors">{uploadingFile ? 'Sedang Mengunggah...' : 'Klik untuk Ambil/Unggah Foto Progres'}</p>
+                        <input ref={newLogPhotoInputRef} type="file" accept="image/*" multiple onChange={handleNewLogPhotoUpload} className="hidden" />
                       </div>
-                    )}
-                  </div>
 
-                  <div className="pt-2 flex justify-end">
-                    <button 
-                      onClick={handleProgressLogSubmit} 
-                      disabled={submittingLog || uploadingFile}
-                      className="px-5 py-2.5 rounded-xl bg-[#0B2C6B] text-xs font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-md flex items-center gap-1.5"
-                    >
-                      {submittingLog && <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
-                      Simpan Log Progres
-                    </button>
-                  </div>
-                </div>
-
-                {/* Timeline Log Progres yang Sudah Ada */}
-                {progressLogs.length > 0 && (
-                  <div className="space-y-4 pt-4 border-t border-slate-100">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Riwayat Aktivitas Lapangan ({progressLogs.length})</h3>
-                    <div className="flow-root">
-                      <ul className="-mb-8">
-                        {progressLogs.map((log, logIdx) => (
-                          <li key={log.id}>
-                            <div className="relative pb-8">
-                              {logIdx !== progressLogs.length - 1 ? (
-                                <span className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-slate-200" aria-hidden="true" />
-                              ) : null}
-                              <div className="relative flex space-x-3">
-                                <div>
-                                  <span className="h-8 w-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center ring-8 ring-white">
-                                    <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                  </span>
-                                </div>
-                                <div className="flex-1 min-w-0 pt-1.5">
-                                  <div className="text-xs text-slate-500 flex items-center justify-between gap-4">
-                                    <span className="font-semibold text-slate-800">Log Aktivitas</span>
-                                    <span>{new Date(log.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                                  </div>
-                                  <p className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{log.notes}</p>
-                                  
-                                  {log.photo_urls && Array.isArray(log.photo_urls) && log.photo_urls.length > 0 && (
-                                    <div className="mt-2 grid grid-cols-4 sm:grid-cols-6 gap-2">
-                                      {log.photo_urls.map((photoUrl: string, pIdx: number) => (
-                                        <a 
-                                          key={pIdx} 
-                                          href={getFileUrlWithToken(photoUrl, accessToken)} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                          className="relative rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-50 block shadow-xs hover:opacity-80 transition"
-                                        >
-                                          <img src={getFileUrlWithToken(photoUrl, accessToken)} alt="Dokumentasi" className="w-full h-full object-cover" />
-                                        </a>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
+                      {newLogPhotos.length > 0 && (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
+                          {newLogPhotos.map((photo, idx) => (
+                            <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 shadow-sm">
+                              <img src={getFileUrlWithToken(photo.url, accessToken)} alt={photo.name} className="w-full h-full object-cover animate-fade-in" />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button onClick={() => setNewLogPhotos(prev => prev.filter((_, i) => i !== idx))} className="text-white text-[10px] font-bold bg-red-500 rounded px-2 py-1 shadow-sm">Hapus</button>
                               </div>
                             </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* CARD 2: Kirim Laporan Akhir (Final Submission) */}
-              <div className="p-6 bg-slate-50/30 space-y-5 border-t border-slate-100">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">Kirim Laporan Akhir</h2>
-                  <p className="text-xs text-slate-500 mt-1">Lakukan langkah ini HANYA jika seluruh pekerjaan telah selesai. Status penugasan akan berubah menjadi <strong>Laporan Dikirim (Completed)</strong> dan menunggu persetujuan admin.</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Kesimpulan / Laporan Akhir</label>
-                    <textarea 
-                      value={evidenceNotes} 
-                      onChange={(e) => setEvidenceNotes(e.target.value)} 
-                      placeholder="Tuliskan di sini ringkasan akhir hasil pekerjaan Anda untuk diserahkan ke admin..." 
-                      rows={4} 
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm" 
-                    />
-                  </div>
-
-                  <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-150 shadow-sm">
-                    <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Berkas Laporan Pendukung / Dokumen Final</p>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button type="button" onClick={() => evidenceFileRef.current?.click()} disabled={uploadingFile} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm">
-                        <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                        {uploadingFile ? 'Mengunggah Berkas...' : 'Upload Berkas Laporan'}
-                      </button>
-                      <input ref={evidenceFileRef} type="file" onChange={handleEvidenceFileUpload} className="hidden" />
-                      {evidenceUrl ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                          &#10003; Berkas berhasil dilampirkan
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-400">PDF, Word, Excel, ZIP (Opsional)</span>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    {evidenceUrl && (
-                      <div className="pt-1.5">
-                        <a 
-                          href={getFileUrlWithToken(evidenceUrl, accessToken)} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-xs text-[#0B2C6B] hover:underline font-bold"
-                        >
-                          Lihat file terlampir
-                        </a>
-                      </div>
-                    )}
+
+                    <div className="pt-2 flex justify-end">
+                      <button 
+                        onClick={handleProgressLogSubmit} 
+                        disabled={submittingLog || uploadingFile}
+                        className="px-5 py-2.5 rounded-xl bg-[#0B2C6B] text-xs font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-md flex items-center gap-1.5"
+                      >
+                        {submittingLog && <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
+                        Simpan Log Progres
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="pt-2">
-                    <button onClick={submitFinalReport} disabled={acting || uploadingFile} className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2">
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                      Kirim Laporan & Selesai Bekerja
-                    </button>
+                  {/* Timeline Log Progres yang Sudah Ada */}
+                  {progressLogs.length > 0 && (
+                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Riwayat Aktivitas Lapangan ({progressLogs.length})</h3>
+                      <div className="flow-root">
+                        <ul className="-mb-8">
+                          {progressLogs.map((log, logIdx) => (
+                            <li key={log.id}>
+                              <div className="relative pb-8">
+                                {logIdx !== progressLogs.length - 1 ? (
+                                  <span className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-slate-200" aria-hidden="true" />
+                                ) : null}
+                                <div className="relative flex space-x-3">
+                                  <div>
+                                    <span className="h-8 w-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center ring-8 ring-white">
+                                      <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                    </span>
+                                  </div>
+                                  <div className="flex-1 min-w-0 pt-1.5">
+                                    <div className="text-xs text-slate-500 flex items-center justify-between gap-4">
+                                      <span className="font-semibold text-slate-800">Log Aktivitas</span>
+                                      <span>{new Date(log.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                    <p className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{log.notes}</p>
+                                    
+                                    {log.photo_urls && Array.isArray(log.photo_urls) && log.photo_urls.length > 0 && (
+                                      <div className="mt-2 grid grid-cols-4 sm:grid-cols-6 gap-2">
+                                        {log.photo_urls.map((photoUrl: string, pIdx: number) => (
+                                          <a 
+                                            key={pIdx} 
+                                            href={getFileUrlWithToken(photoUrl, accessToken)} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="relative rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-50 block shadow-xs hover:opacity-80 transition"
+                                          >
+                                            <img src={getFileUrlWithToken(photoUrl, accessToken)} alt="Dokumentasi" className="w-full h-full object-cover" />
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: Kirim Laporan Akhir (Final Submission) */}
+              {activeTab === 'report' && (
+                <div className="p-6 bg-slate-50/30 space-y-5">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">Kirim Laporan Akhir</h2>
+                    <p className="text-xs text-slate-500 mt-1">Lakukan langkah ini HANYA jika seluruh pekerjaan telah selesai. Status penugasan akan berubah menjadi <strong>Laporan Dikirim (Completed)</strong> dan menunggu persetujuan admin.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Kesimpulan / Laporan Akhir</label>
+                      <textarea 
+                        value={evidenceNotes} 
+                        onChange={(e) => setEvidenceNotes(e.target.value)} 
+                        placeholder="Tuliskan di sini ringkasan akhir hasil pekerjaan Anda untuk diserahkan ke admin..." 
+                        rows={4} 
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm" 
+                      />
+                    </div>
+
+                    <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-150 shadow-sm">
+                      <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Berkas Laporan Pendukung / Dokumen Final</p>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button type="button" onClick={() => evidenceFileRef.current?.click()} disabled={uploadingFile} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm">
+                          <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                          {uploadingFile ? 'Mengunggah Berkas...' : 'Upload Berkas Laporan'}
+                        </button>
+                        <input ref={evidenceFileRef} type="file" onChange={handleEvidenceFileUpload} className="hidden" />
+                        {evidenceUrl ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                            &#10003; Berkas berhasil dilampirkan
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">PDF, Word, Excel, ZIP (Opsional)</span>
+                        )}
+                      </div>
+                      {evidenceUrl && (
+                        <div className="pt-1.5">
+                          <a 
+                            href={getFileUrlWithToken(evidenceUrl, accessToken)} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-xs text-[#0B2C6B] hover:underline font-bold"
+                          >
+                            Lihat file terlampir
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2">
+                      <button onClick={submitFinalReport} disabled={acting || uploadingFile} className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                        Kirim Laporan & Selesai Bekerja
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
