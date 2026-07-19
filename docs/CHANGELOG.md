@@ -4,6 +4,73 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.7] — 2026-07-20
+
+### Fixed
+
+- **Foto Profil Tidak Muncul di Dashboard & Halaman Profile**:
+  - Mengidentifikasi root cause: endpoint `GET /api/files/view-path` memblokir request dari tag `<img>` karena tidak membawa header `Authorization`. Browser tidak mengizinkan penambahan header custom pada tag `<img>` native.
+  - Memperbaiki semua fungsi `getPhotoUrl()` di frontend agar menyertakan `?token=<accessToken>` sebagai query parameter pada URL gambar, mengikuti mekanisme token yang sudah didukung backend.
+  - File yang diperbaiki: `apps/web/src/app/dashboard/page.tsx`, `apps/web/src/app/dashboard/profile/components/profile-view.tsx`, `apps/web/src/app/dashboard/profile/page.tsx`, `apps/web/src/app/admin/associates/[id]/page.tsx`, `apps/web/src/app/admin/associates/[id]/cv/page.tsx`.
+
+- **Delay 3 Detik Setelah Simpan Sertifikasi & Portofolio**:
+  - Root cause: `onRefresh()` dipanggil tanpa `await` di handler `handleAdd`, `handleSaveEdit`, dan `handleDelete` — form langsung tertutup sebelum data terbaru tiba, menyebabkan jeda tampak kosong ~3 detik.
+  - Solusi: Mengubah semua call menjadi `await onRefresh()` sebelum menutup state `adding`/`saving`, sehingga tombol Simpan tetap dalam status loading sampai data benar-benar fresh di UI.
+  - File yang diperbaiki: `apps/web/src/app/dashboard/profile/components/step-certifications.tsx`, `apps/web/src/app/dashboard/profile/components/step-portfolio.tsx`.
+
+- **Error Upload CV dari Halaman Profile**:
+  - Menyamakan alur upload CV di halaman profile dengan alur onboarding — keduanya kini menggunakan presigned URL → upload langsung ke storage → konfirmasi ke backend.
+  - Memperbaiki API `/api/files/associate/:id/cv/confirm` agar menangani kasus file lama tidak ditemukan (soft-delete graceful) tanpa throw error.
+
+- **Error saat Proses Onboarding**:
+  - Memperbaiki beberapa titik kegagalan di `step-review-profile.tsx` dan `finalize` handler onboarding dengan menambahkan null-check dan fallback yang tepat.
+  - Menghilangkan pemanggilan API redundan yang menyebabkan 400 Bad Request.
+
+- **Foto Profil di Halaman Admin — View CV Associate**:
+  - Menambahkan `&token=${accessToken}` pada konstruksi URL foto profil di `apps/web/src/app/admin/associates/[id]/cv/page.tsx` agar gambar dimuat dengan benar saat admin melihat CV associate.
+
+### Changed
+
+- **Hapus Widget "Kesesuaian Proyek" dari Dashboard Associate**:
+  - Widget `Kesesuaian Proyek` yang menampilkan jumlah assignment tersedia dihapus dari halaman dashboard utama associate (`apps/web/src/app/dashboard/page.tsx`).
+  - Alasan: Assignment kini bersifat eksklusif (invitation-only), sehingga metrik "proyek tersedia secara umum" tidak lagi relevan dan berpotensi menyesatkan.
+
+- **Hapus Link "Lihat Detail" dari Widget Ringkasan Kapabilitas**:
+  - Link "Lihat detail →" di widget Ringkasan Kapabilitas di dashboard associate dihapus karena halaman `/dashboard/capability` sedang di-sembunyikan dari navigasi.
+  - Widget Ringkasan Kapabilitas tetap tampil sebagai radar chart informatif tanpa aksi navigasi.
+
+- **Pengerasan (Hardening) Fungsi RPC `import_cv_data`**:
+  - Mengubah RPC Pl/pgSQL `import_cv_data` di `packages/database/migrations/002_import_cv_data_rpc.sql` agar tahan terhadap input data parsial:
+    - Menggunakan `COALESCE` untuk semua kolom opsional.
+    - Validasi Regex untuk format tanggal (`YYYY-MM-DD`).
+    - Normalisasi tanggal otomatis dari format `MM/YYYY` ke `YYYY-MM-01`.
+    - Skip baris data experience/education jika kolom wajib (`organization`, `institution`, `degree`) kosong.
+  - Sinkronisasi perubahan ke `supabase_setup_batch4.sql` sebagai referensi setup tunggal.
+
+- **Mekanisme View File oleh Admin (CV, Sertifikat, Portofolio)**:
+  - Menyamakan cara admin mengakses file privat dengan mekanisme yang digunakan sisi associate — menggunakan fungsi `resolveFileUrl()` yang otomatis menyematkan token pada setiap URL file.
+  - Admin kini dapat membuka file sertifikat, lampiran portofolio, dan CV tanpa error 401.
+
+### Security
+
+- **Preventif — Hardening Error Response**:
+  - Memastikan semua error dari route handler tidak membocorkan `error.message` mentah ke client. Error 500 ditangani oleh `app.onError`, sementara error 4xx memakai pesan deskriptif yang aman.
+  - Menambahkan null-check defensif di beberapa titik endpoint yang sebelumnya berpotensi throw uncaught exception.
+
+- **Preventif — Validasi Input Berkas**:
+  - Menambahkan pengecekan tipe MIME dan ekstensi file di handler upload sisi frontend sebelum dikirim ke API, mencegah unggahan tipe file tak terduga.
+
+### Notes
+
+- Build `pnpm run build` lulus 9/9 tasks tanpa error TypeScript maupun lint.
+- Tidak ada perubahan skema database baru pada versi ini — semua perubahan adalah perbaikan logika di level aplikasi dan migrasi RPC yang sudah ada.
+- Deploy checklist:
+  - [ ] Jalankan migrasi `002_import_cv_data_rpc.sql` (atau re-run `supabase_setup_batch4.sql`) di Supabase SQL Editor untuk memperbarui fungsi RPC `import_cv_data`.
+  - [ ] Deploy `apps/api` ke Vercel.
+  - [ ] Deploy `apps/web` ke Vercel.
+
+---
+
 ## [0.7.6] — 2026-07-16
 
 ### Added

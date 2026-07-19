@@ -27,7 +27,8 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
   const getPhotoUrl = (path: string | null | undefined) => {
     if (!path) return undefined;
     if (path.startsWith('http') || path.startsWith('data:')) return path;
-    return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
+    const url = `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
+    return accessToken ? `${url}&token=${accessToken}` : url;
   };
 
   const resolveFileUrl = (url: string | null | undefined) => {

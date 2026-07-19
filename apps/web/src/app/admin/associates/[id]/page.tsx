@@ -223,7 +223,7 @@ export default function AssociateDetailPage() {
           <div className="flex items-end justify-between -mt-12">
             <Avatar
               name={data.profile?.full_name || data.email}
-              src={data.profile?.photo_url ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(data.profile.photo_url)}` : undefined}
+              src={data.profile?.photo_url ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(data.profile.photo_url)}&token=${accessToken || ''}` : undefined}
               size="xl"
               className="border-4 border-white shadow-lg"
             />

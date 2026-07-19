@@ -129,9 +129,9 @@ export function StepPortfolio({ portfolios, associateId, apiUrl, accessToken, on
           projectUrl: form.linkUrl
         }),
       });
+      await onRefresh();
       setForm({ title: '', description: '', linkUrl: '' });
       setAdding(false);
-      onRefresh();
     } catch (e) {
       console.error(e);
     } finally {
@@ -146,8 +146,8 @@ export function StepPortfolio({ portfolios, associateId, apiUrl, accessToken, on
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      await onRefresh();
       showToast('Portofolio berhasil dihapus', 'success');
-      onRefresh();
     } catch (e) {
       console.error(e);
     }

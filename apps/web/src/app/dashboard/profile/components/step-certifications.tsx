@@ -135,9 +135,9 @@ export function StepCertifications({ certifications, associateId, apiUrl, access
         showToast(data.error || 'Gagal menyimpan sertifikasi', 'error');
         return;
       }
+      await onRefresh();
       setForm({ name: '', issuingOrganization: '', credentialId: '', credentialUrl: '' });
       setAdding(false);
-      onRefresh();
       showToast('Sertifikasi berhasil ditambahkan', 'success');
     } catch (e) {
       console.error(e);
@@ -154,8 +154,8 @@ export function StepCertifications({ certifications, associateId, apiUrl, access
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      await onRefresh();
       showToast('Sertifikasi berhasil dihapus', 'success');
-      onRefresh();
     } catch (e) {
       console.error(e);
     }
@@ -180,8 +180,8 @@ export function StepCertifications({ certifications, associateId, apiUrl, access
         showToast(data.error || 'Gagal memperbarui sertifikasi', 'error');
         return;
       }
+      await onRefresh();
       setEditingId(null);
-      onRefresh();
       showToast('Sertifikasi berhasil diperbarui', 'success');
     } catch (e) {
       console.error(e);

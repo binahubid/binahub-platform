@@ -71,11 +71,12 @@ type DashboardData = {
   availability: Availability | null;
 };
 
-const getPhotoUrl = (path: string | null | undefined) => {
+const getPhotoUrl = (path: string | null | undefined, token?: string | null) => {
   if (!path) return undefined;
   if (path.startsWith('http') || path.startsWith('data:')) return path;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
+  const url = `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
+  return token ? `${url}&token=${token}` : url;
 };
 
 function getGreeting() {
@@ -521,7 +522,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 overflow-hidden rounded-full bg-[#0B2C6B] flex items-center justify-center">
               {data?.profile?.photo_url ? (
-                <img src={getPhotoUrl(data.profile.photo_url)} alt="" className="h-full w-full object-cover" />
+                <img src={getPhotoUrl(data.profile.photo_url, accessToken)} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
                   {getInitials(data?.profile?.full_name || user?.email)}
@@ -607,7 +608,7 @@ export default function DashboardPage() {
             <div className="relative flex-shrink-0">
               <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-white/30 shadow-lg sm:h-24 sm:w-24 bg-slate-100 flex items-center justify-center">
                 {data?.profile?.photo_url ? (
-                  <img src={getPhotoUrl(data.profile.photo_url)} alt="" className="h-full w-full object-cover" />
+                  <img src={getPhotoUrl(data.profile.photo_url, accessToken)} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <Avatar name={data?.profile?.full_name} size="xl" className="h-full w-full" />
                 )}
@@ -857,16 +858,6 @@ export default function DashboardPage() {
           <Link href="/dashboard/profile" className="mt-1 inline-block text-[11px] font-bold text-[#0B2C6B] hover:underline">Ubah</Link>
         </div>
 
-        <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
-          <div className="flex items-center gap-2">
-            <svg className="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Kesesuaian Proyek</p>
-          </div>
-          <p className="mt-2 text-lg font-bold text-slate-900">{(data?.assignments || []).length}</p>
-          <p className="text-[11px] text-slate-400">{(data?.assignments || []).length > 0 ? 'proyek tersedia' : 'Lengkapi profil untuk melihat proyek'}</p>
-        </div>
 
         <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
           <div className="flex items-center gap-2">
@@ -1032,12 +1023,6 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-slate-900">Ringkasan Kapabilitas</h2>
-                <Link href="/dashboard/capability" className="flex items-center gap-1 text-xs font-medium text-[#0B2C6B] hover:underline">
-                  Lihat detail
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
               </div>
               <CapabilityRadar data={capabilityData} size={240} />
             </div>
