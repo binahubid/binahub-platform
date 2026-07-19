@@ -96,7 +96,9 @@ export default function AssociateDetailPage() {
   const resolveFileUrl = (url: string | null | undefined) => {
     if (!url) return '#';
     if (url.startsWith('http') || url.startsWith('data:')) return url;
-    return `${apiUrl}${url}`;
+    const fullUrl = url.startsWith('/') ? `${apiUrl}${url}` : `${apiUrl}/${url}`;
+    const separator = fullUrl.includes('?') ? '&' : '?';
+    return `${fullUrl}${separator}token=${accessToken || ''}`;
   };
 
   const extractAttachments = (description: string | null | undefined) => {
@@ -232,6 +234,16 @@ export default function AssociateDetailPage() {
               >
                 Bagikan Profil
               </button>
+              {data.documents?.find((d) => d.type === 'cv') && (
+                <a
+                  href={resolveFileUrl(`/api/files/${data.documents.find((d) => d.type === 'cv')!.id}/view`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-[#0B2C6B] text-[#0B2C6B] bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
+                >
+                  Buka CV Asli (PDF/Word)
+                </a>
+              )}
               <Link
                 href={`/admin/associates/${params.id}/cv`}
                 className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0A255A]"
@@ -567,7 +579,7 @@ export default function AssociateDetailPage() {
               {data.documents?.map((doc) => (
                 <a
                   key={doc.id}
-                  href={`${apiUrl}/api/files/${doc.id}/view`}
+                  href={resolveFileUrl(`/api/files/${doc.id}/view`)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between rounded-lg border border-slate-200 p-4 transition-colors hover:bg-slate-50"
