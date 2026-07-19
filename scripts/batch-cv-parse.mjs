@@ -2,7 +2,8 @@
  * BATCH CV PARSING — Isi semua profile associate berdasarkan CV
  * 
  * Jalankan:
- *   node scripts/batch-cv-parse.mjs
+ *   node scripts/batch-cv-parse.mjs           # hanya CV belum di-parse
+ *   node scripts/batch-cv-parse.mjs --force    # re-parse SEMUA CV
  * 
  * Env vars yang dibutuhkan:
  *   SUPABASE_URL
@@ -15,6 +16,33 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import pdf from 'pdf-parse/lib/pdf-parse.js';
+import { readFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = resolve(__dirname, '..');
+
+// ============ LOAD ENV ============
+function loadEnv(filename) {
+  try {
+    const content = readFileSync(resolve(rootDir, filename), 'utf-8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx === -1) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      const val = trimmed.slice(eqIdx + 1).trim();
+      if (!process.env[key]) process.env[key] = val;
+    }
+  } catch {}
+}
+
+// Load dari apps/api/.env (sudah ada keys-nya)
+loadEnv('apps/api/.env');
+loadEnv('apps/api/.env.local');
+loadEnv('.env');
 
 // ============ CONFIG ============
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -26,6 +54,7 @@ const BUCKET = 'ams-files';
 
 if (!supabaseUrl || !supabaseKey || !openaiKey) {
   console.error('Error: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, dan OPENAI_API_KEY harus di-set');
+  console.error('Pastikan file apps/api/.env sudah berisi keys yang benar.');
   process.exit(1);
 }
 
@@ -89,22 +118,39 @@ async function extractText(file, mime) {
   return await file.text();
 }
 
-async function parseCVWithAI(text) {
-  const response = await openai.chat.completions.create({
-    model: openaiModel,
-    temperature: 0.3,
-    max_tokens: 4096,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: CV_PARSING_PROMPT },
-      { role: 'user', content: text }
-    ]
-  });
+function cleanJsonResponse(text) {
+  text = text.trim();
+  if (text.startsWith('```')) text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '');
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1) return text;
+  return text.substring(start, end + 1);
+}
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error('AI tidak mengembalikan hasil');
+async function parseCVWithAI(text, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: openaiModel,
+        temperature: 0.2,
+        max_tokens: 4096,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: CV_PARSING_PROMPT },
+          { role: 'user', content: text }
+        ]
+      });
 
-  return JSON.parse(content);
+      const content = response.choices[0]?.message?.content;
+      if (!content) throw new Error('AI tidak mengembalikan hasil');
+
+      return JSON.parse(cleanJsonResponse(content));
+    } catch (e) {
+      if (attempt === retries) throw e;
+      console.log(`    Attempt ${attempt} gagal (${e.message}), retry...`);
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
 }
 
 // ============ MAIN ============
@@ -112,8 +158,9 @@ async function parseCVWithAI(text) {
 async function main() {
   console.log('=== BATCH CV PARSING ===\n');
 
-  // 1. Cari associate yang punya CV tapi belum di-parse
-  const { data: unparsedDocs, error: queryError } = await supabase
+  // 1. Cari semua CV (baik belum parse maupun sudah parse)
+  const forceReparse = process.argv.includes('--force');
+  let query = supabase
     .from('associate_documents')
     .select(`
       id,
@@ -125,8 +172,14 @@ async function main() {
       created_at
     `)
     .eq('type', 'cv')
-    .is('parsed_data', null)
     .order('created_at', { ascending: true });
+
+  if (!forceReparse) {
+    // Default: hanya yang belum di-parse
+    query = query.is('parsed_data', null);
+  }
+
+  const { data: unparsedDocs, error: queryError } = await query;
 
   if (queryError) {
     console.error('Query gagal:', queryError.message);
@@ -138,9 +191,10 @@ async function main() {
     return;
   }
 
-  console.log(`Ditemukan ${unparsedDocs.length} CV belum di-parse:\n`);
+  console.log(`Ditemukan ${unparsedDocs.length} CV${forceReparse ? ' (re-parse semua)' : ' belum di-parse'}:\n`);
   unparsedDocs.forEach((doc, i) => {
-    console.log(`  ${i + 1}. ${doc.name} (associate: ${doc.associate_id})`);
+    const status = doc.parsed_data ? 'sudah parse' : 'belum parse';
+    console.log(`  ${i + 1}. ${doc.name} [${status}] (associate: ${doc.associate_id})`);
   });
 
   // 2. Process setiap CV

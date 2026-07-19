@@ -13,6 +13,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
   - Memperbaiki semua fungsi `getPhotoUrl()` di frontend agar menyertakan `?token=<accessToken>` sebagai query parameter pada URL gambar, mengikuti mekanisme token yang sudah didukung backend.
   - File yang diperbaiki: `apps/web/src/app/dashboard/page.tsx`, `apps/web/src/app/dashboard/profile/components/profile-view.tsx`, `apps/web/src/app/dashboard/profile/page.tsx`, `apps/web/src/app/admin/associates/[id]/page.tsx`, `apps/web/src/app/admin/associates/[id]/cv/page.tsx`.
 
+- **Akses File Laporan Akhir (evidence_url) Associate**:
+  - Memperbaiki tautan buka file laporan akhir pada halaman penugasan associate (`apps/web/src/app/dashboard/assignments/[id]/page.tsx` line 743) agar menggunakan pembungkus `getFileUrlWithToken(my.evidence_url, accessToken)`. Sebelumnya tautan ini menggunakan URL mentah tanpa token sehingga diblokir dengan status 401 saat dibuka oleh associate bersangkutan.
+
 - **Delay 3 Detik Setelah Simpan Sertifikasi & Portofolio**:
   - Root cause: `onRefresh()` dipanggil tanpa `await` di handler `handleAdd`, `handleSaveEdit`, dan `handleDelete` — form langsung tertutup sebelum data terbaru tiba, menyebabkan jeda tampak kosong ~3 detik.
   - Solusi: Mengubah semua call menjadi `await onRefresh()` sebelum menutup state `adding`/`saving`, sehingga tombol Simpan tetap dalam status loading sampai data benar-benar fresh di UI.
@@ -30,6 +33,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
   - Menambahkan `&token=${accessToken}` pada konstruksi URL foto profil di `apps/web/src/app/admin/associates/[id]/cv/page.tsx` agar gambar dimuat dengan benar saat admin melihat CV associate.
 
 ### Changed
+
+- **Kontrol Pembatasan Status Draft pada Assignment & Invites**:
+  - **Blokir Backend Undangan Draft**: Menambahkan validasi ketat pada backend endpoint `POST /api/admin/assignments/:id/invite` agar menolak pengiriman undangan apabila status assignment masih `draft`.
+  - **Blokir Backend Mulai Bekerja**: Menambahkan validasi pada backend endpoint `PATCH /api/associate/assignments/:id/status` agar mencegah transisi status ke `in_progress` (Mulai Kerja) jika assignment tidak berstatus `active`.
+  - **Guard Frontend & Informasi Status Proyek**:
+    - Menonaktifkan (*disable*) tombol **Undang Associate** di panel admin (`apps/web/src/app/admin/assignments/[id]/page.tsx`) dan menampilkan banner peringatan berwarna kuning jika status proyek masih draft.
+    - Menambahkan logika agar tombol **Mulai Kerja** di halaman associate (`apps/web/src/app/dashboard/assignments/[id]/page.tsx`) tetap nonaktif apabila status proyek belum `active` meskipun status undangan associate sudah `accepted`. Menampilkan banner peringatan informasi proyek belum diaktifkan oleh admin.
 
 - **Hapus Widget "Kesesuaian Proyek" dari Dashboard Associate**:
   - Widget `Kesesuaian Proyek` yang menampilkan jumlah assignment tersedia dihapus dari halaman dashboard utama associate (`apps/web/src/app/dashboard/page.tsx`).

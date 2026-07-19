@@ -1632,6 +1632,22 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     }, 400);
   }
 
+  // Extra guard: associate cannot start working (in_progress) if the assignment is not yet active
+  if (status === 'in_progress') {
+    const { data: assignmentCheck } = await db
+      .from('assignments')
+      .select('status')
+      .eq('id', assignmentId)
+      .single();
+
+    if (!assignmentCheck || assignmentCheck.status !== 'active') {
+      return c.json({ 
+        success: false, 
+        error: 'Proyek belum diaktifkan oleh admin. Tombol mulai bekerja hanya tersedia saat proyek berstatus aktif.' 
+      }, 403);
+    }
+  }
+
   const updateData: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),

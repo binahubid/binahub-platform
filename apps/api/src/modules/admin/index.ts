@@ -628,6 +628,10 @@ admin.post('/assignments/:id/invite', async (c) => {
     return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
   }
 
+  if (assignment.status !== 'active') {
+    return c.json({ success: false, error: 'Assignment harus berstatus aktif sebelum dapat mengundang associate. Aktifkan proyek terlebih dahulu.' }, 400);
+  }
+
   const { data: existing } = await db
     .from('assignment_assignees')
     .select('associate_id')
