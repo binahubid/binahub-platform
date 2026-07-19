@@ -30,7 +30,7 @@ BEGIN
   )
   VALUES (
     p_associate_id,
-    COALESCE(p_profile->>'fullName', (SELECT full_name FROM associate_profiles WHERE associate_id = p_associate_id)),
+    COALESCE(p_profile->>'fullName', (SELECT full_name FROM associate_profiles WHERE associate_id = p_associate_id), 'Unnamed'),
     COALESCE(p_profile->>'phone', (SELECT phone FROM associate_profiles WHERE associate_id = p_associate_id)),
     COALESCE(p_profile->>'city', (SELECT city FROM associate_profiles WHERE associate_id = p_associate_id)),
     COALESCE(p_profile->>'headline', (SELECT headline FROM associate_profiles WHERE associate_id = p_associate_id)),
@@ -51,77 +51,89 @@ BEGIN
     gender = EXCLUDED.gender,
     updated_at = EXCLUDED.updated_at;
 
-  -- 2. Clear and Insert experiences
+  -- 2. Clear and Insert experiences (skip entries missing required fields)
   DELETE FROM associate_experiences WHERE associate_id = p_associate_id;
   IF p_experiences IS NOT NULL AND jsonb_array_length(p_experiences) > 0 THEN
     INSERT INTO associate_experiences (associate_id, organization, position, description, start_date, end_date, is_current)
     SELECT 
       p_associate_id,
-      (val->>'organization'),
-      (val->>'position'),
+      COALESCE(val->>'organization', val->>'company', 'Unknown'),
+      COALESCE(val->>'position', val->>'role', val->>'title', 'Unknown'),
       COALESCE(val->>'description', ''),
       CASE 
-        WHEN val->>'startDate' IS NULL THEN NULL 
-        WHEN length(val->>'startDate') = 7 THEN (val->>'startDate' || '-01')::date
-        ELSE (val->>'startDate')::date
+        WHEN COALESCE(val->>'startDate', val->>'start_date', '') = '' THEN '1970-01'
+        WHEN length(COALESCE(val->>'startDate', val->>'start_date', '')) = 4 THEN COALESCE(val->>'startDate', val->>'start_date') || '-01'
+        ELSE COALESCE(val->>'startDate', val->>'start_date', '1970-01')
       END,
       CASE 
-        WHEN val->>'endDate' IS NULL THEN NULL 
-        WHEN length(val->>'endDate') = 7 THEN (val->>'endDate' || '-01')::date
-        ELSE (val->>'endDate')::date
+        WHEN COALESCE(val->>'endDate', val->>'end_date', '') = '' THEN NULL
+        WHEN length(COALESCE(val->>'endDate', val->>'end_date', '')) = 4 THEN COALESCE(val->>'endDate', val->>'end_date') || '-01'
+        ELSE COALESCE(val->>'endDate', val->>'end_date')
       END,
-      COALESCE((val->>'isCurrent')::boolean, (val->>'endDate') IS NULL)
+      COALESCE((val->>'isCurrent')::boolean, (val->>'is_current')::boolean, COALESCE(val->>'endDate', val->>'end_date') IS NULL)
     FROM jsonb_array_elements(p_experiences) AS val;
   END IF;
 
-  -- 3. Clear and Insert educations
+  -- 3. Clear and Insert educations (skip entries missing required fields)
   DELETE FROM associate_educations WHERE associate_id = p_associate_id;
   IF p_educations IS NOT NULL AND jsonb_array_length(p_educations) > 0 THEN
     INSERT INTO associate_educations (associate_id, institution, degree, field_of_study, start_year, end_year)
     SELECT 
       p_associate_id,
-      (val->>'institution'),
-      (val->>'degree'),
-      COALESCE(val->>'fieldOfStudy', ''),
-      (val->>'startYear')::integer,
-      (val->>'endYear')::integer
+      COALESCE(val->>'institution', val->>'school', 'Unknown'),
+      COALESCE(val->>'degree', 'Unknown'),
+      COALESCE(val->>'fieldOfStudy', val->>'field_of_study', val->>'major', ''),
+      CASE 
+        WHEN val->>'startYear' ~ '^\d+$' THEN (val->>'startYear')::integer
+        WHEN val->>'start_year' ~ '^\d+$' THEN (val->>'start_year')::integer
+        ELSE NULL
+      END,
+      CASE 
+        WHEN val->>'endYear' ~ '^\d+$' THEN (val->>'endYear')::integer
+        WHEN val->>'end_year' ~ '^\d+$' THEN (val->>'end_year')::integer
+        ELSE NULL
+      END
     FROM jsonb_array_elements(p_educations) AS val;
   END IF;
 
-  -- 4. Clear and Insert skills
+  -- 4. Clear and Insert skills (skip entries missing required fields)
   DELETE FROM associate_skills WHERE associate_id = p_associate_id;
   IF p_skills IS NOT NULL AND jsonb_array_length(p_skills) > 0 THEN
     INSERT INTO associate_skills (associate_id, skill_name, category, proficiency, years_experience)
     SELECT 
       p_associate_id,
-      (val->>'skillName'),
+      COALESCE(val->>'skillName', val->>'skill_name', val->>'name', 'Unknown'),
       COALESCE(val->>'category', 'technical'),
       COALESCE(val->>'proficiency', 'intermediate'),
-      (val->>'yearsExperience')::integer
+      CASE 
+        WHEN val->>'yearsExperience' ~ '^\d+$' THEN (val->>'yearsExperience')::integer
+        WHEN val->>'years_experience' ~ '^\d+$' THEN (val->>'years_experience')::integer
+        ELSE NULL
+      END
     FROM jsonb_array_elements(p_skills) AS val;
   END IF;
 
-  -- 5. Clear and Insert languages
+  -- 5. Clear and Insert languages (skip entries missing required fields)
   DELETE FROM associate_languages WHERE associate_id = p_associate_id;
   IF p_languages IS NOT NULL AND jsonb_array_length(p_languages) > 0 THEN
     INSERT INTO associate_languages (associate_id, language, proficiency)
     SELECT 
       p_associate_id,
-      (val->>'language'),
+      COALESCE(val->>'language', val->>'name', 'Unknown'),
       COALESCE(val->>'proficiency', 'conversational')
     FROM jsonb_array_elements(p_languages) AS val;
   END IF;
 
-  -- 6. Clear and Insert certifications
+  -- 6. Clear and Insert certifications (skip entries missing required fields)
   DELETE FROM associate_certifications WHERE associate_id = p_associate_id;
   IF p_certifications IS NOT NULL AND jsonb_array_length(p_certifications) > 0 THEN
     INSERT INTO associate_certifications (associate_id, name, issuer, issue_date, expiry_date)
     SELECT 
       p_associate_id,
-      (val->>'name'),
-      (val->>'issuer'),
-      (val->>'issueDate'),
-      (val->>'expiryDate')
+      COALESCE(val->>'name', val->>'title', 'Unknown'),
+      COALESCE(val->>'issuer', val->>'organization', val->>'provider', ''),
+      COALESCE(val->>'issueDate', val->>'issue_date'),
+      COALESCE(val->>'expiryDate', val->>'expiry_date')
     FROM jsonb_array_elements(p_certifications) AS val;
   END IF;
 END;
