@@ -313,7 +313,7 @@ export default function ProfilePage() {
           gender: parsed.gender
         },
         experiences: (parsed.experience || []).map((exp: any) => ({
-          company: exp.company,
+          organization: exp.company,
           position: exp.position,
           description: exp.description || '',
           startDate: exp.startDate || new Date().toISOString().substring(0, 7),

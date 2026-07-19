@@ -75,8 +75,16 @@ BEGIN
       (val->>'organization'),
       (val->>'position'),
       COALESCE(val->>'description', ''),
-      (val->>'startDate'),
-      (val->>'endDate'),
+      CASE 
+        WHEN val->>'startDate' IS NULL THEN NULL 
+        WHEN length(val->>'startDate') = 7 THEN (val->>'startDate' || '-01')::date
+        ELSE (val->>'startDate')::date
+      END,
+      CASE 
+        WHEN val->>'endDate' IS NULL THEN NULL 
+        WHEN length(val->>'endDate') = 7 THEN (val->>'endDate' || '-01')::date
+        ELSE (val->>'endDate')::date
+      END,
       COALESCE((val->>'isCurrent')::boolean, (val->>'endDate') IS NULL)
     FROM jsonb_array_elements(p_experiences) AS val;
   END IF;
