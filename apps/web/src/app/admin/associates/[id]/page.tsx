@@ -247,6 +247,16 @@ export default function AssociateDetailPage() {
               >
                 Bagikan Profil
               </button>
+              {data.documents?.find((d) => d.type === 'cv') && (
+                <a
+                  href={resolveFileUrl(`/api/files/${data.documents.find((d) => d.type === 'cv')!.id}/view`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-[#0B2C6B] text-[#0B2C6B] bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
+                >
+                  Buka CV Asli (PDF/Word)
+                </a>
+              )}
               <Link
                 href={`/admin/associates/${params.id}/cv`}
                 className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0A255A]"
