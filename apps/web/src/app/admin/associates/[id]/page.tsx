@@ -101,10 +101,15 @@ export default function AssociateDetailPage() {
     }
     // If it's an internal file API URL, ensure it has the correct active token
     if (targetUrl.startsWith(apiUrl)) {
-      // First clean up any old token if present in query parameters
-      const cleanUrl = targetUrl.split('?')[0];
-      const separator = cleanUrl.includes('?') ? '&' : '?';
-      targetUrl = `${cleanUrl}${accessToken ? `${separator}token=${accessToken}` : ''}`;
+      try {
+        const parsedUrl = new URL(targetUrl);
+        parsedUrl.searchParams.set('token', accessToken || '');
+        targetUrl = parsedUrl.toString();
+      } catch (e) {
+        // Fallback if URL parsing fails
+        const cleanUrl = targetUrl.split('?')[0];
+        targetUrl = `${cleanUrl}?token=${accessToken || ''}`;
+      }
     }
     return targetUrl;
   };
