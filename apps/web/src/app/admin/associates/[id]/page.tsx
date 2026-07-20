@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
+import { supabase } from '../../../../lib/supabase-client';
 import { Avatar, StatusBadge, Tabs, useToast } from '../../../../components/ui';
 
 type DetailData = {
@@ -594,8 +595,10 @@ export default function AssociateDetailPage() {
                 return (
                   <button
                     key={doc.id}
-                    onClick={() => {
-                      const url = resolveFileUrl(`/api/files/${doc.id}/view`);
+                    onClick={async () => {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      const freshToken = session?.access_token || accessToken || '';
+                      const url = `${apiUrl}/api/files/${doc.id}/view?token=${freshToken}`;
                       window.open(url, '_blank', 'noopener,noreferrer');
                     }}
                     className={`w-full flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-slate-50 text-left ${isCV ? 'border-[#0B2C6B]/30 bg-[#0B2C6B]/[0.02]' : 'border-slate-200'}`}

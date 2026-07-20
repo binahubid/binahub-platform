@@ -32,10 +32,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
 - **Foto Profil di Halaman Admin — View CV Associate**:
   - Menambahkan `&token=${accessToken}` pada konstruksi URL foto profil di `apps/web/src/app/admin/associates/[id]/cv/page.tsx` agar gambar dimuat dengan benar saat admin melihat CV associate.
 
-- **File Portofolio & Sertifikat Tidak Bisa Dibuka di Panel Admin (Token Kadaluwarsa)**:
-  - Root cause: Fungsi `resolveFileUrl` di `apps/web/src/app/admin/associates/[id]/page.tsx` mengembalikan URL API internal yang sudah menyimpan token lama *tanpa memperbaruinya*, karena kondisi awal fungsi langsung `return` jika URL dimulai dengan `http`. Akibatnya token yang tertanam di URL portofolio/sertifikat sudah expired saat admin membukanya.
-  - Solusi: Memperbaiki logika `resolveFileUrl` agar URL yang mengandung path `/api/files/` **selalu** direkonstruksi ulang dengan token sesi aktif saat ini, menggantikan token lama yang mungkin tertanam dalam URL tersimpan.
-  - Dampak: Attachment file portofolio, lampiran sertifikat, dan semua file di tab Dokumen kini selalu dapat dibuka tanpa error "File Tidak Ditemukan".
+- **Dokumen CV di Tab Dokumen Panel Admin Tidak Bisa Dibuka (Token Tidak Ditemukan)**:
+  - Root cause: Tab Dokumen di `apps/web/src/app/admin/associates/[id]/page.tsx` menggunakan `accessToken` dari React state saat membangun URL. Token ini bisa sudah **expired** atau masih `null` saat tombol diklik (terutama di sesi yang panjang), sehingga endpoint `/api/files/:id/view` menerima request tanpa token dan mengembalikan `{"success":false,"error":"Token tidak ditemukan"}`.
+  - Perbedaan dengan sertifikasi/portofolio: File sertifikat dan portofolio tersimpan sebagai URL Supabase Storage signed yang sudah berisi token storage sendiri—tidak bergantung pada auth token API.
+  - Solusi: Mengganti `onClick` handler di Documents tab agar memanggil `supabase.auth.getSession()` **secara fresh** setiap kali diklik untuk mendapatkan token terkini, lalu membangun URL langsung: `` `${apiUrl}/api/files/${doc.id}/view?token=${freshToken}` ``. Menambahkan import `supabase` dari `lib/supabase-client`.
+  - Dampak: File CV di tab Dokumen kini selalu dapat dibuka dengan token valid, tanpa error "Token tidak ditemukan".
 
 ### Changed
 
