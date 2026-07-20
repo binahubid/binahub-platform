@@ -95,21 +95,18 @@ export default function AssociateDetailPage() {
 
   const resolveFileUrl = (url: string | null | undefined) => {
     if (!url) return '#';
-    if (url.startsWith('data:')) return url;
-
-    // If URL contains our API file path, always rebuild with CURRENT token
-    // This handles URLs that were stored with an old/expired token embedded
-    const apiFilesMatch = url.match(/\/api\/files\/[^?#]+/);
-    if (apiFilesMatch) {
-      return `${apiUrl}${apiFilesMatch[0]}?token=${accessToken || ''}`;
+    let targetUrl = url;
+    if (!url.startsWith('http') && !url.startsWith('data:')) {
+      targetUrl = url.startsWith('/') ? `${apiUrl}${url}` : `${apiUrl}/${url}`;
     }
-
-    // External URLs (e.g., https://linkedin.com) — return as-is
-    if (url.startsWith('http')) return url;
-
-    const fullUrl = url.startsWith('/') ? `${apiUrl}${url}` : `${apiUrl}/${url}`;
-    const separator = fullUrl.includes('?') ? '&' : '?';
-    return `${fullUrl}${separator}token=${accessToken || ''}`;
+    // If it's an internal file API URL, ensure it has the correct active token
+    if (targetUrl.startsWith(apiUrl)) {
+      // First clean up any old token if present in query parameters
+      const cleanUrl = targetUrl.split('?')[0];
+      const separator = cleanUrl.includes('?') ? '&' : '?';
+      targetUrl = `${cleanUrl}${accessToken ? `${separator}token=${accessToken}` : ''}`;
+    }
+    return targetUrl;
   };
 
   const extractAttachments = (description: string | null | undefined) => {
