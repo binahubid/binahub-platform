@@ -32,6 +32,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
 - **Foto Profil di Halaman Admin — View CV Associate**:
   - Menambahkan `&token=${accessToken}` pada konstruksi URL foto profil di `apps/web/src/app/admin/associates/[id]/cv/page.tsx` agar gambar dimuat dengan benar saat admin melihat CV associate.
 
+- **File Portofolio & Sertifikat Tidak Bisa Dibuka di Panel Admin (Token Kadaluwarsa)**:
+  - Root cause: Fungsi `resolveFileUrl` di `apps/web/src/app/admin/associates/[id]/page.tsx` mengembalikan URL API internal yang sudah menyimpan token lama *tanpa memperbaruinya*, karena kondisi awal fungsi langsung `return` jika URL dimulai dengan `http`. Akibatnya token yang tertanam di URL portofolio/sertifikat sudah expired saat admin membukanya.
+  - Solusi: Memperbaiki logika `resolveFileUrl` agar URL yang mengandung path `/api/files/` **selalu** direkonstruksi ulang dengan token sesi aktif saat ini, menggantikan token lama yang mungkin tertanam dalam URL tersimpan.
+  - Dampak: Attachment file portofolio, lampiran sertifikat, dan semua file di tab Dokumen kini selalu dapat dibuka tanpa error "File Tidak Ditemukan".
+
 ### Changed
 
 - **Kontrol Pembatasan Status Draft pada Assignment & Invites**:
@@ -44,6 +49,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
 - **Hapus Widget "Kesesuaian Proyek" dari Dashboard Associate**:
   - Widget `Kesesuaian Proyek` yang menampilkan jumlah assignment tersedia dihapus dari halaman dashboard utama associate (`apps/web/src/app/dashboard/page.tsx`).
   - Alasan: Assignment kini bersifat eksklusif (invitation-only), sehingga metrik "proyek tersedia secara umum" tidak lagi relevan dan berpotensi menyesatkan.
+
+- **Konsolidasi UI Akses CV di Panel Admin — Profil Associate**:
+  - Menghapus tombol **"Buka CV Asli (PDF/Word)"** yang terletak di bagian header halaman profil associate (`apps/web/src/app/admin/associates/[id]/page.tsx`) karena redundan dengan tab **Dokumen** yang sudah ada dan berfungsi sama.
+  - Tab **Dokumen** kini menjadi satu-satunya entry point untuk mengakses semua berkas associate, termasuk CV, dengan tampilan yang lebih informatif: CV ditampilkan dengan badge biru tua **"CV"** dan border highlight agar mudah diidentifikasi admin di antara dokumen lain.
+  - Header halaman profil kini hanya menyisakan tombol **"Bagikan Profil"** dan **"Lihat CV Standar"** — lebih bersih dan tidak membingungkan.
 
 - **Hapus Link "Lihat Detail" dari Widget Ringkasan Kapabilitas**:
   - Link "Lihat detail →" di widget Ringkasan Kapabilitas di dashboard associate dihapus karena halaman `/dashboard/capability` sedang di-sembunyikan dari navigasi.

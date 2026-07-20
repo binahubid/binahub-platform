@@ -95,7 +95,18 @@ export default function AssociateDetailPage() {
 
   const resolveFileUrl = (url: string | null | undefined) => {
     if (!url) return '#';
-    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    if (url.startsWith('data:')) return url;
+
+    // If URL contains our API file path, always rebuild with CURRENT token
+    // This handles URLs that were stored with an old/expired token embedded
+    const apiFilesMatch = url.match(/\/api\/files\/[^?#]+/);
+    if (apiFilesMatch) {
+      return `${apiUrl}${apiFilesMatch[0]}?token=${accessToken || ''}`;
+    }
+
+    // External URLs (e.g., https://linkedin.com) — return as-is
+    if (url.startsWith('http')) return url;
+
     const fullUrl = url.startsWith('/') ? `${apiUrl}${url}` : `${apiUrl}/${url}`;
     const separator = fullUrl.includes('?') ? '&' : '?';
     return `${fullUrl}${separator}token=${accessToken || ''}`;
@@ -234,16 +245,6 @@ export default function AssociateDetailPage() {
               >
                 Bagikan Profil
               </button>
-              {data.documents?.find((d) => d.type === 'cv') && (
-                <a
-                  href={resolveFileUrl(`/api/files/${data.documents.find((d) => d.type === 'cv')!.id}/view`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-lg border border-[#0B2C6B] text-[#0B2C6B] bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
-                >
-                  Buka CV Asli (PDF/Word)
-                </a>
-              )}
               <Link
                 href={`/admin/associates/${params.id}/cv`}
                 className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0A255A]"
@@ -576,31 +577,40 @@ export default function AssociateDetailPage() {
           {/* Documents Tab */}
           {activeTab === 'documents' && (
             <div className="space-y-3">
-              {data.documents?.map((doc) => (
-                <a
-                  key={doc.id}
-                  href={resolveFileUrl(`/api/files/${doc.id}/view`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between rounded-lg border border-slate-200 p-4 transition-colors hover:bg-slate-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{doc.name}</p>
-                      <p className="text-xs text-slate-500">{doc.type}</p>
+              {data.documents?.map((doc) => {
+                const isCV = doc.type === 'cv';
+                return (
+                  <a
+                    key={doc.id}
+                    href={resolveFileUrl(`/api/files/${doc.id}/view`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-slate-50 ${isCV ? 'border-[#0B2C6B]/30 bg-[#0B2C6B]/[0.02]' : 'border-slate-200'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`flex-shrink-0 h-10 w-10 rounded-lg flex items-center justify-center ${isCV ? 'bg-[#0B2C6B]/10' : 'bg-slate-100'}`}>
+                        <svg className={`h-5 w-5 ${isCV ? 'text-[#0B2C6B]' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-slate-900">{doc.name}</p>
+                          {isCV && (
+                            <span className="inline-flex items-center rounded-full bg-[#0B2C6B] px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">CV</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">{new Date(doc.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-400">{new Date(doc.created_at).toLocaleDateString('id-ID')}</span>
-                    <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </div>
-                </a>
-              ))}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isCV ? 'bg-[#0B2C6B]/10 text-[#0B2C6B]' : 'bg-slate-100 text-slate-500'}`}>
+                        Buka File ↗
+                      </span>
+                    </div>
+                  </a>
+                );
+              })}
               {(!data.documents || data.documents.length === 0) && (
                 <p className="text-center text-sm text-slate-500">Belum ada dokumen.</p>
               )}
