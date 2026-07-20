@@ -592,12 +592,13 @@ export default function AssociateDetailPage() {
               {data.documents?.map((doc) => {
                 const isCV = doc.type === 'cv';
                 return (
-                  <a
+                  <button
                     key={doc.id}
-                    href={resolveFileUrl(`/api/files/${doc.id}/view`)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-slate-50 ${isCV ? 'border-[#0B2C6B]/30 bg-[#0B2C6B]/[0.02]' : 'border-slate-200'}`}
+                    onClick={() => {
+                      const url = resolveFileUrl(`/api/files/${doc.id}/view`);
+                      window.open(url, '_blank', 'noopener,noreferrer');
+                    }}
+                    className={`w-full flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-slate-50 text-left ${isCV ? 'border-[#0B2C6B]/30 bg-[#0B2C6B]/[0.02]' : 'border-slate-200'}`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`flex-shrink-0 h-10 w-10 rounded-lg flex items-center justify-center ${isCV ? 'bg-[#0B2C6B]/10' : 'bg-slate-100'}`}>
@@ -620,7 +621,7 @@ export default function AssociateDetailPage() {
                         Buka File ↗
                       </span>
                     </div>
-                  </a>
+                  </button>
                 );
               })}
               {(!data.documents || data.documents.length === 0) && (
