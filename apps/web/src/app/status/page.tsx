@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePageVisibility } from '../../hooks/use-page-visibility';
 
 interface HealthCheck {
   name: string;
@@ -48,11 +49,23 @@ export default function StatusPage() {
     setLastChecked(new Date());
   }
 
+  const { isVisible, justBecameVisible } = usePageVisibility();
+
   useEffect(() => {
     runChecks();
-    const interval = setInterval(runChecks, 30000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        runChecks();
+      }
+    }, 120000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (isVisible && justBecameVisible > 0) {
+      runChecks();
+    }
+  }, [isVisible, justBecameVisible]);
 
   const allOk = results.every((r) => r.status === 'ok');
 

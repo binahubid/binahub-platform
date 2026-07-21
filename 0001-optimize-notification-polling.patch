@@ -1,0 +1,235 @@
+From a665d40515db3ab7b02f47dc12d71069dfcf9771 Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Tue, 21 Jul 2026 09:50:15 +0000
+Subject: [PATCH] perf: optimize notification/status polling to reduce Vercel
+ traffic
+
+- Add usePageVisibility hook to detect background tabs
+- admin/layout.tsx: 30s -> 60s interval, skip fetch when tab hidden,
+  refetch immediately when tab becomes visible again
+- dashboard/layout.tsx: same treatment for associate notif count poll
+- dashboard/page.tsx: remove aggressive 30s background timer,
+  30s -> 90s interval, skip when hidden, refetch on visibility return
+- status/page.tsx: 30s -> 120s interval, skip when hidden, refetch
+  on visibility return
+
+Root cause: 4 separate setInterval polling loops (one of them
+duplicated on the associate dashboard) fired unconditionally every
+30s regardless of tab visibility, causing sustained ~200k+/day
+invocation volume on Vercel starting right after the notification
+feature rollout.
+---
+ apps/web/src/app/admin/layout.tsx         | 14 ++++++++-
+ apps/web/src/app/dashboard/layout.tsx     | 20 +++++++++++--
+ apps/web/src/app/dashboard/page.tsx       | 15 +++++++++-
+ apps/web/src/app/status/page.tsx          | 15 +++++++++-
+ apps/web/src/hooks/use-page-visibility.ts | 36 +++++++++++++++++++++++
+ 5 files changed, 94 insertions(+), 6 deletions(-)
+ create mode 100644 apps/web/src/hooks/use-page-visibility.ts
+
+diff --git a/apps/web/src/app/admin/layout.tsx b/apps/web/src/app/admin/layout.tsx
+index 2b471db..8d96875 100644
+--- a/apps/web/src/app/admin/layout.tsx
++++ b/apps/web/src/app/admin/layout.tsx
+@@ -6,6 +6,7 @@ import Link from 'next/link';
+ import Image from 'next/image';
+ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+ import { ToastProvider } from '../../components/ui';
++import { usePageVisibility } from '../../hooks/use-page-visibility';
+ 
+ const sidebarSections = [
+   {
+@@ -74,6 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
+ 
+   const isAdmin = user?.app_metadata?.role === 'admin';
+   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
++  const { isVisible, justBecameVisible } = usePageVisibility();
+ 
+   // Fetch notifications
+   const fetchNotifications = useCallback(async () => {
+@@ -92,11 +94,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
+   useEffect(() => {
+     if (isAdmin) {
+       fetchNotifications();
+-      const interval = setInterval(fetchNotifications, 30000);
++      const interval = setInterval(() => {
++        if (document.visibilityState === 'visible') fetchNotifications();
++      }, 60000);
+       return () => clearInterval(interval);
+     }
+   }, [isAdmin, fetchNotifications]);
+ 
++  // Fetch ulang begitu tab kembali aktif, supaya data tidak basi
++  // setelah tab di-background-kan cukup lama.
++  useEffect(() => {
++    if (isAdmin && isVisible && justBecameVisible > 0) {
++      fetchNotifications();
++    }
++  }, [isAdmin, isVisible, justBecameVisible, fetchNotifications]);
++
+   const unreadCount = useMemo(() => {
+     return notifications.filter((n) => !n.read).length;
+   }, [notifications]);
+diff --git a/apps/web/src/app/dashboard/layout.tsx b/apps/web/src/app/dashboard/layout.tsx
+index cef34dd..6e85f60 100644
+--- a/apps/web/src/app/dashboard/layout.tsx
++++ b/apps/web/src/app/dashboard/layout.tsx
+@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from 'react';
+ import { OnboardingProvider } from '../../components/onboarding/context';
+ import { OnboardingModal } from '../../components/onboarding/onboarding-modal';
+ import { ToastProvider } from '../../components/ui';
++import { usePageVisibility } from '../../hooks/use-page-visibility';
+ 
+ const sidebarSections = [
+   {
+@@ -60,13 +61,26 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
+     } catch { /* ignore */ }
+   }, [accessToken]);
+ 
++  const { isVisible, justBecameVisible } = usePageVisibility();
++  const isAssociate = !!user && user.app_metadata?.role !== 'admin';
++
+   useEffect(() => {
+-    if (user && user.app_metadata?.role !== 'admin') {
++    if (isAssociate) {
+       fetchNotifCount();
+-      const interval = setInterval(fetchNotifCount, 30000);
++      const interval = setInterval(() => {
++        if (document.visibilityState === 'visible') fetchNotifCount();
++      }, 60000);
+       return () => clearInterval(interval);
+     }
+-  }, [user, fetchNotifCount]);
++  }, [isAssociate, fetchNotifCount]);
++
++  // Fetch ulang begitu tab kembali aktif, supaya badge tidak basi
++  // setelah tab di-background-kan cukup lama.
++  useEffect(() => {
++    if (isAssociate && isVisible && justBecameVisible > 0) {
++      fetchNotifCount();
++    }
++  }, [isAssociate, isVisible, justBecameVisible, fetchNotifCount]);
+ 
+   useEffect(() => {
+     const handleUpdate = () => {
+diff --git a/apps/web/src/app/dashboard/page.tsx b/apps/web/src/app/dashboard/page.tsx
+index d242729..a75731b 100644
+--- a/apps/web/src/app/dashboard/page.tsx
++++ b/apps/web/src/app/dashboard/page.tsx
+@@ -5,6 +5,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+ import Link from 'next/link';
+ import { CapabilityRadar, ProfileStrength, Avatar } from '../../components/ui';
+ import { OnboardingChecklist } from '../../components/onboarding/checklist';
++import { usePageVisibility } from '../../hooks/use-page-visibility';
+ 
+ type ProfileData = {
+   full_name: string;
+@@ -161,12 +162,24 @@ export default function DashboardPage() {
+     }
+   };
+ 
++  const { isVisible, justBecameVisible } = usePageVisibility();
++
+   useEffect(() => {
+     fetchNotifications();
+-    const interval = setInterval(fetchNotifications, 30000);
++    const interval = setInterval(() => {
++      if (document.visibilityState === 'visible') fetchNotifications();
++    }, 90000);
+     return () => clearInterval(interval);
+   }, [fetchNotifications]);
+ 
++  // Fetch ulang begitu tab kembali aktif, supaya popover notifikasi
++  // tidak menampilkan data basi setelah tab di-background-kan lama.
++  useEffect(() => {
++    if (isVisible && justBecameVisible > 0) {
++      fetchNotifications();
++    }
++  }, [isVisible, justBecameVisible, fetchNotifications]);
++
+   useEffect(() => {
+     const handler = (e: MouseEvent) => {
+       if (notifPopoverRef.current && !notifPopoverRef.current.contains(e.target as Node)) {
+diff --git a/apps/web/src/app/status/page.tsx b/apps/web/src/app/status/page.tsx
+index e54f485..33db74f 100644
+--- a/apps/web/src/app/status/page.tsx
++++ b/apps/web/src/app/status/page.tsx
+@@ -1,6 +1,7 @@
+ 'use client';
+ 
+ import { useState, useEffect } from 'react';
++import { usePageVisibility } from '../../hooks/use-page-visibility';
+ 
+ interface HealthCheck {
+   name: string;
+@@ -48,12 +49,24 @@ export default function StatusPage() {
+     setLastChecked(new Date());
+   }
+ 
++  const { isVisible, justBecameVisible } = usePageVisibility();
++
+   useEffect(() => {
+     runChecks();
+-    const interval = setInterval(runChecks, 30000);
++    const interval = setInterval(() => {
++      if (document.visibilityState === 'visible') runChecks();
++    }, 120000);
+     return () => clearInterval(interval);
+   }, []);
+ 
++  // Refresh begitu tab kembali aktif, supaya status tidak basi
++  // setelah tab di-background-kan lama.
++  useEffect(() => {
++    if (isVisible && justBecameVisible > 0) {
++      runChecks();
++    }
++  }, [isVisible, justBecameVisible]);
++
+   const allOk = results.every((r) => r.status === 'ok');
+ 
+   return (
+diff --git a/apps/web/src/hooks/use-page-visibility.ts b/apps/web/src/hooks/use-page-visibility.ts
+new file mode 100644
+index 0000000..d175278
+--- /dev/null
++++ b/apps/web/src/hooks/use-page-visibility.ts
+@@ -0,0 +1,36 @@
++'use client';
++
++import { useEffect, useState } from 'react';
++
++/**
++ * Mendeteksi apakah tab/halaman saat ini sedang aktif dilihat user
++ * (berdasarkan document.visibilityState). Dipakai untuk menjeda
++ * polling di tab yang dibiarkan terbuka di background, supaya
++ * tidak terus menembak request ke server tanpa henti.
++ *
++ * Juga mengembalikan `justBecameVisible` (timestamp) setiap kali
++ * tab berpindah dari tersembunyi -> terlihat, supaya pemanggil bisa
++ * langsung fetch ulang data yang mungkin sudah basi selama tab
++ * di-background-kan, alih-alih menunggu interval polling berikutnya.
++ */
++export function usePageVisibility() {
++  const [isVisible, setIsVisible] = useState<boolean>(
++    typeof document === 'undefined' ? true : document.visibilityState === 'visible'
++  );
++  const [justBecameVisible, setJustBecameVisible] = useState<number>(0);
++
++  useEffect(() => {
++    const handleVisibilityChange = () => {
++      const visible = document.visibilityState === 'visible';
++      setIsVisible(visible);
++      if (visible) {
++        setJustBecameVisible(Date.now());
++      }
++    };
++
++    document.addEventListener('visibilitychange', handleVisibilityChange);
++    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
++  }, []);
++
++  return { isVisible, justBecameVisible };
++}
+-- 
+2.43.0
+

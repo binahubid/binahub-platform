@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { OnboardingProvider } from '../../components/onboarding/context';
 import { OnboardingModal } from '../../components/onboarding/onboarding-modal';
 import { ToastProvider } from '../../components/ui';
+import { usePageVisibility } from '../../hooks/use-page-visibility';
 
 const sidebarSections = [
   {
@@ -60,13 +61,26 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     } catch { /* ignore */ }
   }, [accessToken]);
 
+  const { isVisible, justBecameVisible } = usePageVisibility();
+  const isAssociate = !!user && user.app_metadata?.role !== 'admin';
+
   useEffect(() => {
-    if (user && user.app_metadata?.role !== 'admin') {
+    if (isAssociate) {
       fetchNotifCount();
-      const interval = setInterval(fetchNotifCount, 30000);
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          fetchNotifCount();
+        }
+      }, 60000);
       return () => clearInterval(interval);
     }
-  }, [user, fetchNotifCount]);
+  }, [isAssociate, fetchNotifCount]);
+
+  useEffect(() => {
+    if (isAssociate && isVisible && justBecameVisible > 0) {
+      fetchNotifCount();
+    }
+  }, [isAssociate, isVisible, justBecameVisible, fetchNotifCount]);
 
   useEffect(() => {
     const handleUpdate = () => {

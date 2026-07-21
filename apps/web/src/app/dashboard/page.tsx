@@ -5,6 +5,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { CapabilityRadar, ProfileStrength, Avatar } from '../../components/ui';
 import { OnboardingChecklist } from '../../components/onboarding/checklist';
+import { usePageVisibility } from '../../hooks/use-page-visibility';
 
 type ProfileData = {
   full_name: string;
@@ -161,11 +162,23 @@ export default function DashboardPage() {
     }
   };
 
+  const { isVisible, justBecameVisible } = usePageVisibility();
+
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications();
+      }
+    }, 90000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (isVisible && justBecameVisible > 0) {
+      fetchNotifications();
+    }
+  }, [isVisible, justBecameVisible, fetchNotifications]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

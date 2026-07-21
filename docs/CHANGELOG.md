@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.8] — 2026-07-21
+
+### Fixed
+
+- **Optimasi Polling Notifikasi & Status (Pencegahan Lonjakan Trafik API / Vercel)**:
+  - **Root Cause**: Adanya 4 perulangan `setInterval` di frontend yang mengeksekusi request setiap 30 detik secara agresif tanpa memedulikan status keaktifan tab (visible/hidden). Hal ini memicu lonjakan ~200k+ invocation/hari pada endpoint `/api/admin/notifications`, `/api/associate/notifications/count`, dan `/api/health`.
+  - **Solusi**:
+    1. Membuat hook custom `usePageVisibility` untuk memantau status fokus/visibility halaman/tab browser (`document.visibilityState`).
+    2. Menambahkan guard `!isVisible` pada 4 endpoint polling: layout admin, layout dashboard, dashboard page, dan status page agar request dijeda saat tab berada di background.
+    3. Meningkatkan interval polling agar tidak terlalu agresif: layout admin (30s -> 60s), layout dashboard (30s -> 60s), dashboard page (30s -> 90s), dan status page (30s -> 120s).
+    4. Mengimplementasikan instant-refetch ketika tab kembali aktif (`visible` & `justBecameVisible > 0`) agar informasi yang ditampilkan di layar tidak usang tanpa harus menunggu interval polling berikutnya.
+  - **Dampak**: Menghilangkan request redundan/latensi tinggi saat tab berada di background, secara drastis menekan tagihan dan jumlah Invocation/CPU usage di Vercel.
+
 ## [0.7.7] — 2026-07-20
 
 ### Fixed

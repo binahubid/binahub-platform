@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { ToastProvider } from '../../components/ui';
+import { usePageVisibility } from '../../hooks/use-page-visibility';
 
 const sidebarSections = [
   {
@@ -74,6 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isAdmin = user?.app_metadata?.role === 'admin';
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const { isVisible, justBecameVisible } = usePageVisibility();
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
@@ -92,10 +94,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (isAdmin) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000);
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          fetchNotifications();
+        }
+      }, 60000);
       return () => clearInterval(interval);
     }
   }, [isAdmin, fetchNotifications]);
+
+  useEffect(() => {
+    if (isAdmin && isVisible && justBecameVisible > 0) {
+      fetchNotifications();
+    }
+  }, [isAdmin, isVisible, justBecameVisible, fetchNotifications]);
 
   const unreadCount = useMemo(() => {
     return notifications.filter((n) => !n.read).length;
