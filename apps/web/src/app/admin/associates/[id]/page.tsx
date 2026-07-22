@@ -100,16 +100,15 @@ export default function AssociateDetailPage() {
     if (!url.startsWith('http') && !url.startsWith('data:')) {
       targetUrl = url.startsWith('/') ? `${apiUrl}${url}` : `${apiUrl}/${url}`;
     }
-    // If it's an internal file API URL, ensure it has the correct active token
-    if (targetUrl.startsWith(apiUrl)) {
-      try {
-        const parsedUrl = new URL(targetUrl);
-        parsedUrl.searchParams.set('token', accessToken || '');
-        targetUrl = parsedUrl.toString();
-      } catch (e) {
-        // Fallback if URL parsing fails
-        const cleanUrl = targetUrl.split('?')[0];
-        targetUrl = `${cleanUrl}?token=${accessToken || ''}`;
+    // Always append active access token for API file view endpoints
+    if (targetUrl.includes('/api/files/')) {
+      const token = accessToken || '';
+      if (token) {
+        const separator = targetUrl.includes('?') ? '&' : '?';
+        // Remove existing token parameter if present to avoid duplication
+        const cleanUrl = targetUrl.replace(/([?&])token=[^&]*/, '$1').replace(/[?&]$/, '');
+        const finalSep = cleanUrl.includes('?') ? '&' : '?';
+        return `${cleanUrl}${finalSep}token=${encodeURIComponent(token)}`;
       }
     }
     return targetUrl;
