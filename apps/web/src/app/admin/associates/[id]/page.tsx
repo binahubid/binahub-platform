@@ -592,15 +592,13 @@ export default function AssociateDetailPage() {
             <div className="space-y-3">
               {data.documents?.map((doc) => {
                 const isCV = doc.type === 'cv';
+                const fileViewUrl = resolveFileUrl(`/api/files/${doc.id}/view`);
                 return (
-                  <button
+                  <a
                     key={doc.id}
-                    onClick={async () => {
-                      const { data: { session } } = await supabase.auth.getSession();
-                      const freshToken = session?.access_token || accessToken || '';
-                      const url = `${apiUrl}/api/files/${doc.id}/view?token=${freshToken}`;
-                      window.open(url, '_blank', 'noopener,noreferrer');
-                    }}
+                    href={fileViewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className={`w-full flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-slate-50 text-left ${isCV ? 'border-[#0B2C6B]/30 bg-[#0B2C6B]/[0.02]' : 'border-slate-200'}`}
                   >
                     <div className="flex items-center gap-3">
@@ -624,7 +622,7 @@ export default function AssociateDetailPage() {
                         Buka File ↗
                       </span>
                     </div>
-                  </button>
+                  </a>
                 );
               })}
               {(!data.documents || data.documents.length === 0) && (
