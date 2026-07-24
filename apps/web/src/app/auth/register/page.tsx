@@ -151,17 +151,17 @@ export default function RegisterPage() {
             </button>
             {/* Tooltip */}
             {showTooltip && !allChecked && (
-              <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-64 -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 shadow-lg sm:w-72">
+              <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-lg sm:w-72">
                 <div className="flex items-start gap-2">
                   <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  <p className="text-xs leading-relaxed text-amber-800">
-                    Centang kedua checkbox di atas terlebih dahulu untuk melanjutkan pendaftaran.
+                  <p className="text-xs leading-relaxed text-slate-700">
+                    Centang Syarat & Ketentuan serta Kebijakan Privasi untuk melanjutkan.
                   </p>
                 </div>
                 {/* Arrow */}
-                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-3 w-3 rotate-45 border border-amber-200 bg-amber-50 border-b-0 border-r-0" />
+                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-3 w-3 rotate-45 border border-slate-200 bg-white border-b-0 border-r-0" />
               </div>
             )}
           </div>
