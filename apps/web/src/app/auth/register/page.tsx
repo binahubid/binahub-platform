@@ -18,10 +18,9 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [agreeSkk, setAgreeSkk] = useState(false);
-  const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeAi, setAgreeAi] = useState(false);
 
-  const allChecked = agreeSkk && agreePrivacy && agreeAi;
+  const allChecked = agreeSkk && agreeAi;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,18 +131,7 @@ export default function RegisterPage() {
                 <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">
                   Syarat & Ketentuan
                 </Link>{' '}
-                BinaHub Associate Management System.
-              </span>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreePrivacy}
-                onChange={(e) => setAgreePrivacy(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B]/20"
-              />
-              <span className="text-xs leading-relaxed text-slate-600">
-                Saya telah membaca dan menyetujui{' '}
+                serta{' '}
                 <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">
                   Kebijakan Privasi
                 </Link>{' '}
@@ -169,7 +157,7 @@ export default function RegisterPage() {
           <button
             onClick={handleGoogleRegister}
             disabled={googleLoading || !allChecked}
-            className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50"
+            className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50"
           >
             {googleLoading ? (
               <svg className="h-4 w-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
