@@ -238,19 +238,19 @@ export function Hero() {
                 <svg className="h-3.5 w-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Gratis untuk associate</span>
+                <span>Gratis</span>
               </div>
               <div className="flex items-center gap-2">
                 <svg className="h-3.5 w-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Tanpa kartu kredit</span>
+                <span>Mudah</span>
               </div>
               <div className="flex items-center gap-2">
                 <svg className="h-3.5 w-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Siap dalam 2 menit</span>
+                <span>Cepat</span>
               </div>
             </div>
           </div>
