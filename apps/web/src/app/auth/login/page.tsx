@@ -270,15 +270,6 @@ function LoginForm() {
             Daftar gratis
           </Link>
         </p>
-
-        {/* Terms */}
-        <p className="mt-4 text-center text-xs text-slate-400">
-          Dengan masuk, Anda menyetujui{' '}
-          <Link href="/skk" className="underline hover:text-slate-600">
-            Syarat & Kebijakan Privasi
-          </Link>
-          .
-        </p>
       </div>
     </div>
   );

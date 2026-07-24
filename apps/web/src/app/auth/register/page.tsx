@@ -338,15 +338,6 @@ export default function RegisterPage() {
             Masuk
           </Link>
         </p>
-
-        {/* Terms */}
-        <p className="mt-4 text-center text-xs text-slate-400">
-          Dengan mendaftar, Anda menyetujui{' '}
-          <Link href="/skk" className="underline hover:text-slate-600">
-            Syarat & Kebijakan Privasi
-          </Link>
-          .
-        </p>
       </div>
     </div>
   );
