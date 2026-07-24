@@ -48,8 +48,8 @@ export function Footer() {
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-8 sm:flex-row">
           <p className="text-xs text-slate-500">© {new Date().getFullYear()} BinaHub. All rights reserved.</p>
           <div className="flex items-center gap-5 text-xs text-slate-500">
-            <a href="https://binahub.id/privacy" target="_blank" rel="noopener noreferrer" className="transition hover:text-slate-900">Kebijakan Privasi</a>
-            <a href="https://binahub.id/terms" target="_blank" rel="noopener noreferrer" className="transition hover:text-slate-900">Syarat & Ketentuan</a>
+            <Link href="/skk" className="transition hover:text-slate-900">Kebijakan Privasi</Link>
+            <Link href="/skk" className="transition hover:text-slate-900">Syarat & Ketentuan</Link>
           </div>
         </div>
       </div>

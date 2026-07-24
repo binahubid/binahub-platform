@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.9] — 2026-07-24
+
+### Added
+
+- **Halaman Syarat & Ketentuan & Kebijakan Privasi (`/skk`)**:
+  - Membuat halaman publik baru `/skk` (`apps/web/src/app/skk/page.tsx`) dengan tab interaktif untuk menampilkan seluruh teks Syarat & Ketentuan dan Kebijakan Privasi BinaHub AMS.
+  - Halaman dapat diakses tanpa autentikasi dan responsif di semua ukuran layar.
+  - Header sticky dengan tombol "Kembali" ke halaman utama.
+
+- **Menu "Syarat & Ketentuan" di Sidebar Associate & Admin**:
+  - Menambahkan link navigasi "Syarat & Ketentuan" (`/skk`) di bagian bawah sidebar Associate (`apps/web/src/app/dashboard/layout.tsx`) dan sidebar Admin (`apps/web/src/app/admin/layout.tsx`) — tepat di atas Pusat Bantuan.
+  - Menggunakan icon document SVG dan style yang konsisten dengan menu lain di masing-masing sidebar.
+
+### Changed
+
+- **Prioritas Google OAuth di Halaman Login & Register**:
+  - Tombol Google Login/Register tetap menjadi CTA utama (paling atas, full-width) untuk kedua halaman.
+  - Form email/password/nama disembunyikan (*hidden*) di belakang tombol toggle "Masuk dengan Email" / "Daftar dengan Email" dengan ikon chevron yang berputar saat diklik.
+  - Form email hanya muncul setelah pengguna mengklik toggle — mengurangi clutter visual dan mendorong penggunaan Google OAuth.
+
+- **Checkbox Persetujuan di Halaman Register**:
+  - Menambahkan 3 checkbox wajib (*required*) di dalam form email register yang harus dicentang sebelum tombol "Buat Akun" aktif:
+    1. Persetujuan Syarat & Ketentuan BinaHub AMS (dengan link ke `/skk`).
+    2. Persetujuan Kebijakan Privasi BinaHub AMS (dengan link ke `/skk`).
+    3. Pemahaman penggunaan AI untuk pemrosesan data profesional.
+  - Tombol "Buat Akun" dalam status `disabled` sampai ketiga checkbox tercentang.
+  - Seluruh checkbox dibungkus dalam container `border-slate-200 bg-slate-50` dengan padding yang rapi.
+
+- **Link Footer Landing Page**:
+  - Mengubah tautan "Kebijakan Privasi" dan "Syarat & Ketentuan" di footer (`apps/web/src/components/landing/Footer.tsx`) dari URL eksternal (`https://binahub.id/privacy`, `https://binahub.id/terms`) menjadi rute internal (`/skk`).
+
+- **Tautan Syarat di Halaman Login & Register**:
+  - Mengganti paragraf footer "Dengan masuk/ mendaftar, Anda menyetujui Syarat & Kebijakan Privasi" pada kedua halaman auth agar menggunakan komponen `<Link href="/skk">` alih-alih anchor tag eksternal.
+
 ## [0.7.8] — 2026-07-21
 
 ### Fixed
