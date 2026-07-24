@@ -2,8 +2,12 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useAuth } from '../../context/AuthContext';
 
 export function Navbar() {
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/60 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
@@ -26,15 +30,27 @@ export function Navbar() {
             FAQ
             <span className="absolute -bottom-1 left-0 h-px w-0 bg-slate-900 transition-all duration-200 group-hover:w-full" />
           </a>
-          <Link href="/auth/login" className="text-sm font-medium text-slate-600 transition hover:text-slate-900">
-            Masuk
-          </Link>
-          <Link
-            href="/auth/register"
-            className="rounded-full bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-md"
-          >
-            Daftar
-          </Link>
+
+          {isLoggedIn ? (
+            <Link
+              href={user?.app_metadata?.role === 'admin' ? '/admin' : '/dashboard'}
+              className="rounded-full bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-md"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link href="/auth/login" className="text-sm font-medium text-slate-600 transition hover:text-slate-900">
+                Masuk
+              </Link>
+              <Link
+                href="/auth/register"
+                className="rounded-full bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-md"
+              >
+                Daftar
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>
