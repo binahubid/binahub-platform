@@ -72,15 +72,15 @@ export default function SKKPage() {
 
 function SyaratKetentuan() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Title */}
-      <div className="border-b border-slate-100 pb-6">
+      <div className="border-b border-slate-100 pb-5">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Syarat & Ketentuan</h1>
         <p className="mt-1 text-sm font-medium text-[#0B2C6B]">BinaHub Associate Management System</p>
       </div>
 
       {/* Intro */}
-      <div className="space-y-3 text-[15px] leading-relaxed text-slate-700">
+      <div className="space-y-2 text-[15px] leading-relaxed text-slate-700">
         <p>Selamat datang di BinaHub Associate Management System (AMS).</p>
         <p>
           Dengan membuat akun dan mengisi data pada sistem ini, Anda menyatakan telah membaca, memahami, dan menyetujui
@@ -100,7 +100,7 @@ function SyaratKetentuan() {
         <p>
           Associate bertanggung jawab untuk memberikan informasi yang benar, lengkap, dan terkini.
         </p>
-        <p>
+        <p className="mt-1.5">
           Associate juga diharapkan memperbarui data apabila terdapat perubahan, seperti pengalaman proyek, sertifikasi,
           pendidikan, atau informasi profesional lainnya.
         </p>
@@ -111,7 +111,7 @@ function SyaratKetentuan() {
         <p>
           Data yang diberikan melalui AMS akan digunakan oleh PT BinaHub Solusi Transformasi untuk:
         </p>
-        <ul className="mt-2 space-y-1.5 pl-1">
+        <ul className="mt-1.5 space-y-1 pl-1">
           {[
             'Mengelola database Associate.',
             'Melakukan pemetaan kompetensi.',
@@ -126,7 +126,7 @@ function SyaratKetentuan() {
             </li>
           ))}
         </ul>
-        <p className="mt-3">
+        <p className="mt-2">
           BinaHub berkomitmen menjaga kerahasiaan data sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.
         </p>
       </Section>
@@ -136,7 +136,7 @@ function SyaratKetentuan() {
         <p>
           Seluruh data, dokumen, portofolio, dan materi yang diunggah oleh Associate tetap menjadi milik Associate.
         </p>
-        <p className="mt-2">
+        <p className="mt-1.5">
           Associate memberikan izin kepada BinaHub untuk menggunakan data profesional tersebut sepanjang diperlukan dalam
           rangka proses penawaran, proposal, tender, pemasaran layanan, dan pelaksanaan proyek yang melibatkan Associate.
         </p>
@@ -147,11 +147,11 @@ function SyaratKetentuan() {
         <p>
           Pengisian data pada AMS merupakan proses pendaftaran dan pemetaan kompetensi.
         </p>
-        <p className="mt-2">
+        <p className="mt-1.5">
           Pengisian formulir tidak secara otomatis menjadikan seseorang sebagai Associate aktif maupun menjamin
           keterlibatan dalam proyek tertentu.
         </p>
-        <p className="mt-2">
+        <p className="mt-1.5">
           Keputusan mengenai penerimaan Associate maupun penugasan proyek sepenuhnya menjadi kewenangan BinaHub
           berdasarkan kebutuhan, kompetensi, pengalaman, ketersediaan, dan pertimbangan lainnya.
         </p>
@@ -170,7 +170,7 @@ function SyaratKetentuan() {
           Associate diharapkan menjaga kerahasiaan seluruh informasi yang diperoleh selama proses komunikasi maupun
           pelaksanaan proyek bersama BinaHub.
         </p>
-        <p className="mt-2">
+        <p className="mt-1.5">
           Ketentuan kerahasiaan yang lebih rinci dapat diatur dalam perjanjian tersendiri apabila diperlukan.
         </p>
       </Section>
@@ -180,7 +180,7 @@ function SyaratKetentuan() {
         <p>
           Associate bertanggung jawab atas keamanan akun dan informasi login yang dimiliki.
         </p>
-        <p className="mt-2">
+        <p className="mt-1.5">
           Associate tidak diperkenankan memberikan akses akun kepada pihak lain tanpa persetujuan BinaHub.
         </p>
       </Section>
@@ -208,16 +208,16 @@ function SyaratKetentuan() {
 
 function KebijakanPrivasi() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Title */}
-      <div className="border-b border-slate-100 pb-6">
+      <div className="border-b border-slate-100 pb-5">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Kebijakan Privasi</h1>
         <p className="mt-1 text-sm font-medium text-[#0B2C6B]">BinaHub Associate Management System</p>
-        <p className="mt-2 text-sm text-slate-500">Terakhir diperbarui: Juli 2026</p>
+        <p className="mt-1.5 text-sm text-slate-500">Terakhir diperbarui: Juli 2026</p>
       </div>
 
       {/* Intro */}
-      <div className="space-y-3 text-[15px] leading-relaxed text-slate-700">
+      <div className="space-y-2 text-[15px] leading-relaxed text-slate-700">
         <p>
           PT BinaHub Solusi Transformasi (&quot;BinaHub&quot;) menghargai dan melindungi privasi setiap Associate yang
           menggunakan BinaHub Associate Management System (AMS).
@@ -231,7 +231,7 @@ function KebijakanPrivasi() {
       {/* Section 1 */}
       <Section number={1} title="Data yang Kami Kumpulkan">
         <p>Kami dapat mengumpulkan data yang Anda berikan secara langsung, antara lain:</p>
-        <ul className="mt-2 space-y-1.5 pl-1">
+        <ul className="mt-1.5 space-y-1 pl-1">
           {[
             'Nama lengkap',
             'Informasi kontak (email dan nomor telepon)',
@@ -257,7 +257,7 @@ function KebijakanPrivasi() {
       {/* Section 2 */}
       <Section number={2} title="Tujuan Penggunaan Data">
         <p>Data yang Anda berikan digunakan untuk:</p>
-        <ul className="mt-2 space-y-1.5 pl-1">
+        <ul className="mt-1.5 space-y-1 pl-1">
           {[
             'Mengelola profil Associate.',
             'Memetakan kompetensi dan pengalaman Associate.',
@@ -278,7 +278,7 @@ function KebijakanPrivasi() {
       {/* Section 3 */}
       <Section number={3} title="Penggunaan AI">
         <p>AMS dapat memanfaatkan teknologi Artificial Intelligence (AI) untuk membantu:</p>
-        <ul className="mt-2 space-y-1.5 pl-1">
+        <ul className="mt-1.5 space-y-1 pl-1">
           {[
             'Membaca dan mengekstrak informasi dari CV.',
             'Membantu mengisi data profil secara otomatis.',
@@ -291,7 +291,7 @@ function KebijakanPrivasi() {
             </li>
           ))}
         </ul>
-        <p className="mt-3">
+        <p className="mt-2">
           Penggunaan AI bertujuan meningkatkan efisiensi dan kualitas data. Keputusan akhir mengenai penerimaan Associate
           maupun penugasan proyek tetap dilakukan oleh tim BinaHub.
         </p>
@@ -303,7 +303,7 @@ function KebijakanPrivasi() {
           Kami berupaya menjaga keamanan data melalui pengelolaan sistem, kontrol akses, dan langkah-langkah teknis yang
           wajar untuk mencegah akses, penggunaan, atau pengungkapan data tanpa izin.
         </p>
-        <p className="mt-2">
+        <p className="mt-1.5">
           Meskipun demikian, tidak ada sistem yang dapat menjamin keamanan secara mutlak. Oleh karena itu, kami juga
           mengharapkan Associate menjaga kerahasiaan informasi akun yang dimiliki.
         </p>
@@ -312,8 +312,8 @@ function KebijakanPrivasi() {
       {/* Section 5 */}
       <Section number={5} title="Berbagi Data">
         <p>BinaHub tidak menjual maupun memperdagangkan data pribadi Associate.</p>
-        <p className="mt-2">Data hanya dapat digunakan atau dibagikan apabila diperlukan untuk:</p>
-        <ul className="mt-2 space-y-1.5 pl-1">
+        <p className="mt-1.5">Data hanya dapat digunakan atau dibagikan apabila diperlukan untuk:</p>
+        <ul className="mt-1.5 space-y-1 pl-1">
           {[
             'Proses penawaran kepada calon klien.',
             'Proposal atau tender.',
@@ -327,13 +327,13 @@ function KebijakanPrivasi() {
             </li>
           ))}
         </ul>
-        <p className="mt-3">Kami hanya membagikan informasi yang relevan dengan kebutuhan tersebut.</p>
+        <p className="mt-2">Kami hanya membagikan informasi yang relevan dengan kebutuhan tersebut.</p>
       </Section>
 
       {/* Section 6 */}
       <Section number={6} title="Hak Associate">
         <p>Associate berhak untuk:</p>
-        <ul className="mt-2 space-y-1.5 pl-1">
+        <ul className="mt-1.5 space-y-1 pl-1">
           {[
             'Melihat data yang dimiliki.',
             'Memperbarui data profil.',
@@ -355,7 +355,7 @@ function KebijakanPrivasi() {
           Data Associate akan disimpan selama masih diperlukan untuk mendukung hubungan kerja sama, proses administrasi,
           atau kepentingan operasional BinaHub.
         </p>
-        <p className="mt-2">
+        <p className="mt-1.5">
           Apabila Associate tidak lagi menggunakan AMS, BinaHub dapat menghapus atau mengarsipkan data sesuai kebutuhan
           operasional dan ketentuan yang berlaku.
         </p>
@@ -376,7 +376,7 @@ function KebijakanPrivasi() {
       {/* Consent */}
       <div className="rounded-xl border border-[#0B2C6B]/20 bg-[#0B2C6B]/5 p-5">
         <h3 className="text-sm font-bold tracking-tight text-[#0B2C6B]">Persetujuan</h3>
-        <p className="mt-2 text-[15px] leading-relaxed text-slate-700">
+        <p className="mt-1.5 text-[15px] leading-relaxed text-slate-700">
           Dengan menggunakan BinaHub Associate Management System (AMS), Anda menyatakan telah membaca, memahami, dan
           menyetujui Kebijakan Privasi ini.
         </p>
@@ -387,14 +387,11 @@ function KebijakanPrivasi() {
 
 function Section({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-2">
-      <h2 className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-slate-900">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0B2C6B] text-xs font-bold text-white">
-          {number}
-        </span>
-        {title}
+    <div className="space-y-1.5">
+      <h2 className="text-base font-bold tracking-tight text-slate-900">
+        {number}. {title}
       </h2>
-      <div className="pl-[38px] text-[15px] leading-relaxed text-slate-700">
+      <div className="text-[15px] leading-relaxed text-slate-700">
         {children}
       </div>
     </div>
