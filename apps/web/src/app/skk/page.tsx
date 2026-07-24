@@ -72,237 +72,331 @@ export default function SKKPage() {
 
 function SyaratKetentuan() {
   return (
-    <div className="prose prose-slate max-w-none">
-      <h1 className="!mb-2 text-2xl font-bold text-slate-900">Syarat & Ketentuan</h1>
-      <p className="!mt-0 text-sm font-medium text-[#0B2C6B]">BinaHub Associate Management System</p>
+    <div className="space-y-6">
+      {/* Title */}
+      <div className="border-b border-slate-100 pb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Syarat & Ketentuan</h1>
+        <p className="mt-1 text-sm font-medium text-[#0B2C6B]">BinaHub Associate Management System</p>
+      </div>
 
-      <p>Selamat datang di BinaHub Associate Management System (AMS).</p>
+      {/* Intro */}
+      <div className="space-y-3 text-[15px] leading-relaxed text-slate-700">
+        <p>Selamat datang di BinaHub Associate Management System (AMS).</p>
+        <p>
+          Dengan membuat akun dan mengisi data pada sistem ini, Anda menyatakan telah membaca, memahami, dan menyetujui
+          syarat dan ketentuan berikut.
+        </p>
+      </div>
 
-      <p>
-        Dengan membuat akun dan mengisi data pada sistem ini, Anda menyatakan telah membaca, memahami, dan menyetujui
-        syarat dan ketentuan berikut.
-      </p>
-
-      <h2>1. Tujuan Penggunaan</h2>
-      <p>
+      {/* Section 1 */}
+      <Section number={1} title="Tujuan Penggunaan">
         BinaHub Associate Management System (AMS) merupakan platform yang digunakan untuk mengelola profil profesional
         Associate BinaHub, memetakan kompetensi, serta mendukung proses kolaborasi pada berbagai program dan proyek
         BinaHub.
-      </p>
+      </Section>
 
-      <h2>2. Keakuratan Data</h2>
-      <p>
-        Associate bertanggung jawab untuk memberikan informasi yang benar, lengkap, dan terkini.
-      </p>
-      <p>
-        Associate juga diharapkan memperbarui data apabila terdapat perubahan, seperti pengalaman proyek, sertifikasi,
-        pendidikan, atau informasi profesional lainnya.
-      </p>
+      {/* Section 2 */}
+      <Section number={2} title="Keakuratan Data">
+        <p>
+          Associate bertanggung jawab untuk memberikan informasi yang benar, lengkap, dan terkini.
+        </p>
+        <p>
+          Associate juga diharapkan memperbarui data apabila terdapat perubahan, seperti pengalaman proyek, sertifikasi,
+          pendidikan, atau informasi profesional lainnya.
+        </p>
+      </Section>
 
-      <h2>3. Penggunaan Data</h2>
-      <p>
-        Data yang diberikan melalui AMS akan digunakan oleh PT BinaHub Solusi Transformasi untuk:
-      </p>
-      <ul>
-        <li>Mengelola database Associate.</li>
-        <li>Melakukan pemetaan kompetensi.</li>
-        <li>Proses seleksi dan penugasan proyek.</li>
-        <li>Penyusunan proposal dan dokumen pendukung.</li>
-        <li>Komunikasi terkait peluang kolaborasi.</li>
-        <li>Pengembangan layanan dan sistem BinaHub.</li>
-      </ul>
-      <p>
-        BinaHub berkomitmen menjaga kerahasiaan data sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.
-      </p>
+      {/* Section 3 */}
+      <Section number={3} title="Penggunaan Data">
+        <p>
+          Data yang diberikan melalui AMS akan digunakan oleh PT BinaHub Solusi Transformasi untuk:
+        </p>
+        <ul className="mt-2 space-y-1.5 pl-1">
+          {[
+            'Mengelola database Associate.',
+            'Melakukan pemetaan kompetensi.',
+            'Proses seleksi dan penugasan proyek.',
+            'Penyusunan proposal dan dokumen pendukung.',
+            'Komunikasi terkait peluang kolaborasi.',
+            'Pengembangan layanan dan sistem BinaHub.',
+          ].map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-[15px] leading-relaxed text-slate-700">
+              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#0B2C6B]" />
+              {item}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3">
+          BinaHub berkomitmen menjaga kerahasiaan data sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.
+        </p>
+      </Section>
 
-      <h2>4. Hak Kekayaan Intelektual</h2>
-      <p>
-        Seluruh data, dokumen, portofolio, dan materi yang diunggah oleh Associate tetap menjadi milik Associate.
-      </p>
-      <p>
-        Associate memberikan izin kepada BinaHub untuk menggunakan data profesional tersebut sepanjang diperlukan dalam
-        rangka proses penawaran, proposal, tender, pemasaran layanan, dan pelaksanaan proyek yang melibatkan Associate.
-      </p>
+      {/* Section 4 */}
+      <Section number={4} title="Hak Kekayaan Intelektual">
+        <p>
+          Seluruh data, dokumen, portofolio, dan materi yang diunggah oleh Associate tetap menjadi milik Associate.
+        </p>
+        <p className="mt-2">
+          Associate memberikan izin kepada BinaHub untuk menggunakan data profesional tersebut sepanjang diperlukan dalam
+          rangka proses penawaran, proposal, tender, pemasaran layanan, dan pelaksanaan proyek yang melibatkan Associate.
+        </p>
+      </Section>
 
-      <h2>5. Keanggotaan Associate</h2>
-      <p>
-        Pengisian data pada AMS merupakan proses pendaftaran dan pemetaan kompetensi.
-      </p>
-      <p>
-        Pengisian formulir tidak secara otomatis menjadikan seseorang sebagai Associate aktif maupun menjamin
-        keterlibatan dalam proyek tertentu.
-      </p>
-      <p>
-        Keputusan mengenai penerimaan Associate maupun penugasan proyek sepenuhnya menjadi kewenangan BinaHub
-        berdasarkan kebutuhan, kompetensi, pengalaman, ketersediaan, dan pertimbangan lainnya.
-      </p>
+      {/* Section 5 */}
+      <Section number={5} title="Keanggotaan Associate">
+        <p>
+          Pengisian data pada AMS merupakan proses pendaftaran dan pemetaan kompetensi.
+        </p>
+        <p className="mt-2">
+          Pengisian formulir tidak secara otomatis menjadikan seseorang sebagai Associate aktif maupun menjamin
+          keterlibatan dalam proyek tertentu.
+        </p>
+        <p className="mt-2">
+          Keputusan mengenai penerimaan Associate maupun penugasan proyek sepenuhnya menjadi kewenangan BinaHub
+          berdasarkan kebutuhan, kompetensi, pengalaman, ketersediaan, dan pertimbangan lainnya.
+        </p>
+      </Section>
 
-      <h2>6. Penugasan Proyek</h2>
-      <p>
+      {/* Section 6 */}
+      <Section number={6} title="Penugasan Proyek">
         Apabila Associate dipilih untuk suatu proyek, BinaHub akan menghubungi Associate secara terpisah untuk proses
         konfirmasi, ruang lingkup pekerjaan, jadwal, honorarium, dan ketentuan kerja sama yang berlaku pada proyek
         tersebut.
-      </p>
+      </Section>
 
-      <h2>7. Kerahasiaan</h2>
-      <p>
-        Associate diharapkan menjaga kerahasiaan seluruh informasi yang diperoleh selama proses komunikasi maupun
-        pelaksanaan proyek bersama BinaHub.
-      </p>
-      <p>
-        Ketentuan kerahasiaan yang lebih rinci dapat diatur dalam perjanjian tersendiri apabila diperlukan.
-      </p>
+      {/* Section 7 */}
+      <Section number={7} title="Kerahasiaan">
+        <p>
+          Associate diharapkan menjaga kerahasiaan seluruh informasi yang diperoleh selama proses komunikasi maupun
+          pelaksanaan proyek bersama BinaHub.
+        </p>
+        <p className="mt-2">
+          Ketentuan kerahasiaan yang lebih rinci dapat diatur dalam perjanjian tersendiri apabila diperlukan.
+        </p>
+      </Section>
 
-      <h2>8. Penggunaan Akun</h2>
-      <p>
-        Associate bertanggung jawab atas keamanan akun dan informasi login yang dimiliki.
-      </p>
-      <p>
-        Associate tidak diperkenankan memberikan akses akun kepada pihak lain tanpa persetujuan BinaHub.
-      </p>
+      {/* Section 8 */}
+      <Section number={8} title="Penggunaan Akun">
+        <p>
+          Associate bertanggung jawab atas keamanan akun dan informasi login yang dimiliki.
+        </p>
+        <p className="mt-2">
+          Associate tidak diperkenankan memberikan akses akun kepada pihak lain tanpa persetujuan BinaHub.
+        </p>
+      </Section>
 
-      <h2>9. Pembaruan Sistem</h2>
-      <p>
+      {/* Section 9 */}
+      <Section number={9} title="Pembaruan Sistem">
         BinaHub dapat melakukan perubahan, pengembangan, maupun pembaruan terhadap fitur dan layanan AMS dari waktu ke
         waktu untuk meningkatkan kualitas sistem.
-      </p>
+      </Section>
 
-      <h2>10. Perubahan Syarat & Ketentuan</h2>
-      <p>
+      {/* Section 10 */}
+      <Section number={10} title="Perubahan Syarat & Ketentuan">
         BinaHub berhak memperbarui syarat dan ketentuan ini sewaktu-waktu. Perubahan akan diinformasikan melalui AMS
         atau media komunikasi resmi BinaHub.
-      </p>
+      </Section>
 
-      <h2>11. Persetujuan</h2>
-      <p>
+      {/* Section 11 */}
+      <Section number={11} title="Persetujuan">
         Dengan mencentang kotak persetujuan dan menggunakan BinaHub Associate Management System (AMS), Associate
         menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang berlaku.
-      </p>
+      </Section>
     </div>
   );
 }
 
 function KebijakanPrivasi() {
   return (
-    <div className="prose prose-slate max-w-none">
-      <h1 className="!mb-2 text-2xl font-bold text-slate-900">Kebijakan Privasi</h1>
-      <p className="!mt-0 text-sm font-medium text-[#0B2C6B]">BinaHub Associate Management System</p>
+    <div className="space-y-6">
+      {/* Title */}
+      <div className="border-b border-slate-100 pb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Kebijakan Privasi</h1>
+        <p className="mt-1 text-sm font-medium text-[#0B2C6B]">BinaHub Associate Management System</p>
+        <p className="mt-2 text-sm text-slate-500">Terakhir diperbarui: Juli 2026</p>
+      </div>
 
-      <p>Terakhir diperbarui: Juli 2026</p>
+      {/* Intro */}
+      <div className="space-y-3 text-[15px] leading-relaxed text-slate-700">
+        <p>
+          PT BinaHub Solusi Transformasi (&quot;BinaHub&quot;) menghargai dan melindungi privasi setiap Associate yang
+          menggunakan BinaHub Associate Management System (AMS).
+        </p>
+        <p>
+          Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi data
+          pribadi yang Anda berikan melalui AMS.
+        </p>
+      </div>
 
-      <p>
-        PT BinaHub Solusi Transformasi (&quot;BinaHub&quot;) menghargai dan melindungi privasi setiap Associate yang
-        menggunakan BinaHub Associate Management System (AMS).
-      </p>
-      <p>
-        Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi data
-        pribadi yang Anda berikan melalui AMS.
-      </p>
+      {/* Section 1 */}
+      <Section number={1} title="Data yang Kami Kumpulkan">
+        <p>Kami dapat mengumpulkan data yang Anda berikan secara langsung, antara lain:</p>
+        <ul className="mt-2 space-y-1.5 pl-1">
+          {[
+            'Nama lengkap',
+            'Informasi kontak (email dan nomor telepon)',
+            'Kota domisili',
+            'Foto profil',
+            'Curriculum Vitae (CV)',
+            'Riwayat pendidikan',
+            'Pengalaman kerja dan proyek',
+            'Sertifikasi',
+            'Kompetensi dan bidang keahlian',
+            'Portofolio',
+            'Tautan profesional (misalnya LinkedIn atau website pribadi)',
+            'Informasi lain yang Anda pilih untuk dibagikan melalui AMS.',
+          ].map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-[15px] leading-relaxed text-slate-700">
+              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#0B2C6B]" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-      <h2>1. Data yang Kami Kumpulkan</h2>
-      <p>Kami dapat mengumpulkan data yang Anda berikan secara langsung, antara lain:</p>
-      <ul>
-        <li>Nama lengkap</li>
-        <li>Informasi kontak (email dan nomor telepon)</li>
-        <li>Kota domisili</li>
-        <li>Foto profil</li>
-        <li>Curriculum Vitae (CV)</li>
-        <li>Riwayat pendidikan</li>
-        <li>Pengalaman kerja dan proyek</li>
-        <li>Sertifikasi</li>
-        <li>Kompetensi dan bidang keahlian</li>
-        <li>Portofolio</li>
-        <li>Tautan profesional (misalnya LinkedIn atau website pribadi)</li>
-        <li>Informasi lain yang Anda pilih untuk dibagikan melalui AMS.</li>
-      </ul>
+      {/* Section 2 */}
+      <Section number={2} title="Tujuan Penggunaan Data">
+        <p>Data yang Anda berikan digunakan untuk:</p>
+        <ul className="mt-2 space-y-1.5 pl-1">
+          {[
+            'Mengelola profil Associate.',
+            'Memetakan kompetensi dan pengalaman Associate.',
+            'Mencari kandidat yang sesuai untuk kebutuhan proyek.',
+            'Menyusun proposal, dokumen tender, dan dokumen pendukung lainnya.',
+            'Menghubungi Associate terkait peluang kolaborasi.',
+            'Mengembangkan layanan dan sistem BinaHub.',
+            'Melakukan analisis dan peningkatan kualitas layanan.',
+          ].map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-[15px] leading-relaxed text-slate-700">
+              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#0B2C6B]" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-      <h2>2. Tujuan Penggunaan Data</h2>
-      <p>Data yang Anda berikan digunakan untuk:</p>
-      <ul>
-        <li>Mengelola profil Associate.</li>
-        <li>Memetakan kompetensi dan pengalaman Associate.</li>
-        <li>Mencari kandidat yang sesuai untuk kebutuhan proyek.</li>
-        <li>Menyusun proposal, dokumen tender, dan dokumen pendukung lainnya.</li>
-        <li>Menghubungi Associate terkait peluang kolaborasi.</li>
-        <li>Mengembangkan layanan dan sistem BinaHub.</li>
-        <li>Melakukan analisis dan peningkatan kualitas layanan.</li>
-      </ul>
+      {/* Section 3 */}
+      <Section number={3} title="Penggunaan AI">
+        <p>AMS dapat memanfaatkan teknologi Artificial Intelligence (AI) untuk membantu:</p>
+        <ul className="mt-2 space-y-1.5 pl-1">
+          {[
+            'Membaca dan mengekstrak informasi dari CV.',
+            'Membantu mengisi data profil secara otomatis.',
+            'Mengelompokkan kompetensi dan pengalaman.',
+            'Memberikan rekomendasi yang mendukung proses administrasi dan pencarian kandidat.',
+          ].map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-[15px] leading-relaxed text-slate-700">
+              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#0B2C6B]" />
+              {item}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3">
+          Penggunaan AI bertujuan meningkatkan efisiensi dan kualitas data. Keputusan akhir mengenai penerimaan Associate
+          maupun penugasan proyek tetap dilakukan oleh tim BinaHub.
+        </p>
+      </Section>
 
-      <h2>3. Penggunaan AI</h2>
-      <p>AMS dapat memanfaatkan teknologi Artificial Intelligence (AI) untuk membantu:</p>
-      <ul>
-        <li>Membaca dan mengekstrak informasi dari CV.</li>
-        <li>Membantu mengisi data profil secara otomatis.</li>
-        <li>Mengelompokkan kompetensi dan pengalaman.</li>
-        <li>Memberikan rekomendasi yang mendukung proses administrasi dan pencarian kandidat.</li>
-      </ul>
-      <p>
-        Penggunaan AI bertujuan meningkatkan efisiensi dan kualitas data. Keputusan akhir mengenai penerimaan Associate
-        maupun penugasan proyek tetap dilakukan oleh tim BinaHub.
-      </p>
+      {/* Section 4 */}
+      <Section number={4} title="Penyimpanan dan Keamanan Data">
+        <p>
+          Kami berupaya menjaga keamanan data melalui pengelolaan sistem, kontrol akses, dan langkah-langkah teknis yang
+          wajar untuk mencegah akses, penggunaan, atau pengungkapan data tanpa izin.
+        </p>
+        <p className="mt-2">
+          Meskipun demikian, tidak ada sistem yang dapat menjamin keamanan secara mutlak. Oleh karena itu, kami juga
+          mengharapkan Associate menjaga kerahasiaan informasi akun yang dimiliki.
+        </p>
+      </Section>
 
-      <h2>4. Penyimpanan dan Keamanan Data</h2>
-      <p>
-        Kami berupaya menjaga keamanan data melalui pengelolaan sistem, kontrol akses, dan langkah-langkah teknis yang
-        wajar untuk mencegah akses, penggunaan, atau pengungkapan data tanpa izin.
-      </p>
-      <p>
-        Meskipun demikian, tidak ada sistem yang dapat menjamin keamanan secara mutlak. Oleh karena itu, kami juga
-        mengharapkan Associate menjaga kerahasiaan informasi akun yang dimiliki.
-      </p>
+      {/* Section 5 */}
+      <Section number={5} title="Berbagi Data">
+        <p>BinaHub tidak menjual maupun memperdagangkan data pribadi Associate.</p>
+        <p className="mt-2">Data hanya dapat digunakan atau dibagikan apabila diperlukan untuk:</p>
+        <ul className="mt-2 space-y-1.5 pl-1">
+          {[
+            'Proses penawaran kepada calon klien.',
+            'Proposal atau tender.',
+            'Pelaksanaan proyek.',
+            'Kewajiban hukum yang berlaku.',
+            'Persetujuan dari Associate apabila diperlukan.',
+          ].map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-[15px] leading-relaxed text-slate-700">
+              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#0B2C6B]" />
+              {item}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3">Kami hanya membagikan informasi yang relevan dengan kebutuhan tersebut.</p>
+      </Section>
 
-      <h2>5. Berbagi Data</h2>
-      <p>BinaHub tidak menjual maupun memperdagangkan data pribadi Associate.</p>
-      <p>Data hanya dapat digunakan atau dibagikan apabila diperlukan untuk:</p>
-      <ul>
-        <li>Proses penawaran kepada calon klien.</li>
-        <li>Proposal atau tender.</li>
-        <li>Pelaksanaan proyek.</li>
-        <li>Kewajiban hukum yang berlaku.</li>
-        <li>Persetujuan dari Associate apabila diperlukan.</li>
-      </ul>
-      <p>Kami hanya membagikan informasi yang relevan dengan kebutuhan tersebut.</p>
+      {/* Section 6 */}
+      <Section number={6} title="Hak Associate">
+        <p>Associate berhak untuk:</p>
+        <ul className="mt-2 space-y-1.5 pl-1">
+          {[
+            'Melihat data yang dimiliki.',
+            'Memperbarui data profil.',
+            'Memperbaiki informasi yang tidak akurat.',
+            'Menghapus atau menutup akun, sepanjang tidak bertentangan dengan kewajiban hukum atau administrasi yang masih berjalan.',
+            'Menghubungi BinaHub apabila memiliki pertanyaan mengenai penggunaan data pribadi.',
+          ].map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-[15px] leading-relaxed text-slate-700">
+              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#0B2C6B]" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-      <h2>6. Hak Associate</h2>
-      <p>Associate berhak untuk:</p>
-      <ul>
-        <li>Melihat data yang dimiliki.</li>
-        <li>Memperbarui data profil.</li>
-        <li>Memperbaiki informasi yang tidak akurat.</li>
-        <li>
-          Menghapus atau menutup akun, sepanjang tidak bertentangan dengan kewajiban hukum atau administrasi yang masih
-          berjalan.
-        </li>
-        <li>Menghubungi BinaHub apabila memiliki pertanyaan mengenai penggunaan data pribadi.</li>
-      </ul>
+      {/* Section 7 */}
+      <Section number={7} title="Penyimpanan Data">
+        <p>
+          Data Associate akan disimpan selama masih diperlukan untuk mendukung hubungan kerja sama, proses administrasi,
+          atau kepentingan operasional BinaHub.
+        </p>
+        <p className="mt-2">
+          Apabila Associate tidak lagi menggunakan AMS, BinaHub dapat menghapus atau mengarsipkan data sesuai kebutuhan
+          operasional dan ketentuan yang berlaku.
+        </p>
+      </Section>
 
-      <h2>7. Penyimpanan Data</h2>
-      <p>
-        Data Associate akan disimpan selama masih diperlukan untuk mendukung hubungan kerja sama, proses administrasi,
-        atau kepentingan operasional BinaHub.
-      </p>
-      <p>
-        Apabila Associate tidak lagi menggunakan AMS, BinaHub dapat menghapus atau mengarsipkan data sesuai kebutuhan
-        operasional dan ketentuan yang berlaku.
-      </p>
-
-      <h2>8. Perubahan Kebijakan Privasi</h2>
-      <p>
+      {/* Section 8 */}
+      <Section number={8} title="Perubahan Kebijakan Privasi">
         BinaHub dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Versi terbaru akan selalu tersedia melalui
         AMS.
-      </p>
+      </Section>
 
-      <h2>9. Hubungi Kami</h2>
-      <p>
+      {/* Section 9 */}
+      <Section number={9} title="Hubungi Kami">
         Apabila Anda memiliki pertanyaan mengenai Kebijakan Privasi ini, silakan menghubungi PT BinaHub Solusi
         Transformasi melalui saluran komunikasi resmi yang tersedia.
-      </p>
+      </Section>
 
-      <h2>Persetujuan</h2>
-      <p>
-        Dengan menggunakan BinaHub Associate Management System (AMS), Anda menyatakan telah membaca, memahami, dan
-        menyetujui Kebijakan Privasi ini.
-      </p>
+      {/* Consent */}
+      <div className="rounded-xl border border-[#0B2C6B]/20 bg-[#0B2C6B]/5 p-5">
+        <h3 className="text-sm font-bold tracking-tight text-[#0B2C6B]">Persetujuan</h3>
+        <p className="mt-2 text-[15px] leading-relaxed text-slate-700">
+          Dengan menggunakan BinaHub Associate Management System (AMS), Anda menyatakan telah membaca, memahami, dan
+          menyetujui Kebijakan Privasi ini.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Section({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <h2 className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-slate-900">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0B2C6B] text-xs font-bold text-white">
+          {number}
+        </span>
+        {title}
+      </h2>
+      <div className="pl-[38px] text-[15px] leading-relaxed text-slate-700">
+        {children}
+      </div>
     </div>
   );
 }
