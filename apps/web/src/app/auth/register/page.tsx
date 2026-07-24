@@ -117,47 +117,11 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Checkboxes — wajib untuk semua jalur daftar */}
-          <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreeSkk}
-                onChange={(e) => setAgreeSkk(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B]/20"
-              />
-              <span className="text-xs leading-relaxed text-slate-600">
-                Saya telah membaca dan menyetujui{' '}
-                <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">
-                  Syarat & Ketentuan
-                </Link>{' '}
-                serta{' '}
-                <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">
-                  Kebijakan Privasi
-                </Link>{' '}
-                BinaHub Associate Management System.
-              </span>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreeAi}
-                onChange={(e) => setAgreeAi(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B]/20"
-              />
-              <span className="text-xs leading-relaxed text-slate-600">
-                Saya memahami bahwa BinaHub dapat menggunakan teknologi AI untuk membantu memproses informasi yang
-                saya unggah, seperti CV dan data profesional, guna meningkatkan efisiensi administrasi dan
-                pencocokan peluang kolaborasi. Keputusan akhir tetap dilakukan oleh tim BinaHub.
-              </span>
-            </label>
-          </div>
-
           {/* Google */}
           <button
             onClick={handleGoogleRegister}
             disabled={googleLoading || !allChecked}
-            className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50"
           >
             {googleLoading ? (
               <svg className="h-4 w-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
@@ -201,7 +165,7 @@ export default function RegisterPage() {
           </button>
 
           {/* Expandable email form */}
-          <div className={`overflow-hidden transition-all duration-300 ${showEmailForm ? 'mt-4 max-h-[900px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className={`overflow-hidden transition-all duration-300 ${showEmailForm ? 'mt-4 max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -278,25 +242,65 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                 />
               </div>
-
-              <button
-                type="submit"
-                disabled={loading || !allChecked}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/20 transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-xl hover:shadow-[#0B2C6B]/30 disabled:opacity-50 disabled:shadow-none"
-              >
-                {loading ? (
-                  <>
-                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span>Memproses...</span>
-                  </>
-                ) : (
-                  'Buat Akun'
-                )}
-              </button>
             </form>
+          </div>
+
+          {/* Checkboxes — wajib untuk semua jalur daftar */}
+          <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreeSkk}
+                onChange={(e) => setAgreeSkk(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B]/20"
+              />
+              <span className="text-xs leading-relaxed text-slate-600">
+                Saya telah membaca dan menyetujui{' '}
+                <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">
+                  Syarat & Ketentuan
+                </Link>{' '}
+                serta{' '}
+                <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">
+                  Kebijakan Privasi
+                </Link>{' '}
+                BinaHub Associate Management System.
+              </span>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreeAi}
+                onChange={(e) => setAgreeAi(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B]/20"
+              />
+              <span className="text-xs leading-relaxed text-slate-600">
+                Saya memahami bahwa BinaHub dapat menggunakan teknologi AI untuk membantu memproses informasi yang
+                saya unggah, seperti CV dan data profesional, guna meningkatkan efisiensi administrasi dan
+                pencocokan peluang kolaborasi. Keputusan akhir tetap dilakukan oleh tim BinaHub.
+              </span>
+            </label>
+          </div>
+
+          {/* Submit — only visible when email form is open */}
+          <div className={`overflow-hidden transition-all duration-300 ${showEmailForm ? 'mt-4 max-h-[100px] opacity-100' : 'max-h-0 opacity-0'}`}>
+            <button
+              type="submit"
+              disabled={loading || !allChecked}
+              onClick={handleSubmit}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/20 transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-xl hover:shadow-[#0B2C6B]/30 disabled:opacity-50 disabled:shadow-none"
+            >
+              {loading ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span>Memproses...</span>
+                </>
+              ) : (
+                'Buat Akun'
+              )}
+            </button>
           </div>
         </div>
 
