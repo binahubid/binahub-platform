@@ -100,6 +100,13 @@ export type Portfolio = {
   link_url?: string;
 };
 
+export type FinancialDetails = {
+  npwp: string | null;
+  bank_name: string | null;
+  bank_account_number: string | null;
+  bank_account_holder: string | null;
+};
+
 export type AssociateData = {
   id: string;
   status: string;

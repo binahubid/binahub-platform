@@ -122,6 +122,13 @@ export const updateProfileSchema = z.object({
   expertises: z.array(z.string().max(100)).nullable().optional(),
 });
 
+export const updateFinancialDetailsSchema = z.object({
+  npwp: z.string().trim().regex(/^[0-9.\- ]*$/, 'Format NPWP tidak valid').max(24).nullable().optional(),
+  bankName: z.string().trim().max(100).nullable().optional(),
+  bankAccountNumber: z.string().trim().regex(/^[0-9]*$/, 'Nomor rekening hanya boleh berisi angka').max(40).nullable().optional(),
+  bankAccountHolder: z.string().trim().max(255).nullable().optional(),
+});
+
 // ============================================
 // EXPERIENCE VALIDATORS
 // ============================================

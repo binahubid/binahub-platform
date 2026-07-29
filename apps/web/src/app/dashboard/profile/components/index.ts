@@ -6,4 +6,5 @@ export { StepDocuments } from './step-documents';
 export { StepAvailability } from './step-availability';
 export { StepCertifications } from './step-certifications';
 export { StepPortfolio } from './step-portfolio';
+export { StepFinancial } from './step-financial';
 export { ProfileView } from './profile-view';

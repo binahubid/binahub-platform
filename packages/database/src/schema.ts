@@ -44,6 +44,17 @@ export const associateProfiles = pgTable("associate_profiles", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const associateFinancialDetails = pgTable("associate_financial_details", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  associate_id: uuid("associate_id").notNull().unique().references(() => associates.id),
+  npwp: text("npwp"),
+  bank_name: text("bank_name"),
+  bank_account_number: text("bank_account_number"),
+  bank_account_holder: text("bank_account_holder"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const associateExperiences = pgTable("associate_experiences", {
   id: uuid("id").defaultRandom().primaryKey(),
   associate_id: uuid("associate_id").notNull().references(() => associates.id),

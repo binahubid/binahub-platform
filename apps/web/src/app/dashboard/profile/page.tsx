@@ -4,9 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { Avatar, Tabs } from '../../../components/ui';
 import { useSearchParams } from 'next/navigation';
-import { StepIndicator, StepProfile, StepExperience, StepSkills, StepDocuments, StepAvailability, StepCertifications, StepPortfolio } from './components';
+import { StepIndicator, StepProfile, StepExperience, StepSkills, StepDocuments, StepAvailability, StepCertifications, StepPortfolio, StepFinancial } from './components';
 import { ProfileView } from './components/profile-view';
-import type { ProfileData, Experience, Document, Skill, Language, Availability, AssociateData } from './types';
+import type { ProfileData, Experience, Document, Skill, Language, Availability, AssociateData, FinancialDetails } from './types';
 
 // ============================================
 // HELPER COMPONENTS
@@ -60,6 +60,7 @@ const STEPS = [
   { label: 'Sertifikasi', icon: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z' },
   { label: 'Portofolio', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
   { label: 'Ketersediaan', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { label: 'Data Finansial', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
 ];
 
 // ============================================
@@ -566,6 +567,14 @@ export default function ProfilePage() {
                 <h2 className="text-base font-bold text-slate-900 mb-1">Ketersediaan Kolaborasi</h2>
                 <p className="text-xs text-slate-500 mb-6">Tentukan status ketersediaan Anda untuk proyek mendatang</p>
                 <StepAvailability availability={profileData?.availability || null} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} />
+              </div>
+            )}
+
+            {currentStep === 7 && (
+              <div>
+                <h2 className="text-base font-bold text-slate-900 mb-1">Data Finansial</h2>
+                <p className="text-xs text-slate-500 mb-6">NPWP dan informasi rekening bank (rahasia, hanya untuk admin)</p>
+                <StepFinancial apiUrl={apiUrl} accessToken={accessToken || ''} showToast={showToastNotification} />
               </div>
             )}
 

@@ -79,6 +79,12 @@ type DetailData = {
     decision_at?: string;
     created_at: string;
   }> | null;
+  financialDetails?: {
+    npwp: string | null;
+    bank_name: string | null;
+    bank_account_number: string | null;
+    bank_account_holder: string | null;
+  } | null;
 };
 
 export default function AssociateDetailPage() {
@@ -211,6 +217,7 @@ export default function AssociateDetailPage() {
     { id: 'certifications', label: 'Certifications' },
     { id: 'portfolio', label: 'Portfolio' },
     { id: 'documents', label: 'Documents' },
+    { id: 'financial', label: 'Financial' },
     { id: 'reviews', label: `Reviews (${data.reviews?.length || 0})` },
   ];
 
@@ -630,7 +637,42 @@ export default function AssociateDetailPage() {
             </div>
           )}
 
-          {/* Reviews Tab */}
+            {activeTab === 'financial' && (
+              <div className="space-y-4">
+                {data.financialDetails ? (
+                  <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-amber-600">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      <span className="text-xs font-semibold text-amber-700">Data rahasia — hanya visible untuk Admin</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">NPWP</p>
+                        <p className="text-sm font-medium text-slate-900 mt-1">{data.financialDetails.npwp || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Bank</p>
+                        <p className="text-sm font-medium text-slate-900 mt-1">{data.financialDetails.bank_name || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nomor Rekening</p>
+                        <p className="text-sm font-medium text-slate-900 mt-1">{data.financialDetails.bank_account_number || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Pemilik Rekening</p>
+                        <p className="text-sm font-medium text-slate-900 mt-1">{data.financialDetails.bank_account_holder || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-center text-sm text-slate-500 py-8">Belum ada data finansial.</p>
+                )}
+              </div>
+            )}
+
+            {/* Reviews Tab */}
           {activeTab === 'reviews' && (
             <div className="space-y-4">
               {data.reviews && data.reviews.length > 0 ? (

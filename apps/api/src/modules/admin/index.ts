@@ -225,7 +225,13 @@ admin.get('/associates/:id', async (c) => {
     .select('*')
     .eq('associate_id', id);
 
-  return c.json({ success: true, data: { ...data, documents: (data.documents || []).filter((d: { deleted_at: string | null }) => !d.deleted_at), reviews: reviews || [] } });
+  const { data: financialDetails } = await db
+    .from('associate_financial_details')
+    .select('npwp, bank_name, bank_account_number, bank_account_holder, updated_at')
+    .eq('associate_id', id)
+    .maybeSingle();
+
+  return c.json({ success: true, data: { ...data, financialDetails, documents: (data.documents || []).filter((d: { deleted_at: string | null }) => !d.deleted_at), reviews: reviews || [] } });
 });
 
 admin.patch('/associates/:id/review', async (c) => {
@@ -1091,7 +1097,7 @@ admin.get('/associates/:id/cv', async (c) => {
     { data: availability },
     { data: socialLinks },
   ] = await Promise.all([
-    db.from('associate_profiles').select('*').eq('associate_id', id).single(),
+    db.from('associate_profiles').select('full_name, preferred_name, headline, bio, phone, city, timezone, nationality, photo_url, date_of_birth, gender, roles, expertises').eq('associate_id', id).single(),
     db.from('associate_experiences').select('*').eq('associate_id', id).order('start_year', { ascending: false }),
     db.from('associate_educations').select('*').eq('associate_id', id).order('start_year', { ascending: false }),
     db.from('associate_certifications').select('*').eq('associate_id', id).order('issue_date', { ascending: false }),

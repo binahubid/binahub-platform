@@ -35,6 +35,17 @@ export interface AssociateProfile {
   updatedAt: string;
 }
 
+export interface AssociateFinancialDetails {
+  id: string;
+  associateId: string;
+  npwp: string | null;
+  bankName: string | null;
+  bankAccountNumber: string | null;
+  bankAccountHolder: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ============================================
 // EXPERIENCE TYPES
 // ============================================

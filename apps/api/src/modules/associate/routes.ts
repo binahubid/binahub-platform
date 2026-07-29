@@ -16,7 +16,8 @@ import {
   updateAvailabilitySchema,
   createSocialLinkSchema,
   updateEmergencyContactSchema,
-  updatePreferencesSchema
+  updatePreferencesSchema,
+  updateFinancialDetailsSchema
 } from '@ams/shared/validators/associate';
 import type { AuthUser } from '../../types';
 import type { AppEnv } from '../../types/env.js';
@@ -40,8 +41,8 @@ associateRoutes.get('/slug/:slug', async (c) => {
   const { data: associate, error } = await db
     .from('associates')
     .select(`
-      *,
-      profile:associate_profiles(*),
+      id, slug, status,
+      profile:associate_profiles(full_name, preferred_name, headline, bio, phone, city, timezone, nationality, photo_url, roles, expertises),
       experiences:associate_experiences(*),
       educations:associate_educations(*),
       certifications:associate_certifications(*),
@@ -49,9 +50,7 @@ associateRoutes.get('/slug/:slug', async (c) => {
       skills:associate_skills(*),
       languages:associate_languages(*),
       availability:associate_availability(*),
-      socialLinks:associate_social_links(*),
-      emergencyContact:associate_emergency_contacts(*),
-      preferences:associate_preferences(*)
+      socialLinks:associate_social_links(platform, url, is_primary)
     `)
     .eq('slug', slug)
     .eq('status', 'active')
@@ -61,12 +60,7 @@ associateRoutes.get('/slug/:slug', async (c) => {
     return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
   }
 
-  // Filter out soft-deleted documents
-  const filteredData = associate
-    ? { ...associate, documents: (associate.documents || []).filter((d: { deleted_at: string | null }) => !d.deleted_at) }
-    : associate;
-
-  return c.json({ success: true, data: filteredData });
+  return c.json({ success: true, data: associate });
 });
 
 // ============================================
@@ -256,6 +250,58 @@ associateRoutes.get('/me', async (c) => {
     : associate;
 
   return c.json({ success: true, data: { ...filteredAssociate, reviews: reviews || [], assignments: assignmentsWithStatus, assessments: assessments || [], development_plan: developmentPlan || null } });
+});
+
+// Financial details are intentionally isolated from profile/public/CV responses.
+associateRoutes.get('/financial-details', async (c) => {
+  const user = c.get('user') as AuthUser;
+  if (user.role === 'admin') {
+    return c.json({ success: false, error: 'Gunakan endpoint admin' }, 403);
+  }
+
+  const { data, error } = await getDb()
+    .from('associate_financial_details')
+    .select('id, associate_id, npwp, bank_name, bank_account_number, bank_account_holder, created_at, updated_at')
+    .eq('associate_id', user.id)
+    .maybeSingle();
+
+  if (error) {
+    return c.json({ success: false, error: 'Gagal memuat data finansial' }, 500);
+  }
+
+  return c.json({ success: true, data });
+});
+
+associateRoutes.put('/financial-details', async (c) => {
+  const user = c.get('user') as AuthUser;
+  if (user.role === 'admin') {
+    return c.json({ success: false, error: 'Gunakan endpoint admin' }, 403);
+  }
+
+  const validation = updateFinancialDetailsSchema.safeParse(await c.req.json());
+  if (!validation.success) {
+    return c.json({ success: false, error: validation.error.issues[0]?.message || 'Data tidak valid' }, 400);
+  }
+
+  const value = validation.data;
+  const { data, error } = await getDb()
+    .from('associate_financial_details')
+    .upsert({
+      associate_id: user.id,
+      npwp: value.npwp || null,
+      bank_name: value.bankName || null,
+      bank_account_number: value.bankAccountNumber || null,
+      bank_account_holder: value.bankAccountHolder || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'associate_id' })
+    .select('id, associate_id, npwp, bank_name, bank_account_number, bank_account_holder, created_at, updated_at')
+    .single();
+
+  if (error) {
+    return c.json({ success: false, error: 'Gagal menyimpan data finansial' }, 500);
+  }
+
+  return c.json({ success: true, data });
 });
 
 // Create associate profile

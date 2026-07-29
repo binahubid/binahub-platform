@@ -4,6 +4,54 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.10] — 2026-07-29
+
+### Added
+
+- **Data Finansial untuk Associate (NPWP & Rekening Bank)**:
+  - Menambahkan tabel terisolasi `associate_financial_details` (migration `005`) dengan kolom: `npwp`, `bank_name`, `bank_account_number`, `bank_account_holder`.
+  - Tabel terpisah dari `associate_profiles` untuk mencegah kebocoran data sensitif via wildcard SELECT.
+  - RLS diaktifkan dengan REVOKE akses anon/authenticated — keamanan hanya via service role.
+  - Drizzle schema (`packages/database/src/schema.ts`): definisi `associateFinancialDetails` table.
+
+- **API Endpoints Finansial (Backend)**:
+  - `GET /api/associate/financial-details` — ambil data finansial (owner-only, admin forbidden).
+  - `PUT /api/associate/financial-details` — simpan/upsert data finansial (owner-only, admin forbidden).
+  - `updateFinancialDetailsSchema` di `@ams/shared/validators/associate` — validasi NPWP (format) & nomor rekening (numeric-only).
+  - `AssociateFinancialDetails` interface di `@ams/shared/types/associate`.
+  - Admin endpoint `GET /api/admin/associates/:id` sekarang menyertakan `financialDetails` (query terpisah, bukan SELECT *).
+  - Nilai nullable untuk semua field finansial, aman untuk partial update.
+
+- **Form Data Finansial di Dashboard Profile**:
+  - Komponen `StepFinancial` di step 8 wizard profil associate (`apps/web/src/app/dashboard/profile/components/step-financial.tsx`).
+  - Input terpisah untuk NPWP, Nama Bank, No. Rekening (hanya angka via RegExp), Nama Pemilik.
+  - Label peringatan bahwa data bersifat rahasia dan hanya visible admin.
+  - Tombol simpan independent — tidak perlu menyimpan seluruh profil.
+  - Tipe `FinancialDetails` ditambahkan ke `apps/web/src/app/dashboard/profile/types.ts`.
+
+- **Panel Data Finansial di Admin Detail Associate**:
+  - Tab "Financial" baru di halaman detail associate (`apps/web/src/app/admin/associates/[id]/page.tsx`).
+  - Menampilkan NPWP, Nama Bank, No. Rekening, Nama Pemilik dalam grid 2 kolom.
+  - Badge "Data rahasia — hanya visible untuk Admin" dengan ikon kunci.
+
+- **CV Standar — Tampilan Lengkap Semua Field Non-Sensitif**:
+  - Enhanced CV page (`apps/web/src/app/admin/associates/[id]/cv/page.tsx`) dengan rendering komprehensif:
+    - **Header**: preferred_name, headline, nationality, timezone, date_of_birth, gender (ditampilkan sebagai label Bahasa Indonesia).
+    - **Pengalaman Kerja**: industry, achievement ditampilkan terpisah.
+    - **Keahlian**: proficiency badge berwarna (basic/intermediate/advanced/expert) + tahun pengalaman.
+    - **Sertifikasi**: credential_id, credential_url, expiry_date.
+    - **Ketersediaan**: detail lengkap (status, jam/minggu, lokasi kerja, engagement, travel readiness, available_from, notes).
+    - **Portfolio**: kategori dan nama klien.
+    - Helper `formatDate` untuk konsistensi format tanggal Indonesia.
+
+### Changed
+
+- **Isolasi Data Finansial**: Data NPWP & rekening bank TIDAK disertakan di:
+  - Endpoint `/api/associate/me` — profil standar associate.
+  - Endpoint `GET /api/admin/associates/:id/cv` — CV standar (whitelist kolom eksplisit).
+  - Endpoint publik `/api/associate/slug/:slug` — profil publik (emergency contact & preferences juga dikecualikan).
+  - Endpoint `GET /api/associate/financial-details` hanya untuk owner, admin dapat akses via endpoint admin.
+
 ## [0.7.9] — 2026-07-24
 
 ### Added
