@@ -3,6 +3,21 @@
 -- Tabel: associate_reviews (bukan reviews)
 -- ============================================
 
+-- 0. ASSOCIATE FINANCIAL DETAILS (isolated from associate_profiles to prevent leakage)
+CREATE TABLE IF NOT EXISTS associate_financial_details (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  associate_id UUID NOT NULL UNIQUE REFERENCES associates(id) ON DELETE CASCADE,
+  npwp TEXT,
+  bank_name TEXT,
+  bank_account_number TEXT,
+  bank_account_holder TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+ALTER TABLE associate_financial_details ENABLE ROW LEVEL SECURITY;
+-- Runtime access uses the API service-role client. Do not expose this table to anon/authenticated clients.
+REVOKE ALL ON TABLE associate_financial_details FROM anon, authenticated;
+
 -- 1. ASSIGNMENTS TABLE
 CREATE TABLE IF NOT EXISTS assignments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -62,4 +77,5 @@ CREATE INDEX IF NOT EXISTS idx_associate_documents_associate_id ON associate_doc
 CREATE INDEX IF NOT EXISTS idx_associate_social_links_associate_id ON associate_social_links(associate_id);
 CREATE INDEX IF NOT EXISTS idx_associate_emergency_contacts_associate_id ON associate_emergency_contacts(associate_id);
 CREATE INDEX IF NOT EXISTS idx_associate_reviews_associate_id ON associate_reviews(associate_id);
+CREATE INDEX IF NOT EXISTS idx_associate_financial_details_associate_id ON associate_financial_details(associate_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_created_by ON assignments(created_by);
