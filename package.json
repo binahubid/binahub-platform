@@ -1,6 +1,6 @@
 {
   "name": "binahub-platform",
-  "version": "0.3.0",
+  "version": "0.7.11",
   "private": true,
   "scripts": {
     "dev": "turbo dev",

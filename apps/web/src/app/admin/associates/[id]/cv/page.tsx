@@ -20,8 +20,11 @@ type CvData = {
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
+  const trimmed = String(dateStr).trim();
+  if (/^\d{4}$/.test(trimmed)) return trimmed;
   try {
-    const d = new Date(dateStr);
+    const d = new Date(trimmed.length === 7 ? `${trimmed}-01` : trimmed);
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
   } catch { return dateStr; }
 }

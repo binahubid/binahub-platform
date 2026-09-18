@@ -70,6 +70,7 @@ admin.get('/associates', async (c) => {
       skills:associate_skills(skill_name),
       experiences:associate_experiences(id),
       educations:associate_educations(id),
+      certifications:associate_certifications(id),
       portfolios:associate_portfolios(id),
       documents:associate_documents(id),
       availability:associate_availability(status),
@@ -166,7 +167,7 @@ admin.get('/associates', async (c) => {
 
   const enriched = (data || []).map((a: Record<string, unknown>) => {
     let filled = 0;
-    const total = 9;
+    const total = 10;
     const profile = a.profile as Record<string, unknown> | null;
     if (profile && profile.full_name) filled++;
     if (a.experiences && (a.experiences as unknown[]).length > 0) filled++;
@@ -175,6 +176,7 @@ admin.get('/associates', async (c) => {
     if (skills && skills.length > 0) filled++;
     const expertises = profile?.expertises as unknown[] | undefined;
     if (expertises && expertises.length > 0) filled++;
+    if (a.certifications && (a.certifications as unknown[]).length > 0) filled++;
     if (a.portfolios && (a.portfolios as unknown[]).length > 0) filled++;
     if (a.documents && (a.documents as unknown[]).length > 0) filled++;
     if (profile && profile.photo_url) filled++;
@@ -1098,7 +1100,7 @@ admin.get('/associates/:id/cv', async (c) => {
     { data: socialLinks },
   ] = await Promise.all([
     db.from('associate_profiles').select('full_name, preferred_name, headline, bio, phone, city, timezone, nationality, photo_url, date_of_birth, gender, roles, expertises').eq('associate_id', id).single(),
-    db.from('associate_experiences').select('*').eq('associate_id', id).order('start_year', { ascending: false }),
+    db.from('associate_experiences').select('*').eq('associate_id', id).order('start_date', { ascending: false }),
     db.from('associate_educations').select('*').eq('associate_id', id).order('start_year', { ascending: false }),
     db.from('associate_certifications').select('*').eq('associate_id', id).order('issue_date', { ascending: false }),
     db.from('associate_portfolios').select('*').eq('associate_id', id).order('created_at', { ascending: false }),

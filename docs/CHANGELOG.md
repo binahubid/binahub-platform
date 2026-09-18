@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.7.11] — 2026-09-18
+
+### Fixed
+
+- **Alur Registrasi & Validasi Form User**:
+  - Memperbaiki penanganan error validasi password (mismatch dan panjang minimum < 8 karakter) di `apps/web/src/app/auth/register/page.tsx`. State *loading* kini di-reset ke `false` saat validasi lokal gagal, mencegah tombol daftar macet dalam kondisi disabled.
+
+- **Logika Redireksi Onboarding Pasca Login**:
+  - Memperbaiki deteksi profil associate awal pada halaman login (`apps/web/src/app/auth/login/page.tsx`). Pendaftar baru via email sebelumnya langsung diarahkan ke `/dashboard` karena record profil dibuat otomatis saat signup; sekarang diverifikasi berdasarkan status `draft` serta ketiadaan peran dan riwayat kerja sehingga diarahkan dengan benar ke `/onboarding`.
+
+- **Standarisasi & Validasi Format Upload Dokumen CV**:
+  - Menyelaraskan format file upload CV pada wizard onboarding (`step-upload-cv.tsx`) dan tab Dokumen profil (`step-documents.tsx`) menjadi PDF dan Word (`.pdf, .doc, .docx`).
+  - Menghapus format gambar (JPG/PNG) dari opsi upload CV yang sebelumnya menyebabkan error `400 Bad Request` pada saat request presigned URL ke backend storage.
+
+- **Keamanan Pemrosesan AI CV Parsing**:
+  - Menambahkan *binary safety guard* pada `POST /api/ai/parse-cv` (`apps/api/src/modules/ai/index.ts`) untuk memvalidasi isi file teks non-PDF dari karakter null byte / kontrol biner sebelum dikirim ke OpenAI API.
+
+- **Query Data Pengalaman Kerja di CV Admin**:
+  - Memperbaiki pengurutan query `associate_experiences` di endpoint admin (`apps/api/src/modules/admin/index.ts`) dari kolom yang tidak ada (`start_year`) menjadi `start_date` secara descending, memulihkan penampilan data riwayat pengalaman kerja di halaman CV Admin.
+
+- **Sinkronisasi Skor Kelengkapan Profil Admin & Associate**:
+  - Menyertakan relasi `associate_certifications` pada query daftar associate admin (`GET /api/admin/associates`) dan menyelaraskan kalkulasi kelengkapan profil menjadi 10 kriteria evaluasi terstandarisasi, konsisten dengan dashboard associate.
+
+- **Penyempurnaan Tampilan Tanggal CV Standar Admin**:
+  - Memperkuat fungsi `formatDate` di `apps/web/src/app/admin/associates/[id]/cv/page.tsx` untuk menangani format tahun parsial (`YYYY`), nilai null/undefined, dan input tanggal invalid tanpa memicu output `NaN`.
+
 ## [0.7.10] — 2026-07-29
 
 ### Added

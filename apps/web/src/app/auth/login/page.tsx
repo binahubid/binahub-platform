@@ -58,15 +58,21 @@ function LoginForm() {
       return;
     }
 
-    // User lama: cek profil apakah perlu onboarding
+    // Cek profil apakah perlu diarahkan ke onboarding
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const res = await fetch(`${apiUrl}/api/associate/me`, {
         headers: { Authorization: `Bearer ${signInData.session?.access_token}` },
       });
       const json = await res.json();
-      const hasProfile = json.success && json.data?.profile?.full_name;
-      router.push(hasProfile ? '/dashboard' : '/onboarding');
+      const assoc = json.data;
+      const isDraftNewUser =
+        json.success &&
+        assoc?.status === 'draft' &&
+        (!assoc.profile?.roles || assoc.profile.roles.length === 0) &&
+        (!assoc.experiences || assoc.experiences.length === 0);
+
+      router.push(isDraftNewUser ? '/onboarding' : '/dashboard');
     } catch {
       router.push('/dashboard');
     }

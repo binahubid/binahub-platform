@@ -71,9 +71,13 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
     if (!file) return;
 
     // Validate file type
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Format file tidak didukung. Gunakan PDF, JPG, atau PNG.');
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
+      alert('Format file tidak didukung. Gunakan berkas PDF atau Word (.doc, .docx).');
       return;
     }
 
@@ -274,7 +278,7 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             <p className="mt-3 text-sm font-medium text-slate-900">Upload CV Anda</p>
-            <p className="mt-1 text-xs text-slate-500">PDF, JPG, atau PNG (maks. 10MB)</p>
+            <p className="mt-1 text-xs text-slate-500">PDF atau Word (.doc, .docx) hingga 10MB</p>
             <p className="mt-1 text-xs text-[#0B2C6B] font-medium">AI akan menganalisis CV Anda secara otomatis</p>
             <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -284,7 +288,7 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleUpload}
                 disabled={uploading}
                 className="hidden"

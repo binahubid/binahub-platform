@@ -30,10 +30,12 @@ export default function RegisterPage() {
 
     if (password !== confirmPassword) {
       setError('Password tidak cocok');
+      setLoading(false);
       return;
     }
     if (password.length < 8) {
       setError('Password minimal 8 karakter');
+      setLoading(false);
       return;
     }
 

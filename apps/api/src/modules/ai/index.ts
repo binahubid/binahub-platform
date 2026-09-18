@@ -62,8 +62,15 @@ ai.post('/parse-cv', async (c) => {
               cvText = await extractTextFromPDF(buffer);
               console.log('PDF text extraction success. Character length:', cvText?.length);
             } else {
-              cvText = await resp.text();
-              console.log('Text file download success. Character length:', cvText?.length);
+              const textContent = await resp.text();
+              // Check if file is text-based or binary
+              if (textContent.includes('\u0000') || /[\x00-\x08\x0E-\x1F]/.test(textContent.slice(0, 200))) {
+                console.warn('Binary non-PDF file detected, skipping raw text extraction.');
+                cvText = '';
+              } else {
+                cvText = textContent;
+                console.log('Text file download success. Character length:', cvText?.length);
+              }
             }
           } else {
             console.error('Download file from signed URL response not OK:', resp.status, resp.statusText);
