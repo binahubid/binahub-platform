@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../components/ui';
 
@@ -23,7 +23,7 @@ export default function AdminUsersPage() {
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (!user || !accessToken) return;
     try {
       const resp = await fetch(`${apiUrl}/api/admin/users`, {
@@ -37,11 +37,11 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, accessToken, apiUrl, toast]);
 
   useEffect(() => {
     fetchUsers();
-  }, [user, accessToken, apiUrl]);
+  }, [fetchUsers]);
 
   const filtered = users.filter((u) =>
     u.email.toLowerCase().includes(search.toLowerCase()) ||

@@ -39,7 +39,7 @@ export default function AdminReviewsPage() {
     if (!user || !accessToken) return;
     setLoading(true);
     try {
-      const resp = await fetch(`${apiUrl}/api/admin/associates?status=${activeTab}&limit=50`, {
+      const resp = await fetch(`${apiUrl}/api/reviews/queue?status=${activeTab}&limit=50`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const d = await resp.json();
@@ -63,7 +63,7 @@ export default function AdminReviewsPage() {
     if (!accessToken) return;
     setReviewing(true);
     try {
-      const resp = await fetch(`${apiUrl}/api/admin/associates/${associateId}/review`, {
+      const resp = await fetch(`${apiUrl}/api/reviews/associate/${associateId}/decision`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ status, notes: inlineNotes }),
@@ -166,7 +166,7 @@ export default function AdminReviewsPage() {
                     {(a.profile?.full_name || a.email).substring(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <Link href={`/admin/associates/${a.id}`} className="text-sm font-semibold text-slate-900 hover:text-[#0B2C6B]">
+                    <Link href={`/admin/reviews/${a.id}`} className="text-sm font-semibold text-slate-900 hover:text-[#0B2C6B]">
                       {a.profile?.full_name || a.email}
                     </Link>
                     <p className="text-xs text-slate-500">{a.profile?.headline || a.email}</p>
@@ -186,7 +186,7 @@ export default function AdminReviewsPage() {
                       Review
                     </button>
                   )}
-                  <Link href={`/admin/associates/${a.id}`} className="text-slate-400 hover:text-slate-600">
+                  <Link href={`/admin/reviews/${a.id}`} className="text-slate-400 hover:text-slate-600" aria-label={`Buka review ${a.profile?.full_name || a.email}`}>
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>

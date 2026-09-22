@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] — 2026-09-22
+
+### Security
+
+- Mengganti CORS wildcard/dynamic dengan allowlist origin produksi yang eksplisit, menambahkan request ID, HSTS, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, batas body 2 MB, dan sanitasi respons error 5xx.
+- Memindahkan rate limit endpoint autentikasi ke fungsi database atomik `consume_rate_limit` agar konsisten pada deployment serverless; fallback lokal tetap fail-closed ketika database rate limiter tidak tersedia.
+- Menutup akses IDOR file: upload, registrasi, signed URL, view, download, dan delete sekarang memeriksa pemilik, pengunggah, role, path storage, MIME, ukuran, serta nama file aman. Token akses tidak lagi ditempel pada URL.
+- Membatasi data reviewer ke profil profesional yang relevan. Data finansial, kontak darurat, dan data administrator-only tidak dikirim ke workspace reviewer.
+- Login, register, logout global, callback OAuth, lupa password, dan reset password diperkuat agar tidak membocorkan error internal atau meninggalkan UI pada keadaan loading tanpa akhir.
+- Upgrade dependensi produksi yang rentan dan mengunci versi Next.js/PostCSS/Nanoid/Sharp yang sudah dipatch. `pnpm audit --prod` kini tidak menemukan kerentanan yang diketahui.
+
+### Added
+
+- Workspace reviewer nyata pada `/admin/reviews`, termasuk antrean, detail profil yang tersanitasi, keputusan approve/reject, catatan audit, serta pembatasan navigasi berdasarkan role.
+- Halaman lupa password dan reset password yang terhubung ke Supabase Auth.
+- Dukungan parsing CV PDF dan DOCX melalui pipeline yang sama; format Word lama `.doc` dihapus karena tidak dapat diproses secara aman dan deterministik.
+- Migration `006_atomic_rate_limits.sql` untuk rate limit atomik dan migration `007_notification_idempotency.sql` untuk deduplikasi notifikasi worker.
+- Runner read-only `npm run test:smoke` untuk memeriksa HTTPS, health versi, anonymous access control, sesi admin, dan endpoint operasional utama tanpa mengubah data.
+- Dokumen audit produksi `docs/AUDIT-PRODUCTION-0.8.0.md` berisi cakupan, bukti verifikasi, dan langkah deployment.
+
+### Changed
+
+- Marketplace assignment associate hanya menampilkan assignment aktif dan histori milik pengguna; draft tidak lagi bocor. Associate dapat membuka assignment aktif, memilih role, lalu melamar dari halaman detail.
+- Form assignment admin sekarang mewajibkan jumlah associate minimal satu, melakukan validasi field serta tanggal secara ketat, dan menerapkan state transition untuk assignment maupun assignee.
+- Worker CV memakai RPC `import_cv_data` agar retry tidak menggandakan pengalaman, pendidikan, keahlian, atau bahasa.
+- Worker event menerapkan claim, retry, error state, serta notifikasi idempoten agar aman saat dijalankan bersamaan.
+- UI login dan workspace memakai pola visual yang lebih tenang, hierarki yang jelas, status loading konsisten, dan pesan kegagalan yang dapat ditindaklanjuti.
+- Dashboard serta profil memakai resolver berkas privat yang menghasilkan signed URL sementara; foto profil dan lampiran sertifikat tidak lagi bergantung pada URL storage mentah.
+- Baseline kualitas frontend/backend dibersihkan hingga `pnpm lint` lulus dengan 0 error dan 0 warning.
+
+### Fixed
+
+- Memperbaiki tautan antrean reviewer yang sebelumnya mengarah ke rute admin associate dan terpental oleh route guard.
+- Memperbaiki role reviewer yang sebelumnya masuk ke dashboard associate atau tidak memiliki workspace fungsional.
+- Memperbaiki pemulihan sesi awal: kegagalan `getSession()` kini mengakhiri loading secara aman dan listener auth selalu menyinkronkan state.
+- Memperbaiki registrasi parsial dengan rollback user/table ketika pembuatan associate atau profil gagal.
+- Menghapus komponen `AI Talent Search` palsu yang hanya memakai timer dan tidak memiliki backend agar tidak menampilkan kemampuan semu kepada pengguna.
+- Menghapus handler unggah foto laporan assignment yang tidak pernah terhubung ke input UI, serta mempertahankan satu alur bukti yang dapat digunakan dan divalidasi.
+
+### Deployment Notes
+
+- Jalankan migration `006_atomic_rate_limits.sql` dan `007_notification_idempotency.sql` sebelum mengaktifkan versi API 0.8.0.
+- Pastikan `CORS_ALLOWED_ORIGINS` hanya berisi origin HTTPS tambahan yang memang digunakan; domain utama BinaHub sudah ada dalam allowlist bawaan.
+- Setelah API dan web terdeploy, jalankan `npm run test:smoke` dengan `AMS_API_URL`, `AMS_ADMIN_EMAIL`, dan `AMS_ADMIN_PASSWORD` sebagai environment sementara.
+
 ## [0.7.11] — 2026-09-18
 
 ### Fixed
@@ -29,6 +74,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
 
 - **Penyempurnaan Tampilan Tanggal CV Standar Admin**:
   - Memperkuat fungsi `formatDate` di `apps/web/src/app/admin/associates/[id]/cv/page.tsx` untuk menangani format tahun parsial (`YYYY`), nilai null/undefined, dan input tanggal invalid tanpa memicu output `NaN`.
+
+- **Perbaikan Vercel Serverless Routing Backend API**:
+  - Memperbaiki aturan rewrite di `apps/api/vercel.json` dan menambahkan serverless entrypoint `apps/api/api/index.ts` (`dist/api/index.js`). Menghilangkan bug rewrite URL ke `/api` yang sebelumnya menyebabkan seluruh request di production (`https://binahub-platform-api-prl5.vercel.app`) salah tertangkap oleh endpoint placeholder status dan menyebabkan seluruh data di frontend `ams.binahub.id` tampil sebagai 0.
+  - Menambahkan dukungan dynamic CORS origin untuk domain Vercel dan wildcard Binahub.
+  - Memasang route fallback tanpa prefix `/api` di backend agar fleksibel terhadap proxying.
+
+- **Proteksi Halaman Admin (`AdminLayout`)**:
+  - Menambahkan *route guard* dan penanganan *loading* di `apps/web/src/app/admin/layout.tsx` untuk otomatis mengarahkan pengunjung non-admin atau pengguna yang belum login ke rute yang sesuai (`/dashboard` atau `/auth/login`), mencegah tampilan kosong pada pengguna yang tidak berhak.
 
 ## [0.7.10] — 2026-07-29
 

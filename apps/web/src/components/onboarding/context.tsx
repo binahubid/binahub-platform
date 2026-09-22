@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useAuth } from '../../context/AuthContext';
 
 export type OnboardingStep = {
   id: string;
@@ -97,7 +96,6 @@ function saveSkipped() {
 }
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);

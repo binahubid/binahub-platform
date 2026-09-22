@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 
 type Preferences = {
@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const headers = { Authorization: `Bearer ${accessToken}` };
+  const headers = useMemo(() => ({ Authorization: `Bearer ${accessToken}` }), [accessToken]);
 
   useEffect(() => {
     if (!user || !accessToken) return;
@@ -41,7 +41,7 @@ export default function SettingsPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [user, accessToken, apiUrl]);
+  }, [user, accessToken, apiUrl, headers]);
 
   const handleToggle = async (key: keyof Preferences) => {
     const newValue = typeof prefs[key] === 'boolean' ? !prefs[key] : prefs[key];

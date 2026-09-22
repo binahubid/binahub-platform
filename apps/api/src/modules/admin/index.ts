@@ -6,6 +6,41 @@ import type { AppEnv } from '../../types/env.js';
 
 const admin = new Hono<AppEnv>();
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ASSIGNMENT_STATUSES = ['draft', 'active', 'completed', 'cancelled'] as const;
+const ASSIGNEE_STATUSES = ['invited', 'applied', 'accepted', 'declined', 'in_progress', 'completed', 'reviewed', 'withdrawn'] as const;
+
+function textField(value: unknown, max: number, required = false): string | null {
+  if (value === undefined || value === null) return required ? null : '';
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if ((required && normalized.length === 0) || normalized.length > max) return null;
+  return normalized;
+}
+
+function boundedInteger(value: unknown, min: number, max: number): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : null;
+}
+
+function optionalIsoDate(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) ? undefined : value;
+}
+
+function normalizedRoles(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  return Array.from(new Set(
+    value
+      .filter((role): role is string => typeof role === 'string')
+      .map((role) => role.trim())
+      .filter((role) => role.length > 0 && role.length <= 100),
+  )).slice(0, 50);
+}
+
 admin.use('*', authMiddleware);
 admin.use('*', requireRole(['admin']));
 
@@ -243,6 +278,14 @@ admin.patch('/associates/:id/review', async (c) => {
   const { status, notes } = body;
   const db = getDb();
 
+  if (!['approved', 'rejected'].includes(status)) {
+    return c.json({ success: false, error: 'Keputusan review tidak valid' }, 400);
+  }
+  const safeNotes = textField(notes, 5000);
+  if (notes !== undefined && safeNotes === null) {
+    return c.json({ success: false, error: 'Catatan review tidak valid atau terlalu panjang' }, 400);
+  }
+
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
   if (status === 'approved') {
@@ -278,7 +321,7 @@ admin.patch('/associates/:id/review', async (c) => {
       .update({
         reviewer_id: user.id,
         status,
-        notes: notes || null,
+        notes: safeNotes || null,
         decision_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       })
@@ -291,7 +334,7 @@ admin.patch('/associates/:id/review', async (c) => {
         associate_id: id,
         reviewer_id: user.id,
         status,
-        notes: notes || null,
+        notes: safeNotes || null,
         decision_at: new Date().toISOString(),
       });
     reviewError = error;
@@ -315,7 +358,7 @@ admin.patch('/associates/:id/review', async (c) => {
       p_type: 'AssociateRejected',
       p_aggregate_type: 'associate',
       p_aggregate_id: id,
-      p_payload: { associate_id: id, rejected_by: user.id, reason: notes }
+      p_payload: { associate_id: id, rejected_by: user.id, reason: safeNotes }
     });
   }
 
@@ -438,17 +481,19 @@ admin.get('/activities', async (c) => {
   // Sort by timestamp descending, then limit
   activities.sort((a, b) => b.ts - a.ts);
 
-  return c.json({ success: true, data: activities.slice(0, limit).map(({ ts, ...rest }) => rest) });
+  return c.json({ success: true, data: activities.slice(0, limit).map(({ ts: _timestamp, ...rest }) => rest) });
 });
 
 admin.get('/assignments', async (c) => {
   const { status, limit = '50', offset = '0' } = c.req.query();
   const db = getDb();
+  const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 50, 1), 100);
+  const safeOffset = Math.max(Number.parseInt(offset, 10) || 0, 0);
 
   let query = db
     .from('assignments')
     .select('*', { count: 'exact' })
-    .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1)
+    .range(safeOffset, safeOffset + safeLimit - 1)
     .order('created_at', { ascending: false });
 
   if (status) {
@@ -469,8 +514,24 @@ admin.post('/assignments', async (c) => {
   const body = await c.req.json();
   const { title, client_name, description, start_date, end_date, needed_roles, needed_count, mandays, compensation } = body;
 
-  if (!title || !client_name) {
+  const safeTitle = textField(title, 200, true);
+  const safeClientName = textField(client_name, 200, true);
+  const safeDescription = textField(description, 10000);
+  const safeNeededCount = boundedInteger(needed_count ?? 1, 1, 10000);
+  const safeMandays = boundedInteger(mandays ?? 0, 0, 10000);
+  const safeCompensation = textField(compensation, 500);
+  const safeRoles = normalizedRoles(needed_roles);
+  const safeStartDate = optionalIsoDate(start_date);
+  const safeEndDate = optionalIsoDate(end_date);
+
+  if (!safeTitle || !safeClientName) {
     return c.json({ success: false, error: 'title dan client_name wajib diisi' }, 400);
+  }
+  if (safeDescription === null || safeNeededCount === null || safeMandays === null || safeCompensation === null || safeRoles === null || (start_date !== undefined && safeStartDate === undefined) || (end_date !== undefined && safeEndDate === undefined)) {
+    return c.json({ success: false, error: 'Data assignment tidak valid' }, 400);
+  }
+  if (safeStartDate && safeEndDate && safeEndDate < safeStartDate) {
+    return c.json({ success: false, error: 'Tanggal selesai tidak boleh sebelum tanggal mulai' }, 400);
   }
 
   const db = getDb();
@@ -478,15 +539,15 @@ admin.post('/assignments', async (c) => {
   const { data, error } = await db
     .from('assignments')
     .insert({
-      title,
-      client_name,
-      description: description || null,
-      start_date: start_date || null,
-      end_date: end_date || null,
-      needed_roles: needed_roles || [],
-      needed_count: needed_count || 0,
-      mandays: mandays || 0,
-      compensation: compensation || null,
+      title: safeTitle,
+      client_name: safeClientName,
+      description: safeDescription || null,
+      start_date: safeStartDate ?? null,
+      end_date: safeEndDate ?? null,
+      needed_roles: safeRoles,
+      needed_count: safeNeededCount,
+      mandays: safeMandays,
+      compensation: safeCompensation || null,
       created_by: user.id,
     })
     .select()
@@ -504,17 +565,64 @@ admin.patch('/assignments/:id', async (c) => {
   const body = await c.req.json();
   const db = getDb();
 
+  const { data: existingAssignment } = await db.from('assignments').select('status, start_date, end_date').eq('id', id).maybeSingle();
+  if (!existingAssignment) return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
+
+  if (body.status !== undefined) {
+    if (!ASSIGNMENT_STATUSES.includes(body.status)) return c.json({ success: false, error: 'Status assignment tidak valid' }, 400);
+    const transitions: Record<string, string[]> = {
+      draft: ['draft', 'active', 'cancelled'],
+      active: ['active', 'completed', 'cancelled'],
+      completed: ['completed'],
+      cancelled: ['cancelled'],
+    };
+    if (!transitions[existingAssignment.status]?.includes(body.status)) {
+      return c.json({ success: false, error: `Status tidak dapat diubah dari ${existingAssignment.status} ke ${body.status}` }, 409);
+    }
+  }
+
+
+  const safeTitle = body.title === undefined ? undefined : textField(body.title, 200, true);
+  const safeClientName = body.client_name === undefined ? undefined : textField(body.client_name, 200, true);
+  const safeDescription = body.description === undefined ? undefined : textField(body.description, 10000);
+  const safeStartDate = optionalIsoDate(body.start_date);
+  const safeEndDate = optionalIsoDate(body.end_date);
+  const safeRoles = body.needed_roles === undefined ? undefined : normalizedRoles(body.needed_roles);
+  const safeNeededCount = body.needed_count === undefined ? undefined : boundedInteger(body.needed_count, 1, 10000);
+  const safeMandays = body.mandays === undefined ? undefined : boundedInteger(body.mandays, 0, 10000);
+  const safeCompensation = body.compensation === undefined ? undefined : textField(body.compensation, 500);
+
+  if (
+    (body.title !== undefined && !safeTitle) ||
+    (body.client_name !== undefined && !safeClientName) ||
+    (body.description !== undefined && safeDescription === null) ||
+    (body.start_date !== undefined && safeStartDate === undefined) ||
+    (body.end_date !== undefined && safeEndDate === undefined) ||
+    (body.needed_roles !== undefined && safeRoles === null) ||
+    (body.needed_count !== undefined && safeNeededCount === null) ||
+    (body.mandays !== undefined && safeMandays === null) ||
+    (body.compensation !== undefined && safeCompensation === null)
+  ) {
+    return c.json({ success: false, error: 'Data assignment tidak valid' }, 400);
+  }
+
+  const nextStartDate = safeStartDate === undefined ? existingAssignment.start_date : safeStartDate;
+  const nextEndDate = safeEndDate === undefined ? existingAssignment.end_date : safeEndDate;
+  if (nextStartDate && nextEndDate && nextEndDate < nextStartDate) {
+    return c.json({ success: false, error: 'Tanggal selesai tidak boleh sebelum tanggal mulai' }, 400);
+  }
+
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (body.title !== undefined) updateData.title = body.title;
-  if (body.client_name !== undefined) updateData.client_name = body.client_name;
-  if (body.description !== undefined) updateData.description = body.description;
+  if (safeTitle !== undefined) updateData.title = safeTitle;
+  if (safeClientName !== undefined) updateData.client_name = safeClientName;
+  if (safeDescription !== undefined) updateData.description = safeDescription || null;
   if (body.status !== undefined) updateData.status = body.status;
-  if (body.start_date !== undefined) updateData.start_date = body.start_date;
-  if (body.end_date !== undefined) updateData.end_date = body.end_date;
-  if (body.needed_roles !== undefined) updateData.needed_roles = body.needed_roles;
-  if (body.needed_count !== undefined) updateData.needed_count = body.needed_count;
-  if (body.mandays !== undefined) updateData.mandays = body.mandays;
-  if (body.compensation !== undefined) updateData.compensation = body.compensation;
+  if (body.start_date !== undefined) updateData.start_date = safeStartDate;
+  if (body.end_date !== undefined) updateData.end_date = safeEndDate;
+  if (safeRoles !== undefined) updateData.needed_roles = safeRoles;
+  if (safeNeededCount !== undefined) updateData.needed_count = safeNeededCount;
+  if (safeMandays !== undefined) updateData.mandays = safeMandays;
+  if (safeCompensation !== undefined) updateData.compensation = safeCompensation || null;
 
   const { data, error } = await db
     .from('assignments')
@@ -534,7 +642,13 @@ admin.delete('/assignments/:id', async (c) => {
   const id = c.req.param('id');
   const db = getDb();
 
-  const { error } = await db.from('assignments').delete().eq('id', id);
+  const { data: assignment } = await db.from('assignments').select('status').eq('id', id).maybeSingle();
+  if (!assignment) return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
+  if (assignment.status !== 'draft') {
+    return c.json({ success: false, error: 'Hanya draft yang dapat dihapus. Batalkan assignment aktif agar riwayat audit tetap tersimpan.' }, 409);
+  }
+
+  const { error } = await db.from('assignments').delete().eq('id', id).eq('status', 'draft');
 
   if (error) {
     return c.json({ success: false, error: error.message }, 500);
@@ -620,9 +734,11 @@ admin.post('/assignments/:id/invite', async (c) => {
   const body = await c.req.json();
   const { associate_ids, role } = body;
 
-  if (!associate_ids || !Array.isArray(associate_ids) || associate_ids.length === 0) {
+  if (!associate_ids || !Array.isArray(associate_ids) || associate_ids.length === 0 || associate_ids.length > 100 || !associate_ids.every((id) => typeof id === 'string' && UUID_RE.test(id))) {
     return c.json({ success: false, error: 'associate_ids wajib diisi (array)' }, 400);
   }
+  const safeRole = textField(role, 100);
+  if (role !== undefined && safeRole === null) return c.json({ success: false, error: 'Role tidak valid' }, 400);
 
   const db = getDb();
 
@@ -646,7 +762,10 @@ admin.post('/assignments/:id/invite', async (c) => {
     .eq('assignment_id', assignmentId);
 
   const existingIds = (existing || []).map((e: { associate_id: string }) => e.associate_id);
-  const newIds = associate_ids.filter((id: string) => !existingIds.includes(id));
+  const requestedIds = Array.from(new Set(associate_ids as string[]));
+  const { data: activeAssociates } = await db.from('associates').select('id').in('id', requestedIds).eq('status', 'active');
+  const activeIds = new Set((activeAssociates || []).map((associate: { id: string }) => associate.id));
+  const newIds = requestedIds.filter((id) => activeIds.has(id) && !existingIds.includes(id));
 
   if (newIds.length === 0) {
     return c.json({ success: false, error: 'Semua associate sudah diinvite ke assignment ini' }, 400);
@@ -656,7 +775,7 @@ admin.post('/assignments/:id/invite', async (c) => {
     assignment_id: assignmentId,
     associate_id: associateId,
     status: 'invited',
-    role: role || null,
+    role: safeRole || null,
     invited_by: user.id,
   }));
 
@@ -766,16 +885,50 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
 
   const db = getDb();
 
+  if (status !== undefined && !ASSIGNEE_STATUSES.includes(status)) {
+    return c.json({ success: false, error: 'Status assignee tidak valid' }, 400);
+  }
+  const safeRole = textField(role, 100);
+  const safeNotes = textField(notes, 5000);
+  const safeReviewerNotes = textField(evidence_reviewer_notes, 5000);
+  if ((role !== undefined && safeRole === null) || (notes !== undefined && safeNotes === null) || (evidence_reviewer_notes !== undefined && safeReviewerNotes === null)) {
+    return c.json({ success: false, error: 'Data assignee tidak valid atau terlalu panjang' }, 400);
+  }
+
+  const { data: currentAssignee } = await db
+    .from('assignment_assignees')
+    .select('status')
+    .eq('id', assigneeId)
+    .eq('assignment_id', assignmentId)
+    .maybeSingle();
+  if (!currentAssignee) return c.json({ success: false, error: 'Assignee tidak ditemukan' }, 404);
+
+  if (status !== undefined && status !== currentAssignee.status) {
+    const transitions: Record<string, string[]> = {
+      invited: ['accepted', 'declined'],
+      applied: ['accepted', 'declined'],
+      accepted: ['in_progress', 'withdrawn'],
+      in_progress: ['completed', 'withdrawn'],
+      completed: ['reviewed', 'in_progress'],
+      reviewed: [],
+      declined: [],
+      withdrawn: [],
+    };
+    if (!transitions[currentAssignee.status]?.includes(status)) {
+      return c.json({ success: false, error: `Status tidak dapat diubah dari ${currentAssignee.status} ke ${status}` }, 409);
+    }
+  }
+
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (status) {
     updateData.status = status;
     if (status === 'accepted') updateData.accepted_at = new Date().toISOString();
     if (status === 'completed') updateData.completed_at = new Date().toISOString();
   }
-  if (role !== undefined) updateData.role = role;
-  if (notes !== undefined) updateData.notes = notes;
+  if (role !== undefined) updateData.role = safeRole;
+  if (notes !== undefined) updateData.notes = safeNotes;
   if (evidence_reviewer_notes !== undefined) {
-    updateData.evidence_reviewer_notes = evidence_reviewer_notes;
+    updateData.evidence_reviewer_notes = safeReviewerNotes;
     updateData.evidence_reviewed_at = new Date().toISOString();
   }
 
@@ -850,34 +1003,30 @@ admin.delete('/assignments/:id/assignees/:aid', async (c) => {
 });
 
 admin.get('/users', async (c) => {
-  const supabaseUrl = process.env.SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
-    headers: {
-      Authorization: `Bearer ${serviceKey}`,
-      apikey: serviceKey,
-    },
-  });
-  const body = await response.json() as { data?: { users?: Record<string, unknown>[] }; error?: { message: string } };
-
-  if (body.error) {
-    return c.json({ success: false, error: body.error.message }, 500);
+  const db = getDb();
+  const { data, error } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) {
+    console.error('List users failed:', error);
+    return c.json({ success: false, error: 'Daftar pengguna tidak dapat dibaca' }, 500);
   }
 
-  const users = (body.data?.users || []).map((u) => ({
+  const users = data.users.map((u) => ({
     id: u.id,
     email: u.email,
     role: ((u.app_metadata as Record<string, unknown>)?.role as string) || 'associate',
     created_at: u.created_at,
     last_sign_in_at: u.last_sign_in_at,
-    user_metadata: u.user_metadata,
+    user_metadata: {
+      full_name: u.user_metadata?.full_name || null,
+      avatar_url: u.user_metadata?.avatar_url || null,
+    },
   }));
 
   return c.json({ success: true, data: users });
 });
 
 admin.patch('/users/:id/role', async (c) => {
+  const actor = c.get('user') as { id: string };
   const targetUserId = c.req.param('id');
   const body = await c.req.json();
   const { role } = body;
@@ -885,26 +1034,16 @@ admin.patch('/users/:id/role', async (c) => {
   if (!['admin', 'reviewer', 'associate'].includes(role)) {
     return c.json({ success: false, error: 'Role tidak valid' }, 400);
   }
+  if (!UUID_RE.test(targetUserId)) return c.json({ success: false, error: 'ID pengguna tidak valid' }, 400);
+  if (targetUserId === actor.id && role !== 'admin') {
+    return c.json({ success: false, error: 'Anda tidak dapat mencabut role admin dari akun sendiri' }, 409);
+  }
 
-  const supabaseUrl = process.env.SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${targetUserId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${serviceKey}`,
-      apikey: serviceKey,
-    },
-    body: JSON.stringify({
-      app_metadata: { role },
-    }),
-  });
-
-  const data = await response.json() as { error?: { message: string } };
-
-  if (data.error) {
-    return c.json({ success: false, error: data.error.message }, 500);
+  const db = getDb();
+  const { error } = await db.auth.admin.updateUserById(targetUserId, { app_metadata: { role } });
+  if (error) {
+    console.error('Update user role failed:', error);
+    return c.json({ success: false, error: 'Role pengguna tidak dapat diperbarui' }, 500);
   }
 
   return c.json({ success: true, message: `Role diubah ke ${role}` });

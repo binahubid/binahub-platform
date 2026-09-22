@@ -38,7 +38,7 @@ export default function StatusPage() {
             return { ...check, status: 'ok' as const, latency };
           }
           return { ...check, status: 'error' as const, latency, message: `HTTP ${res.status}` };
-        } catch (err) {
+        } catch {
           const latency = Math.round(performance.now() - start);
           return { ...check, status: 'error' as const, latency, message: 'Tidak dapat dijangkau' };
         }

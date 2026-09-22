@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { useToast } from '../../../../components/ui';
 import { useParams, useRouter } from 'next/navigation';
 
 type Review = {
@@ -25,7 +24,6 @@ type CapabilityUpdate = {
 export default function ReviewDetailPage() {
   const { id } = useParams();
   const { accessToken } = useAuth();
-  const { toast } = useToast();
   const router = useRouter();
   const [review, setReview] = useState<Review | null>(null);
   const [loading, setLoading] = useState(true);

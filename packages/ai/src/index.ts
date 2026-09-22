@@ -31,7 +31,7 @@ export async function parseCV(text: string): Promise<Record<string, unknown>> {
 
 export { OpenAIProvider } from "./providers/openai";
 export type { AIProvider, AIProviderConfig, ParsedCV } from "./providers/base";
-export { extractTextFromPDF, extractTextFromPDFFile } from "./utils/pdf";
+export { extractTextFromDocx, extractTextFromPDF, extractTextFromPDFFile } from "./utils/pdf";
 
 export async function rankCandidates(
   assignment: { title: string; client_name: string; description: string; needed_roles: string[] },

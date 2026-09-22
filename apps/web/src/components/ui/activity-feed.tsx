@@ -36,7 +36,7 @@ export function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
           <p className="text-center text-xs text-slate-400 py-4">No activity yet</p>
         ) : (
           <div className="space-y-4">
-            {activities.map((activity, i) => {
+            {activities.map((activity) => {
               const config = typeConfig[activity.type] || typeConfig.profile_updated;
               return (
                 <div key={activity.id} className="flex items-start gap-3">

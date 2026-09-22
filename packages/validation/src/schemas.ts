@@ -31,7 +31,6 @@ export const WorkTypeEnum = z.enum(["onsite", "remote", "hybrid"]);
 
 export const SocialPlatformEnum = z.enum(["linkedin", "twitter", "github", "website", "other"]);
 
-const slugSchema = z.string().min(1).max(200).regex(/^[a-z0-9-]+$/);
 const urlSchema = z.string().url().optional().or(z.literal(""));
 const emailSchema = z.string().email();
 

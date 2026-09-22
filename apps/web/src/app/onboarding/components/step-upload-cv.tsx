@@ -110,11 +110,10 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
   const processFile = useCallback(async (file: File) => {
     const allowedTypes = [
       'application/pdf',
-      'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ];
     if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
-      setError('Format tidak didukung. Gunakan berkas PDF atau Word (.doc, .docx).');
+      setError('Format tidak didukung. Gunakan berkas PDF atau DOCX. Format Word lama (.doc) belum didukung.');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -370,7 +369,7 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={handleFileChange}
           className="hidden"
         />
@@ -388,7 +387,7 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
               pilih dari komputer
             </span>
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">PDF atau Word (.doc, .docx) · Maks. 10MB</p>
+          <p className="mt-1 text-[11px] text-slate-400">PDF atau DOCX · Maks. 10MB</p>
         </div>
       </div>
 

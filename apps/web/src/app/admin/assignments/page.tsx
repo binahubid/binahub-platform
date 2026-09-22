@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../components/ui';
@@ -27,7 +27,7 @@ const EMPTY_FORM = {
   start_date: '',
   end_date: '',
   needed_roles: [] as string[],
-  needed_count: '0',
+  needed_count: '1',
   mandays: '0',
   compensation: '',
 };
@@ -90,10 +90,14 @@ function FormFields({ form, setForm }: { form: FormType; setForm: (f: FormType) 
       </div>
 
       <div>
+        <label className="block text-xs font-medium text-slate-600 mb-1">Jumlah Associate Dibutuhkan *</label>
+        <input type="number" min="1" max="10000" value={form.needed_count} onChange={(e) => setForm({ ...form, needed_count: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
+      </div>
+      <div>
         <label className="block text-xs font-medium text-slate-600 mb-1">Durasi (Mandays) *</label>
         <input type="number" min="0" value={form.mandays} onChange={(e) => setForm({ ...form, mandays: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
       </div>
-      <div>
+      <div className="sm:col-span-2">
         <label className="block text-xs font-medium text-slate-600 mb-1">Kompensasi *</label>
         <input value={form.compensation} onChange={(e) => setForm({ ...form, compensation: e.target.value })} placeholder="Contoh: Rp 5.000.000 / Proyek" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
       </div>
@@ -113,7 +117,10 @@ export default function AdminAssignmentsPage() {
   const [editForm, setEditForm] = useState<FormType>({ ...EMPTY_FORM, needed_roles: [] });
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
+  const headers = useMemo(() => ({
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  }), [accessToken]);
 
   const fetchAssignments = useCallback(async () => {
     if (!user || !accessToken) return;
@@ -127,7 +134,7 @@ export default function AdminAssignmentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, accessToken, apiUrl]);
+  }, [user, accessToken, apiUrl, headers, toast]);
 
   useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
 
@@ -148,7 +155,7 @@ export default function AdminAssignmentsPage() {
           start_date: form.start_date || null,
           end_date: form.end_date || null,
           needed_roles: form.needed_roles,
-          needed_count: 0,
+          needed_count: Math.max(1, parseInt(form.needed_count, 10) || 1),
           mandays: parseInt(form.mandays) || 0,
           compensation: form.compensation || null,
         }),
@@ -233,7 +240,7 @@ export default function AdminAssignmentsPage() {
           start_date: editForm.start_date || null,
           end_date: editForm.end_date || null,
           needed_roles: editForm.needed_roles,
-          needed_count: 0,
+          needed_count: Math.max(1, parseInt(editForm.needed_count, 10) || 1),
           mandays: parseInt(editForm.mandays) || 0,
           compensation: editForm.compensation || null,
         }),

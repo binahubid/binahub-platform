@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { useToast } from '../../../components/ui';
 import Link from 'next/link';
 
 type Review = {
@@ -24,7 +23,6 @@ type CapabilityUpdate = {
 
 export default function ReviewsPage() {
   const { accessToken } = useAuth();
-  const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 

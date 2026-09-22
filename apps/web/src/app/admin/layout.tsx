@@ -73,7 +73,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
-  const isAdmin = user?.app_metadata?.role === 'admin';
+  const role = (user?.app_metadata?.role as string) || 'associate';
+  const isAdmin = role === 'admin';
+  const isReviewer = role === 'reviewer';
+  const canAccessAdminWorkspace = isAdmin || isReviewer;
+  const visibleSidebarSections = useMemo(() => {
+    if (!isReviewer) return sidebarSections;
+    return [{
+      label: 'REVIEW OPERATIONS',
+      items: sidebarSections.flatMap((section) => section.items).filter((item) => item.href === '/admin/reviews'),
+    }];
+  }, [isReviewer]);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const { isVisible, justBecameVisible } = usePageVisibility();
 
@@ -188,13 +198,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const searchResults: SearchResult[] = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q || q.length < 2) return [];
+    if (isReviewer) {
+      return [{ type: 'Reviews', label: 'Antrean review', sublabel: 'Tinjau profil associate', href: '/admin/reviews' }];
+    }
     return [
       { type: 'Associates', label: 'Cari associate', sublabel: `Filter: "${searchQuery}"`, href: `/admin/associates?search=${encodeURIComponent(searchQuery)}` },
       { type: 'Reviews', label: 'Review pending', sublabel: 'Lihat associate yang perlu direview', href: '/admin/reviews' },
       { type: 'Assignments', label: 'Kelola assignment', sublabel: 'Buat dan kelola penugasan', href: '/admin/assignments' },
       { type: 'Reports', label: 'Laporan & insight', sublabel: 'Statistik dan analitik', href: '/admin/reports' },
     ];
-  }, [searchQuery]);
+  }, [searchQuery, isReviewer]);
 
   useEffect(() => {
     setMobileSidebarOpen(false);
@@ -202,11 +215,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/auth/login');
-    } else if (!loading && user && !isAdmin) {
-      router.push('/dashboard');
+      router.replace('/auth/login');
+    } else if (!loading && user && !canAccessAdminWorkspace) {
+      router.replace('/dashboard');
+    } else if (!loading && isReviewer && !pathname.startsWith('/admin/reviews')) {
+      router.replace('/admin/reviews');
     }
-  }, [user, loading, router, isAdmin]);
+  }, [user, loading, router, canAccessAdminWorkspace, isReviewer, pathname]);
 
   if (loading) {
     return (
@@ -219,12 +234,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!user || !isAdmin) return null;
+  if (!user || !canAccessAdminWorkspace) return null;
 
   const fullName = user?.user_metadata?.full_name as string | undefined;
   const displayName = fullName || user?.email?.split('@')[0] || 'Admin';
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-  const role = (user?.app_metadata?.role as string) || 'admin';
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
@@ -270,7 +284,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-4">
-            {sidebarSections.map((section, idx) => (
+            {visibleSidebarSections.map((section, idx) => (
               <div key={section.label || `s-${idx}`} className="mb-4">
                 {section.label && (
                   <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-white/40">{section.label}</p>
@@ -386,7 +400,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </button>
               </div>
               <nav className="flex-1 overflow-y-auto px-3 py-4">
-                {sidebarSections.map((section, idx) => (
+                {visibleSidebarSections.map((section, idx) => (
                   <div key={section.label || `s-${idx}`} className="mb-4">
                     {section.label && (
                       <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-white/40">{section.label}</p>

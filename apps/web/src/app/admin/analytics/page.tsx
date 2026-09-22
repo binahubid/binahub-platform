@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { StatCard } from '../../../components/ui';
-import { SimpleLineChart, SimpleBarChart, DonutChart } from '../../../components/ui/charts';
+import { SimpleBarChart, DonutChart } from '../../../components/ui/charts';
 
 type GrowthData = {
   label: string;

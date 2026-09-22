@@ -28,8 +28,6 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
     available_from: availability?.available_from || '',
     notes: availability?.notes || '',
   });
-  const [saving, setSaving] = useState(false);
-
   const handleSave = async (updatedForm = form) => {
     try {
       const method = availability ? 'PUT' : 'POST';

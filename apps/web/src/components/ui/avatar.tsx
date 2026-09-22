@@ -27,6 +27,8 @@ export function Avatar({
 
   if (src) {
     return (
+      // Avatar accepts arbitrary external URLs that cannot use one fixed Next loader.
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
         alt={alt || name || 'Avatar'}

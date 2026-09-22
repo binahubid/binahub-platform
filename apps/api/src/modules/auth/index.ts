@@ -4,7 +4,7 @@ import { getDb } from '../../lib/database.js';
 import { rateLimit } from '../../middleware/rate-limit.js';
 import { generateSlug } from '@ams/shared/utils/slug';
 import { createAssociateSchema } from '@ams/shared/validators/associate';
-import type { AuthUser } from '../../types';
+import { authMiddleware } from './middleware/auth.js';
 import type { AppEnv } from '../../types/env.js';
 
 const auth = new Hono<AppEnv>();
@@ -17,7 +17,11 @@ function getAnonClient() {
 }
 
 auth.post('/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c) => {
-  const body = await c.req.json();
+  const body = await c.req.json().catch(() => null);
+
+  if (!body || typeof body !== 'object') {
+    return c.json({ success: false, error: 'Format permintaan tidak valid' }, 400);
+  }
 
   const validation = createAssociateSchema.safeParse(body);
   if (!validation.success) {
@@ -38,7 +42,8 @@ auth.post('/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (
   });
 
   if (authError) {
-    return c.json({ success: false, error: authError.message }, 400);
+    console.warn('Register rejected by auth provider:', authError.code || authError.name);
+    return c.json({ success: false, error: 'Registrasi gagal. Periksa data atau gunakan email lain.' }, 400);
   }
 
   if (!authData.user) {
@@ -69,7 +74,7 @@ auth.post('/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (
     } catch (rollbackErr) {
       console.error('Rollback user failed:', rollbackErr);
     }
-    return c.json({ success: false, error: 'Gagal membuat data associate: ' + associateError.message }, 500);
+    return c.json({ success: false, error: 'Gagal membuat data associate' }, 500);
   }
 
   const { error: profileError } = await db
@@ -89,14 +94,18 @@ auth.post('/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (
     } catch (rollbackErr) {
       console.error('Rollback user/table failed:', rollbackErr);
     }
-    return c.json({ success: false, error: 'Gagal membuat profil: ' + profileError.message }, 500);
+    return c.json({ success: false, error: 'Gagal membuat profil' }, 500);
   }
 
   return c.json({ success: true, message: 'Registrasi berhasil. Cek email untuk konfirmasi.' }, 201);
 });
 
 auth.post('/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c) => {
-  const body = await c.req.json();
+  const body = await c.req.json().catch(() => null);
+
+  if (!body || typeof body !== 'object') {
+    return c.json({ success: false, error: 'Format permintaan tidak valid' }, 400);
+  }
   const { email, password } = body;
 
   if (!email || !password) {
@@ -121,25 +130,13 @@ auth.post('/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c) 
   });
 });
 
-auth.post('/logout', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return c.json({ success: false, error: 'Token tidak ditemukan' }, 401);
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-
-  // Verify the token & resolve the user id before revoking (admin API needs user id)
+auth.post('/logout', authMiddleware, async (c) => {
+  const token = c.get('token');
   const db = getDb();
-  const { data: { user }, error } = await db.auth.getUser(token);
-  if (error || !user) {
-    return c.json({ success: false, error: 'Token tidak valid' }, 401);
-  }
-
-  try {
-    await db.auth.admin.signOut(user.id);
-  } catch (e) {
-    console.error('Logout error:', e);
+  const { error } = await db.auth.admin.signOut(token, 'global');
+  if (error) {
+    console.error('Logout error:', error);
+    return c.json({ success: false, error: 'Logout gagal' }, 500);
   }
 
   return c.json({ success: true, message: 'Logout berhasil' });

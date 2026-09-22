@@ -23,15 +23,13 @@ const steps = [
 type OnboardingChecklistProps = {
   hasCV?: boolean;
   hasProfile?: boolean;
-  hasCapability?: boolean;
 };
 
 export function OnboardingChecklist({
   hasCV,
   hasProfile,
-  hasCapability,
 }: OnboardingChecklistProps) {
-  const { completedSteps, completionPercent: contextPercent, reopenModal, isCompleted: contextCompleted } = useOnboarding();
+  const { completedSteps, reopenModal } = useOnboarding();
 
   // Dynamic status evaluation
   const stepsDone = {

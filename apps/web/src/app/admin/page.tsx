@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 
@@ -52,7 +52,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const headers = { Authorization: `Bearer ${accessToken}` };
+  const headers = useMemo(() => ({ Authorization: `Bearer ${accessToken}` }), [accessToken]);
 
   useEffect(() => {
     if (!user || !accessToken) return;
@@ -69,7 +69,7 @@ export default function AdminDashboard() {
         if (capResult.status === 'fulfilled' && capResult.value.success) setCapabilities(capResult.value.data || []);
         setLoading(false);
       });
-  }, [user, accessToken, apiUrl]);
+  }, [user, accessToken, apiUrl, headers]);
 
   const greeting = (() => {
     const h = new Date().getHours();

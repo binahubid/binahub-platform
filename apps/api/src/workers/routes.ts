@@ -18,7 +18,8 @@ workerRoutes.use('*', requireRole(['admin']));
 
 workerRoutes.post('/process-events', async (c) => {
   const body = await c.req.json().catch(() => ({}));
-  const limit = body.limit || 10;
+  const requestedLimit = Number.parseInt(String(body.limit ?? 10), 10);
+  const limit = Math.min(Math.max(Number.isFinite(requestedLimit) ? requestedLimit : 10, 1), 100);
   
   try {
     const results = await processPendingEvents(limit);
@@ -27,7 +28,7 @@ workerRoutes.post('/process-events', async (c) => {
     console.error('Worker error:', error);
     return c.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Worker processing failed'
+      error: 'Pemrosesan event gagal'
     }, 500);
   }
 });
@@ -46,7 +47,8 @@ workerRoutes.get('/health', async (c) => {
     .eq('status', 'pending');
 
   if (error) {
-    return c.json({ success: false, error: error.message }, 500);
+    console.error('Worker health query failed:', error);
+    return c.json({ success: false, error: 'Status worker tidak dapat dibaca' }, 500);
   }
 
   return c.json({

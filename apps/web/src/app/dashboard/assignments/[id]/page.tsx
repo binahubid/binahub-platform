@@ -1,28 +1,11 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../components/ui';
-
-const getFileUrlWithToken = (urlStr: string | null | undefined, token: string | null) => {
-  if (!urlStr) return '';
-  if (!token) return urlStr;
-  try {
-    const url = new URL(urlStr);
-    url.searchParams.set('token', token);
-    return url.toString();
-  } catch {
-    if (urlStr.includes('?')) {
-      if (urlStr.includes('token=')) {
-        return urlStr.replace(/token=[^&]+/, `token=${token}`);
-      }
-      return `${urlStr}&token=${token}`;
-    }
-    return `${urlStr}?token=${token}`;
-  }
-};
+import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
 type AssignmentDetail = {
   id: string;
   title: string;
@@ -95,21 +78,19 @@ function fmtCurrency(val: string | null | undefined) {
 
 export default function AssignmentDetailPage() {
   const { id } = useParams();
-  const router = useRouter();
   const { user, accessToken } = useAuth();
   const { toast } = useToast();
   const [assignment, setAssignment] = useState<AssignmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [applyRole, setApplyRole] = useState('');
 
   const [showAgreementModal, setShowAgreementModal] = useState(false);
   const [agreementChecked, setAgreementChecked] = useState(false);
 
-  const [uploadedPhotos, setUploadedPhotos] = useState<{ url: string; name: string }[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [evidenceNotes, setEvidenceNotes] = useState('');
   const [evidenceUrl, setEvidenceUrl] = useState('');
-  const photoInputRef = useRef<HTMLInputElement>(null);
   const evidenceFileRef = useRef<HTMLInputElement>(null);
 
   // Activity progress log states
@@ -121,7 +102,10 @@ export default function AssignmentDetailPage() {
   const newLogPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
+  const headers = useMemo(() => ({
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  }), [accessToken]);
 
   const fetchProgressLogs = useCallback(async () => {
     if (!accessToken) return;
@@ -216,7 +200,7 @@ export default function AssignmentDetailPage() {
       const resp = await fetch(`${apiUrl}/api/associate/assignments/${id}/apply`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({}),
+        body: JSON.stringify({ role: applyRole || assignment?.needed_roles?.[0] || undefined }),
       });
       const data = await resp.json();
       if (data.success) {
@@ -263,7 +247,8 @@ export default function AssignmentDetailPage() {
     });
     const presignData = await presignRes.json();
     if (!presignData.success) throw new Error(presignData.error || 'Gagal upload');
-    await fetch(presignData.data.presignedUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+    const uploadResponse = await fetch(presignData.data.presignedUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+    if (!uploadResponse.ok) throw new Error('Berkas gagal dikirim ke penyimpanan');
     const regRes = await fetch(`${apiUrl}/api/files`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -271,26 +256,7 @@ export default function AssignmentDetailPage() {
     });
     const regData = await regRes.json();
     if (!regData.success) throw new Error(regData.error || 'Gagal registrasi file');
-    return `${apiUrl}/api/files/${regData.data.id}/view?token=${accessToken}`;
-  };
-
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length || !accessToken || !user) return;
-    setUploadingFile(true);
-    try {
-      for (const file of files) {
-        if (file.size > 20 * 1024 * 1024) { toast('error', `${file.name} terlalu besar (maks 20MB)`); continue; }
-        const url = await uploadFile(file, 'other');
-        setUploadedPhotos(prev => [...prev, { url, name: file.name }]);
-      }
-      toast('success', 'Foto berhasil diunggah');
-    } catch (err: unknown) {
-      toast('error', (err as Error).message || 'Gagal mengunggah foto');
-    } finally {
-      setUploadingFile(false);
-      if (photoInputRef.current) photoInputRef.current.value = '';
-    }
+    return `${apiUrl}/api/files/${regData.data.id}/view`;
   };
 
   const handleEvidenceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -310,20 +276,17 @@ export default function AssignmentDetailPage() {
   };
 
   const submitFinalReport = async () => {
-    if (!evidenceNotes.trim() && !evidenceUrl && uploadedPhotos.length === 0) {
+    if (!evidenceNotes.trim() && !evidenceUrl) {
       toast('error', 'Isi laporan terlebih dahulu sebelum submit');
       return;
     }
     setActing(true);
-    const photosStr = uploadedPhotos.length > 0
-      ? `\n\nFoto Dokumentasi:\n${uploadedPhotos.map(p => p.url).join('\n')}`
-      : '';
-    const combinedNotes = (evidenceNotes + photosStr).trim();
+    const combinedNotes = evidenceNotes.trim();
     try {
       const resp = await fetch(`${apiUrl}/api/associate/assignments/${id}/status`, {
         method: 'PATCH',
         headers,
-        body: JSON.stringify({ status: 'completed', evidence_url: evidenceUrl || (uploadedPhotos[0]?.url ?? ''), evidence_notes: combinedNotes }),
+        body: JSON.stringify({ status: 'completed', evidence_url: evidenceUrl, evidence_notes: combinedNotes }),
       });
       const data = await resp.json();
       if (data.success) {
@@ -465,6 +428,42 @@ export default function AssignmentDetailPage() {
         </div>
       )}
 
+      {!my && assignmentIsActive && (
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm" aria-labelledby="apply-heading">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#B76E00]">Kesempatan terbuka</p>
+              <h2 id="apply-heading" className="mt-1 text-lg font-semibold text-slate-900">Daftar untuk penugasan ini</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Pendaftaran akan masuk ke antrean admin. Anda belum dianggap bergabung sampai admin menerima pendaftaran.
+              </p>
+            </div>
+            <div className="w-full sm:w-72">
+              {assignment.needed_roles.length > 0 && (
+                <label className="mb-3 block text-xs font-semibold text-slate-700">
+                  Peran yang diminati
+                  <select
+                    value={applyRole || assignment.needed_roles[0]}
+                    onChange={(event) => setApplyRole(event.target.value)}
+                    className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10"
+                  >
+                    {assignment.needed_roles.map((role) => <option key={role} value={role}>{role}</option>)}
+                  </select>
+                </label>
+              )}
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={acting}
+                className="w-full rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#082358] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {acting ? 'Mengirim pendaftaran…' : 'Daftar ke penugasan'}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {my && !isDeclined && (
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           {myStatus === 'invited' && (
@@ -603,7 +602,7 @@ export default function AssignmentDetailPage() {
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
                           {newLogPhotos.map((photo, idx) => (
                             <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 shadow-sm">
-                              <img src={getFileUrlWithToken(photo.url, accessToken)} alt={photo.name} className="w-full h-full object-cover animate-fade-in" />
+                              <ProtectedFileImage src={photo.url} accessToken={accessToken} alt={photo.name} className="w-full h-full object-cover animate-fade-in" />
                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <button onClick={() => setNewLogPhotos(prev => prev.filter((_, i) => i !== idx))} className="text-white text-[10px] font-bold bg-red-500 rounded px-2 py-1 shadow-sm">Hapus</button>
                               </div>
@@ -653,15 +652,15 @@ export default function AssignmentDetailPage() {
                                     {log.photo_urls && Array.isArray(log.photo_urls) && log.photo_urls.length > 0 && (
                                       <div className="mt-2 grid grid-cols-4 sm:grid-cols-6 gap-2">
                                         {log.photo_urls.map((photoUrl: string, pIdx: number) => (
-                                          <a 
+                                          <ProtectedFileLink
                                             key={pIdx} 
-                                            href={getFileUrlWithToken(photoUrl, accessToken)} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
+                                            href={photoUrl}
+                                            accessToken={accessToken}
+                                            onOpenError={(message) => toast('error', message)}
                                             className="relative rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-50 block shadow-xs hover:opacity-80 transition"
                                           >
-                                            <img src={getFileUrlWithToken(photoUrl, accessToken)} alt="Dokumentasi" className="w-full h-full object-cover" />
-                                          </a>
+                                            <ProtectedFileImage src={photoUrl} accessToken={accessToken} alt="Dokumentasi" className="w-full h-full object-cover" />
+                                          </ProtectedFileLink>
                                         ))}
                                       </div>
                                     )}
@@ -715,14 +714,14 @@ export default function AssignmentDetailPage() {
                       </div>
                       {evidenceUrl && (
                         <div className="pt-1.5">
-                          <a 
-                            href={getFileUrlWithToken(evidenceUrl, accessToken)} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                          <ProtectedFileLink
+                            href={evidenceUrl}
+                            accessToken={accessToken}
+                            onOpenError={(message) => toast('error', message)}
                             className="text-xs text-[#0B2C6B] hover:underline font-bold"
                           >
                             Lihat file terlampir
-                          </a>
+                          </ProtectedFileLink>
                         </div>
                       )}
                     </div>
@@ -756,10 +755,10 @@ export default function AssignmentDetailPage() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Laporan yang Dikirim</p>
                   {my.evidence_notes && <p className="text-sm text-slate-700 whitespace-pre-wrap">{my.evidence_notes}</p>}
                   {my.evidence_url && (
-                    <a href={getFileUrlWithToken(my.evidence_url, accessToken)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors">
+                    <ProtectedFileLink href={my.evidence_url} accessToken={accessToken} onOpenError={(message) => toast('error', message)} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors">
                       <svg className="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                       Buka File Laporan
-                    </a>
+                    </ProtectedFileLink>
                   )}
                 </div>
               )}

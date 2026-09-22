@@ -1,5 +1,5 @@
-// @ts-ignore - pdf-parse has no type declarations
 import pdf from 'pdf-parse';
+import mammoth from 'mammoth';
 
 interface PDFData {
   numpages: number;
@@ -19,4 +19,9 @@ export async function extractTextFromPDFFile(filePath: string): Promise<string> 
   const fs = await import('fs');
   const buffer = fs.readFileSync(filePath);
   return extractTextFromPDF(buffer);
+}
+
+export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
+  const result = await mammoth.extractRawText({ buffer });
+  return result.value;
 }

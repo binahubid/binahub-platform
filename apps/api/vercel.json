@@ -3,7 +3,6 @@
   "buildCommand": "cd ../.. && pnpm turbo build --filter=@ams/api...",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/(.*)", "destination": "/api" }
+    { "source": "/(.*)", "destination": "/api/index.js" }
   ]
 }

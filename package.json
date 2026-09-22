@@ -1,11 +1,12 @@
 {
   "name": "binahub-platform",
-  "version": "0.7.11",
+  "version": "0.8.0",
   "private": true,
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "lint": "turbo lint",
+    "lint": "eslint \"apps/*/src/**/*.{ts,tsx}\" \"apps/api/api/**/*.ts\" \"packages/*/src/**/*.{ts,tsx}\"",
+    "test:smoke": "node scripts/ams-production-smoke.mjs",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
@@ -14,6 +15,8 @@
     "db:seed": "pnpm --filter @ams/database db:seed"
   },
   "devDependencies": {
+    "eslint": "^9.39.1",
+    "eslint-config-next": "15.5.24",
     "@types/node": "^26.1.0",
     "prettier": "^3.3.0",
     "turbo": "^2.1.0",

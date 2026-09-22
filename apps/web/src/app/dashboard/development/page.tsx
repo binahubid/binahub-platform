@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { useToast } from '../../../components/ui';
 
 type DevelopmentPlan = {
   current_score: number;
@@ -44,7 +43,6 @@ const actionTypeConfig = {
 
 export default function DevelopmentPage() {
   const { accessToken } = useAuth();
-  const { toast } = useToast();
   const [plan, setPlan] = useState<DevelopmentPlan | null>(null);
   const [loading, setLoading] = useState(true);
 

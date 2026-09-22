@@ -12,6 +12,36 @@ import type { AppEnv } from '../../types/env.js';
 
 export const fileRoutes = new Hono<AppEnv>();
 
+function safeFileName(fileName: string): string {
+  const sanitized = fileName
+    .normalize('NFKC')
+    .replace(/[\\/\u0000-\u001F\u007F]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return sanitized || 'file';
+}
+
+function expectedPathPrefix(ownerType: string, ownerId: string, category: string): string {
+  return `${ownerType}/${ownerId}/${category}/`;
+}
+
+async function canReadRegisteredFile(
+  user: AuthUser,
+  file: { owner_id: string; uploaded_by: string; owner_type?: string | null },
+): Promise<boolean> {
+  if (file.owner_id === user.id || file.uploaded_by === user.id || user.role === 'admin') return true;
+  if (user.role !== 'reviewer' || file.owner_type !== 'associate') return false;
+
+  const { data } = await getDb()
+    .from('associates')
+    .select('id')
+    .eq('id', file.owner_id)
+    .eq('status', 'pending_review')
+    .maybeSingle();
+  return Boolean(data);
+}
+
 // ============================================
 // PRESIGNED URL ENDPOINT
 // ============================================
@@ -29,6 +59,10 @@ fileRoutes.post('/presigned-url', authMiddleware, async (c) => {
   }
 
   const { fileName, fileType, fileSize, ownerId, ownerType, category } = validation.data;
+
+  if (ownerId !== user.id && user.role !== 'admin') {
+    return c.json({ success: false, error: 'Tidak memiliki akses untuk pemilik berkas ini' }, 403);
+  }
 
   // Validate file type
   if (!isFileTypeAllowed(category, fileType)) {
@@ -49,7 +83,7 @@ fileRoutes.post('/presigned-url', authMiddleware, async (c) => {
   // Generate unique path
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substring(2, 10);
-  const path = `${ownerType}/${ownerId}/${category}/${timestamp}-${randomId}-${fileName}`;
+  const path = `${ownerType}/${ownerId}/${category}/${timestamp}-${randomId}-${safeFileName(fileName)}`;
   const bucket = 'ams-files';
 
   try {
@@ -59,7 +93,8 @@ fileRoutes.post('/presigned-url', authMiddleware, async (c) => {
       .createSignedUploadUrl(path, { upsert: false });
 
     if (error) {
-      return c.json({ success: false, error: error.message }, 500);
+      console.error('Create signed upload URL failed:', error);
+      return c.json({ success: false, error: 'Gagal menyiapkan unggahan' }, 500);
     }
 
     return c.json({
@@ -97,6 +132,23 @@ fileRoutes.post('/', authMiddleware, async (c) => {
     return c.json({ success: false, error: 'Tidak memiliki akses untuk mendaftarkan berkas ke pemilik ini' }, 403);
   }
 
+  const expectedPrefix = expectedPathPrefix(
+    validation.data.ownerType,
+    validation.data.ownerId,
+    validation.data.category,
+  );
+  if (!validation.data.path.startsWith(expectedPrefix)) {
+    return c.json({ success: false, error: 'Path berkas tidak sesuai pemilik dan kategori' }, 400);
+  }
+
+  if (!isFileTypeAllowed(validation.data.category, validation.data.mime)) {
+    return c.json({ success: false, error: 'Tipe berkas tidak diizinkan' }, 400);
+  }
+
+  if (!isFileSizeAllowed(validation.data.category, validation.data.size)) {
+    return c.json({ success: false, error: 'Ukuran berkas terlalu besar' }, 400);
+  }
+
   const db = getDb();
   const { data, error } = await db
     .from('files')
@@ -118,7 +170,8 @@ fileRoutes.post('/', authMiddleware, async (c) => {
     .single();
 
   if (error) {
-    return c.json({ success: false, error: error.message }, 500);
+    console.error('Register file failed:', error);
+    return c.json({ success: false, error: 'Gagal mendaftarkan berkas' }, 500);
   }
 
   return c.json({ success: true, data }, 201);
@@ -154,19 +207,14 @@ fileRoutes.get('/view-path', async (c) => {
     }
 
     // Default to private if file metadata is not found (for safety)
-    const isPrivate = !file || file.visibility === 'private';
+    const legacyPublicAvatar = !file && /^associate\/[0-9a-f-]{36}\/avatar\//i.test(path);
+    const requiresAuth = !legacyPublicAvatar && (!file || file.visibility !== 'public');
 
-    if (isPrivate) {
-      // Authenticate token manually (needed since <img> tag requests do not send Auth headers)
+    if (requiresAuth) {
       let token = '';
       const authHeader = c.req.header('Authorization');
       if (authHeader?.startsWith('Bearer ')) {
-        token = authHeader.replace('Bearer ', '');
-      } else {
-        const queryToken = c.req.query('token');
-        if (queryToken) {
-          token = queryToken;
-        }
+        token = authHeader.slice('Bearer '.length).trim();
       }
 
       if (!token) {
@@ -182,7 +230,7 @@ fileRoutes.get('/view-path', async (c) => {
 
       if (file) {
         // Enforce ownership checks
-        if (file.owner_id !== user.id && file.uploaded_by !== user.id && userRole !== 'admin') {
+        if (!await canReadRegisteredFile({ id: user.id, email: user.email || '', role: userRole } as AuthUser, file)) {
           return c.text('Tidak memiliki akses ke berkas ini', 403);
         }
       } else {
@@ -209,6 +257,51 @@ fileRoutes.get('/view-path', async (c) => {
   }
 });
 
+// Resolve a private storage path to a short-lived signed URL without exposing
+// the user's Supabase access token in a query string or browser history.
+fileRoutes.post('/signed-url', authMiddleware, async (c) => {
+  const user = c.get('user') as AuthUser;
+  const body = await c.req.json().catch(() => null);
+  const path = typeof body?.path === 'string' ? body.path : '';
+
+  if (!path || path.length > 1024 || path.startsWith('/') || path.includes('..') || path.includes('\\')) {
+    return c.json({ success: false, error: 'Path berkas tidak valid' }, 400);
+  }
+
+  const db = getDb();
+  const { data: file, error: lookupError } = await db
+    .from('files')
+    .select('owner_id, uploaded_by, owner_type, bucket, path')
+    .eq('path', path)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error('Signed URL lookup failed:', lookupError);
+    return c.json({ success: false, error: 'Gagal memverifikasi berkas' }, 500);
+  }
+
+  if (!file) {
+    return c.json({ success: false, error: 'Berkas tidak ditemukan' }, 404);
+  }
+
+  if (!await canReadRegisteredFile(user, file)) {
+    return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
+  }
+
+  const { data, error } = await db.storage
+    .from(file.bucket || 'ams-files')
+    .createSignedUrl(file.path, 300);
+
+  if (error || !data?.signedUrl) {
+    console.error('Create signed file URL failed:', error);
+    return c.json({ success: false, error: 'Gagal membuat URL akses berkas' }, 500);
+  }
+
+  c.header('Cache-Control', 'no-store');
+  return c.json({ success: true, data: { signedUrl: data.signedUrl, expiresIn: 300 } });
+});
+
 // ============================================
 // GET FILE
 // ============================================
@@ -230,7 +323,7 @@ fileRoutes.get('/:id', authMiddleware, async (c) => {
   }
 
   // Ownership check
-  if (data.owner_id !== user.id && data.uploaded_by !== user.id && user.role !== 'admin') {
+  if (!await canReadRegisteredFile(user, data)) {
     return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
   }
 
@@ -258,7 +351,7 @@ fileRoutes.get('/:id/download', authMiddleware, async (c) => {
   }
 
   // Ownership check
-  if (file.owner_id !== user.id && file.uploaded_by !== user.id && user.role !== 'admin') {
+  if (!await canReadRegisteredFile(user, file)) {
     return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
   }
 
@@ -268,7 +361,8 @@ fileRoutes.get('/:id/download', authMiddleware, async (c) => {
       .createSignedUrl(file.path, 3600); // 1 hour expiry
 
     if (error) {
-      return c.json({ success: false, error: error.message }, 500);
+      console.error('Create download URL failed:', error);
+      return c.json({ success: false, error: 'Gagal membuat URL unduhan' }, 500);
     }
 
     return c.json({ success: true, data: { signedUrl: data.signedUrl } });
@@ -299,7 +393,7 @@ fileRoutes.get('/:id/view', authMiddleware, async (c) => {
   }
 
   // Ownership check
-  if (file.owner_id !== user.id && file.uploaded_by !== user.id && user.role !== 'admin') {
+  if (!await canReadRegisteredFile(user, file)) {
     return c.text('Tidak memiliki akses', 403);
   }
 
@@ -420,21 +514,27 @@ fileRoutes.get('/', authMiddleware, async (c) => {
 fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
   const associateId = c.req.param('id');
   const user = c.get('user') as AuthUser;
-  const body = await c.req.json();
+  const body = await c.req.json().catch(() => null);
   
   // Check if user owns this associate profile
   if (user.id !== associateId && user.role !== 'admin') {
     return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
   }
 
-  const { fileName, fileType, fileSize } = body;
+  const fileName = typeof body?.fileName === 'string' ? body.fileName : '';
+  const fileType = typeof body?.fileType === 'string' ? body.fileType : '';
+  const fileSize = typeof body?.fileSize === 'number' ? body.fileSize : 0;
+
+  if (!fileName || fileName.length > 255 || fileSize < 1) {
+    return c.json({ success: false, error: 'Data berkas CV tidak valid' }, 400);
+  }
 
   // Validate CV file type
-  const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
   if (!allowedTypes.includes(fileType)) {
     return c.json({
       success: false,
-      error: 'Tipe file harus PDF atau Word'
+      error: 'Tipe file harus PDF atau DOCX. Format Word lama (.doc) belum didukung.'
     }, 400);
   }
 
@@ -449,7 +549,7 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
   // Generate unique path
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substring(2, 10);
-  const path = `associate/${associateId}/cv/${timestamp}-${randomId}-${fileName}`;
+  const path = `associate/${associateId}/cv/${timestamp}-${randomId}-${safeFileName(fileName)}`;
   const bucket = 'ams-files';
 
   try {
@@ -461,7 +561,8 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
       .createSignedUploadUrl(path, { upsert: false });
 
     if (presignedError) {
-      return c.json({ success: false, error: presignedError.message }, 500);
+      console.error('Create CV upload URL failed:', presignedError);
+      return c.json({ success: false, error: 'Gagal menyiapkan unggahan CV' }, 500);
     }
 
     // Register pending file in database
@@ -484,7 +585,8 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
       .single();
 
     if (fileError) {
-      return c.json({ success: false, error: fileError.message }, 500);
+      console.error('Register CV upload failed:', fileError);
+      return c.json({ success: false, error: 'Gagal mendaftarkan CV' }, 500);
     }
 
     return c.json({

@@ -162,7 +162,6 @@ export default function OnboardingPage() {
   const nameInputtedRef = useRef(false);
 
   // CV & Auto-fill state
-  const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
   const [existingCV, setExistingCV] = useState<{ id: string; name: string } | null>(null);
   const [existingCVParsedData, setExistingCVParsedData] = useState<Record<string, any> | null>(null);
   const [aiFilledFields, setAiFilledFields] = useState<Set<keyof ProfileDraft>>(new Set());
@@ -237,8 +236,6 @@ export default function OnboardingPage() {
   // ─── Handlers ────────────────────────────────────────────────────────────────
 
   const handleCVDone = (fileId: string, parsedData: Record<string, any> | null) => {
-    setUploadedFileId(fileId);
-
     const dataToUse = parsedData || existingCVParsedData;
 
     if (dataToUse) {

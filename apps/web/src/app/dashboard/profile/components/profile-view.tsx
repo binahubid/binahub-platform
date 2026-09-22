@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Avatar } from '../../../../components/ui';
+import { Avatar, useToast } from '../../../../components/ui';
 import { useAuth } from '../../../../context/AuthContext';
+import { ProtectedFileImage, resolveProtectedFileUrl } from '../../../../components/ui/protected-file';
 import type { AssociateData } from '../types';
 
 type ProfileViewProps = {
@@ -16,6 +17,7 @@ type ProfileViewProps = {
 
 export function ProfileView({ data, completionPercentage, onEdit, onSubmit, submitting }: ProfileViewProps) {
   const { accessToken } = useAuth();
+  const { toast } = useToast();
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
   const [activePreviewTitle, setActivePreviewTitle] = useState<string>('');
 
@@ -27,23 +29,22 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
   const getPhotoUrl = (path: string | null | undefined) => {
     if (!path) return undefined;
     if (path.startsWith('http') || path.startsWith('data:')) return path;
-    const url = `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
-    return accessToken ? `${url}&token=${accessToken}` : url;
+    return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
   };
 
-  const resolveFileUrl = (url: string | null | undefined) => {
-    if (!url) return '#';
-    let targetUrl = url;
-    if (!url.startsWith('http') && !url.startsWith('data:')) {
-      targetUrl = `${apiUrl}${url}`;
+  const openPreview = async (source: string, title: string) => {
+    if (!accessToken) {
+      toast('error', 'Sesi Anda belum siap. Silakan coba lagi.');
+      return;
     }
-    if (targetUrl.startsWith(apiUrl)) {
-      const separator = targetUrl.includes('?') ? '&' : '?';
-      if (!targetUrl.includes('token=')) {
-        targetUrl = `${targetUrl}${accessToken ? `${separator}token=${accessToken}` : ''}`;
-      }
+
+    try {
+      const resolvedUrl = await resolveProtectedFileUrl(source, accessToken);
+      setActivePreviewUrl(resolvedUrl);
+      setActivePreviewTitle(title);
+    } catch (error) {
+      toast('error', error instanceof Error ? error.message : 'Berkas tidak dapat dibuka');
     }
-    return targetUrl;
   };
 
   const extractAttachments = (description: string | null | undefined) => {
@@ -52,7 +53,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
     const regex = /\[(?:File\s+)?Lampiran:\s*([^\]]+)\]\(([^)]+)\)/gi;
     let match;
     while ((match = regex.exec(description)) !== null) {
-      files.push({ name: match[1], url: resolveFileUrl(match[2]) });
+      files.push({ name: match[1], url: match[2] });
     }
     const cleanDesc = description.replace(regex, '').trim();
     return { cleanDesc, files };
@@ -71,7 +72,12 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           <div className="relative flex-shrink-0 group">
             <div className="h-28 w-28 md:h-32 md:w-32 overflow-hidden rounded-full border-4 border-white/20 shadow-2xl bg-slate-900/40 flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:border-white/40">
               {p?.photo_url ? (
-                <img src={getPhotoUrl(p.photo_url)} alt="Profile Avatar" className="h-full w-full object-cover" />
+                <ProtectedFileImage
+                  src={getPhotoUrl(p.photo_url) || p.photo_url}
+                  accessToken={accessToken}
+                  alt="Foto profil"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <Avatar name={p?.full_name || data.id} size="xl" className="h-full w-full bg-gradient-to-tr from-[#D9A441] to-[#E6B85C]" />
               )}
@@ -232,10 +238,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Dokumen CV Terlampir</h3>
               <button
                 type="button"
-                onClick={() => {
-                  setActivePreviewUrl(resolveFileUrl(`/api/files/${cvDoc.id}/view`));
-                  setActivePreviewTitle(cvDoc.file_name || 'Curriculum Vitae');
-                }}
+                onClick={() => void openPreview(`/api/files/${cvDoc.id}/view`, cvDoc.file_name || 'Curriculum Vitae')}
                 className="w-full flex items-center gap-3 bg-slate-50 border border-slate-100 p-3.5 rounded-xl hover:bg-slate-100 hover:border-slate-200 transition-colors group cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-[#0B2C6B]/25"
               >
                 <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#0B2C6B]/10 text-[#0B2C6B] group-hover:bg-[#0B2C6B] group-hover:text-white transition-colors">
@@ -422,10 +425,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                         <div className="mt-3">
                           <button
                             type="button"
-                            onClick={() => {
-                              setActivePreviewUrl(resolveFileUrl(cert.credential_url));
-                              setActivePreviewTitle(cert.name);
-                            }}
+                            onClick={() => void openPreview(cert.credential_url!, cert.name)}
                             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-100 transition-colors"
                           >
                             <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -468,10 +468,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                                 <button
                                   key={fIdx}
                                   type="button"
-                                  onClick={() => {
-                                    setActivePreviewUrl(file.url);
-                                    setActivePreviewTitle(file.name);
-                                  }}
+                                  onClick={() => void openPreview(file.url, file.name)}
                                   className="flex flex-col items-center justify-center p-3 rounded-lg border border-slate-200 bg-slate-50 gap-2 text-center text-[#0B2C6B] hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0B2C6B]/25"
                                 >
                                   <svg className="h-6 w-6 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

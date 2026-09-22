@@ -240,11 +240,29 @@ export function StepReviewProfile({
       const presignData = await presignRes.json();
       if (!presignData.success) throw new Error('Gagal presign');
 
-      await fetch(presignData.data.presignedUrl, {
+      const uploadRes = await fetch(presignData.data.presignedUrl, {
         method: 'PUT',
         headers: { 'Content-Type': file.type },
         body: file,
       });
+      if (!uploadRes.ok) throw new Error('Gagal mengunggah foto');
+
+      const registerRes = await fetch(`${apiUrl}/api/files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          ownerId: associateId,
+          ownerType: 'associate',
+          category: 'avatar',
+          path: presignData.data.path,
+          originalName: file.name,
+          mime: file.type,
+          size: file.size,
+          visibility: 'public',
+        }),
+      });
+      const registerData = await registerRes.json();
+      if (!registerRes.ok || !registerData.success) throw new Error(registerData.error || 'Gagal mendaftarkan foto');
 
       // Save relative path to DB exactly as registered in files table (without leading slash)
       onChange({ photo_url: presignData.data.path });
@@ -263,6 +281,8 @@ export function StepReviewProfile({
         <div className="flex items-center gap-4">
           <div className="relative h-16 w-16 flex-shrink-0 rounded-full border border-slate-200 bg-slate-200 overflow-hidden flex items-center justify-center">
             {getPhotoUrl() ? (
+              // The uploader previews a local data URL before the file is registered.
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={getPhotoUrl()} alt="Avatar" className="h-full w-full object-cover" />
             ) : (
               <svg className="h-8 w-8 text-slate-400" fill="currentColor" viewBox="0 0 24 24">

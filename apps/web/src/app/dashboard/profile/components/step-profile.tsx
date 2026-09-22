@@ -112,7 +112,7 @@ const TIMEZONE_OPTIONS = [
   { value: 'Australia/Sydney', label: 'AEST — Australia (Sydney)' },
 ];
 
-export function StepProfile({ profile, saving, onUpdate, onSave }: StepProfileProps) {
+export function StepProfile({ profile, onUpdate }: StepProfileProps) {
   const handleRoleToggle = (role: string) => {
     const cur = profile.roles || [];
     const active = cur.includes(role);

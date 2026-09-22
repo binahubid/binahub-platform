@@ -8,17 +8,10 @@ import type { AppEnv } from '../../../types/env.js';
 // ============================================
 
 export async function authMiddleware(c: Context<AppEnv>, next: Next) {
-  let token = '';
   const authHeader = c.req.header('Authorization');
-  
-  if (authHeader?.startsWith('Bearer ')) {
-    token = authHeader.replace('Bearer ', '');
-  } else {
-    const queryToken = c.req.query('token');
-    if (queryToken) {
-      token = queryToken;
-    }
-  }
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice('Bearer '.length).trim()
+    : '';
 
   if (!token) {
     return c.json({ success: false, error: 'Token tidak ditemukan' }, 401);
@@ -32,10 +25,15 @@ export async function authMiddleware(c: Context<AppEnv>, next: Next) {
       return c.json({ success: false, error: 'Token tidak valid' }, 401);
     }
 
+    const candidateRole = user.app_metadata?.role;
+    const role: AuthUser['role'] = candidateRole === 'admin' || candidateRole === 'reviewer'
+      ? candidateRole
+      : 'associate';
+
     const authUser: AuthUser = {
       id: user.id,
       email: user.email || '',
-      role: (user.app_metadata?.role as AuthUser['role']) || 'associate'
+      role,
     };
 
     c.set('user', authUser);
@@ -87,10 +85,15 @@ export async function optionalAuthMiddleware(c: Context<AppEnv>, next: Next) {
     const { data: { user }, error } = await db.auth.getUser(token);
     
     if (!error && user) {
+      const candidateRole = user.app_metadata?.role;
+      const role: AuthUser['role'] = candidateRole === 'admin' || candidateRole === 'reviewer'
+        ? candidateRole
+        : 'associate';
+
       const authUser: AuthUser = {
         id: user.id,
         email: user.email || '',
-        role: (user.app_metadata?.role as AuthUser['role']) || 'associate'
+        role,
       };
 
       c.set('user', authUser);

@@ -30,7 +30,10 @@ export const fileRegistrationSchema = z.object({
   ownerId: z.string().uuid(),
   ownerType: ownerTypeSchema,
   category: fileCategorySchema,
-  path: z.string().min(1),
+  path: z.string().min(1).max(1024).refine(
+    (path) => !path.startsWith('/') && !path.includes('..') && !path.includes('\\'),
+    'Path file tidak valid'
+  ),
   originalName: z.string().min(1).max(255),
   mime: z.string().min(1),
   size: z.number().int().min(1),
@@ -56,7 +59,6 @@ export const fileFilterSchema = z.object({
 export const allowedMimeTypes: Record<string, string[]> = {
   cv: [
     'application/pdf',
-    'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ],
   certificate: [
@@ -106,7 +108,14 @@ export const allowedMimeTypes: Record<string, string[]> = {
     'image/png',
     'image/webp',
     'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+    'application/zip',
+    'application/x-zip-compressed'
   ]
 };
 

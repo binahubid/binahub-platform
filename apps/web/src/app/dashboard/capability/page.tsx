@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { useToast } from '../../../components/ui';
 import { CapabilityRadar } from '../../../components/ui/capability-radar';
 
 type Skill = {
@@ -42,7 +41,6 @@ const proficiencyConfig = {
 
 export default function CapabilityPage() {
   const { accessToken } = useAuth();
-  const { toast } = useToast();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);

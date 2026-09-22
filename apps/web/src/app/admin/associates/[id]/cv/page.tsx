@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../../context/AuthContext';
+import { ProtectedFileImage } from '../../../../../components/ui/protected-file';
 
 type CvData = {
   associate: { id: string; email: string; status: string; created_at: string };
@@ -50,7 +51,6 @@ function ProficiencyBadge({ value }: { value: string | null | undefined }) {
 
 export default function CvPage() {
   const { id } = useParams();
-  const router = useRouter();
   const { accessToken } = useAuth();
   const [data, setData] = useState<CvData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,7 +133,12 @@ export default function CvPage() {
           {/* Header */}
           <div className="flex items-start gap-6 border-b-2 border-[#0B2C6B] pb-6">
             {photoUrl ? (
-              <img src={photoUrl.startsWith('http') || photoUrl.startsWith('data:') ? photoUrl : `${apiUrl}/api/files/view-path?path=${encodeURIComponent(photoUrl)}&token=${accessToken || ''}`} alt={fullName} className="h-24 w-24 rounded-full object-cover flex-shrink-0 print:h-20 print:w-20" />
+              <ProtectedFileImage
+                src={photoUrl.startsWith('http') || photoUrl.startsWith('data:') ? photoUrl : `${apiUrl}/api/files/view-path?path=${encodeURIComponent(photoUrl)}`}
+                accessToken={accessToken}
+                alt={fullName}
+                className="h-24 w-24 rounded-full object-cover flex-shrink-0 print:h-20 print:w-20"
+              />
             ) : (
               <div className="h-24 w-24 rounded-full bg-[#0B2C6B] flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 print:h-20 print:w-20">
                 {fullName.charAt(0).toUpperCase()}

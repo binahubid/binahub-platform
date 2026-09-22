@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { useToast } from '../../../components/ui';
 
 type Assessment = {
   id: string;
@@ -25,7 +24,6 @@ const typeConfig = {
 
 export default function AssessmentsPage() {
   const { accessToken } = useAuth();
-  const { toast } = useToast();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
 

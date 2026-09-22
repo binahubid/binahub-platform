@@ -21,15 +21,31 @@ import {
 } from '@ams/shared/validators/associate';
 import type { AuthUser } from '../../types';
 import type { AppEnv } from '../../types/env.js';
+import { rateLimit } from '../../middleware/rate-limit.js';
 
 export const associateRoutes = new Hono<AppEnv>();
+
+const UUID_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+
+function isStableFileReference(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 2048) return false;
+  return new RegExp(`^/api/files/${UUID_PATTERN}/view$`, 'i').test(value)
+    || new RegExp(`^https://[^/]+/api/files/${UUID_PATTERN}/view$`, 'i').test(value);
+}
+
+function boundedText(value: unknown, max: number): string | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  return text.length > 0 && text.length <= max ? text : null;
+}
 
 // ============================================
 // PUBLIC ROUTES
 // ============================================
 
 // Get associate by slug (public)
-associateRoutes.get('/slug/:slug', async (c) => {
+associateRoutes.get('/slug/:slug', rateLimit({ windowMs: 60 * 1000, max: 60 }), async (c) => {
   const slug = c.req.param('slug');
   
   if (!isValidSlug(slug)) {
@@ -42,14 +58,14 @@ associateRoutes.get('/slug/:slug', async (c) => {
     .from('associates')
     .select(`
       id, slug, status,
-      profile:associate_profiles(full_name, preferred_name, headline, bio, phone, city, timezone, nationality, photo_url, roles, expertises),
-      experiences:associate_experiences(*),
-      educations:associate_educations(*),
-      certifications:associate_certifications(*),
-      portfolios:associate_portfolios(*),
-      skills:associate_skills(*),
-      languages:associate_languages(*),
-      availability:associate_availability(*),
+      profile:associate_profiles(full_name, preferred_name, headline, bio, city, photo_url, roles, expertises),
+      experiences:associate_experiences(organization, position, description, start_date, end_date, is_current),
+      educations:associate_educations(institution, degree, field_of_study, start_year, end_year),
+      certifications:associate_certifications(name, issuer, issue_date, expiry_date),
+      portfolios:associate_portfolios(title, description, category, client_name, project_url, start_date, end_date, skills_used),
+      skills:associate_skills(skill_name, category, proficiency, years_experience),
+      languages:associate_languages(language, proficiency),
+      availability:associate_availability(status),
       socialLinks:associate_social_links(platform, url, is_primary)
     `)
     .eq('slug', slug)
@@ -98,7 +114,7 @@ associateRoutes.get('/me', async (c) => {
 
   const db = getDb();
   
-  let { data: associate, error } = await db
+  const initialResult = await db
     .from('associates')
     .select(`
       *,
@@ -117,6 +133,8 @@ associateRoutes.get('/me', async (c) => {
     `)
     .eq('id', user.id)
     .single();
+  let associate = initialResult.data;
+  const { error } = initialResult;
 
   if (error || !associate) {
     // Auto-create associate if missing. Use upsert to be safe against concurrent
@@ -193,7 +211,8 @@ associateRoutes.get('/me', async (c) => {
   const { data: allAssignments } = await db
     .from('assignments')
     .select('*')
-    .in('status', ['active', 'draft'])
+    .eq('status', 'active')
+    .limit(100)
     .order('created_at', { ascending: false });
 
   const { data: myAssignments } = await db
@@ -318,7 +337,7 @@ associateRoutes.post('/', async (c) => {
   }
 
   const db = getDb();
-  const { email, fullName, headline } = validation.data;
+  const { fullName, headline } = validation.data;
 
   // Generate unique slug
   const slug = await ensureUniqueSlug(generateUniqueSlug(fullName), async (checkSlug) => {
@@ -408,7 +427,7 @@ associateRoutes.put('/profile', async (c) => {
   }
 
   const db = getDb();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const vd = validation.data as any;
   const {
     fullName, preferredName, headline, bio, phone,
@@ -514,7 +533,7 @@ associateRoutes.post('/experiences', async (c) => {
   }
 
   const db = getDb();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const expData = validation.data as any as {
     organization: string;
     position: string;
@@ -577,7 +596,7 @@ associateRoutes.put('/experiences/:id', async (c) => {
   }
 
   const db = getDb();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const v = validation.data as any as {
     organization?: string;
     position?: string;
@@ -1452,29 +1471,43 @@ associateRoutes.get('/assignments', async (c) => {
     return c.json({ success: false, error: inviteError.message }, 500);
   }
 
-  if (!myInvitations || myInvitations.length === 0) {
-    return c.json({ success: true, data: [] });
-  }
+  const invitedIds = (myInvitations || []).map((inv: { assignment_id: string }) => inv.assignment_id);
 
-  const invitedIds = myInvitations.map((inv: { assignment_id: string }) => inv.assignment_id);
-
-  const { data: assignments, error } = await db
+  const { data: activeAssignments, error: activeError } = await db
     .from('assignments')
     .select('*')
-    .in('id', invitedIds)
-    .in('status', ['active', 'draft'])
+    .eq('status', 'active')
+    .limit(100)
     .order('created_at', { ascending: false });
 
-  if (error) {
-    return c.json({ success: false, error: error.message }, 500);
+  if (activeError) {
+    return c.json({ success: false, error: 'Gagal memuat penugasan' }, 500);
+  }
+
+  let historicalAssignments: Record<string, unknown>[] = [];
+  if (invitedIds.length > 0) {
+    const { data, error } = await db
+      .from('assignments')
+      .select('*')
+      .in('id', invitedIds)
+      .in('status', ['completed', 'cancelled'])
+      .limit(100)
+      .order('created_at', { ascending: false });
+    if (error) return c.json({ success: false, error: 'Gagal memuat riwayat penugasan' }, 500);
+    historicalAssignments = (data || []) as Record<string, unknown>[];
   }
 
   const assigneeMap: Record<string, { status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }> = {};
-  for (const a of myInvitations as Array<{ assignment_id: string; status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }>) {
+  for (const a of (myInvitations || []) as Array<{ assignment_id: string; status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }>) {
     assigneeMap[a.assignment_id] = { status: a.status, role: a.role, notes: a.notes, invited_at: a.invited_at, accepted_at: a.accepted_at };
   }
 
-  const result = (assignments || []).map((a: Record<string, unknown>) => ({
+  const uniqueAssignments = new Map<string, Record<string, unknown>>();
+  for (const assignment of [...((activeAssignments || []) as Record<string, unknown>[]), ...historicalAssignments]) {
+    uniqueAssignments.set(assignment.id as string, assignment);
+  }
+
+  const result = Array.from(uniqueAssignments.values()).map((a: Record<string, unknown>) => ({
     ...a,
     my_status: assigneeMap[a.id as string]?.status || null,
     my_role: assigneeMap[a.id as string]?.role || null,
@@ -1500,17 +1533,6 @@ associateRoutes.get('/assignments/:id', async (c) => {
     return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
   }
 
-  const { data: myAssignment } = await db
-    .from('assignment_assignees')
-    .select('*')
-    .eq('assignment_id', assignmentId)
-    .eq('associate_id', associate.id)
-    .single();
-
-  if (!myAssignment) {
-    return c.json({ success: false, error: 'Anda tidak memiliki akses ke assignment ini' }, 403);
-  }
-
   const { data: assignment, error } = await db
     .from('assignments')
     .select('*')
@@ -1521,18 +1543,29 @@ associateRoutes.get('/assignments/:id', async (c) => {
     return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
   }
 
+  const { data: myAssignment } = await db
+    .from('assignment_assignees')
+    .select('*')
+    .eq('assignment_id', assignmentId)
+    .eq('associate_id', associate.id)
+    .single();
+
+  if (!myAssignment && assignment.status !== 'active') {
+    return c.json({ success: false, error: 'Anda tidak memiliki akses ke assignment ini' }, 403);
+  }
+
   const { data: assignees } = await db
     .from('assignment_assignees')
     .select('status, role')
     .eq('assignment_id', assignmentId);
 
-  const acceptedCount = (assignees || []).filter((a: { status: string }) => a.status === 'accepted' || a.status === 'in_progress').length;
+  const acceptedCount = (assignees || []).filter((a: { status: string }) => ['accepted', 'in_progress', 'completed', 'reviewed'].includes(a.status)).length;
 
   return c.json({
     success: true,
     data: {
       ...assignment,
-      my_assignment: myAssignment as Record<string, unknown>,
+      my_assignment: (myAssignment || null) as Record<string, unknown> | null,
       accepted_count: acceptedCount,
       total_assignees: (assignees || []).length,
     },
@@ -1543,7 +1576,14 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
   const user = c.get('user') as AuthUser;
   const assignmentId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
-  const { role, notes } = body;
+  const role = boundedText(body.role, 100);
+  const notes = boundedText(body.notes, 2000);
+  if (body.role !== undefined && body.role !== '' && !role) {
+    return c.json({ success: false, error: 'Peran tidak valid atau terlalu panjang' }, 400);
+  }
+  if (body.notes !== undefined && body.notes !== '' && !notes) {
+    return c.json({ success: false, error: 'Catatan tidak valid atau terlalu panjang' }, 400);
+  }
   const db = getDb();
 
   const { data: associate } = await db
@@ -1566,7 +1606,7 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
     return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
   }
 
-  if ((assignment as { status: string }).status === 'cancelled' || (assignment as { status: string }).status === 'completed') {
+  if ((assignment as { status: string }).status !== 'active') {
     return c.json({ success: false, error: 'Assignment sudah tidak menerima pendaftar' }, 400);
   }
 
@@ -1634,6 +1674,14 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
   const validStatuses = ['accepted', 'declined', 'in_progress', 'completed', 'withdrawn'];
   if (!validStatuses.includes(status)) {
     return c.json({ success: false, error: 'Status tidak valid' }, 400);
+  }
+
+  if (evidence_url !== undefined && evidence_url !== '' && !isStableFileReference(evidence_url)) {
+    return c.json({ success: false, error: 'Bukti harus berasal dari berkas yang diunggah melalui BinaApps' }, 400);
+  }
+  const safeEvidenceNotes = boundedText(evidence_notes, 10000);
+  if (evidence_notes !== undefined && evidence_notes !== '' && !safeEvidenceNotes) {
+    return c.json({ success: false, error: 'Catatan bukti tidak valid atau terlalu panjang' }, 400);
   }
 
   const { data: associate } = await db
@@ -1705,7 +1753,7 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
   }
 
   if (evidence_url !== undefined) updateData.evidence_url = evidence_url;
-  if (evidence_notes !== undefined) updateData.evidence_notes = evidence_notes;
+  if (evidence_notes !== undefined) updateData.evidence_notes = safeEvidenceNotes;
 
   const { data, error } = await db
     .from('assignment_assignees')
@@ -1895,8 +1943,11 @@ associateRoutes.post('/tasks', async (c) => {
   const body = await c.req.json();
   const { title } = body;
 
-  if (!title || !title.trim()) {
+  if (typeof title !== 'string' || !title.trim()) {
     return c.json({ success: false, error: 'Judul tugas wajib diisi' }, 400);
+  }
+  if (title.trim().length > 300) {
+    return c.json({ success: false, error: 'Judul tugas maksimal 300 karakter' }, 400);
   }
 
   const db = getDb();
@@ -1922,8 +1973,19 @@ associateRoutes.patch('/tasks/:id', async (c) => {
 
   const db = getDb();
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (title !== undefined) updateData.title = title;
-  if (completed !== undefined) updateData.completed = completed;
+  if (title !== undefined) {
+    if (typeof title !== 'string' || title.trim().length === 0 || title.trim().length > 300) {
+      return c.json({ success: false, error: 'Judul tugas tidak valid' }, 400);
+    }
+    updateData.title = title.trim();
+  }
+  if (completed !== undefined) {
+    if (typeof completed !== 'boolean') return c.json({ success: false, error: 'Status tugas tidak valid' }, 400);
+    updateData.completed = completed;
+  }
+  if (title === undefined && completed === undefined) {
+    return c.json({ success: false, error: 'Tidak ada perubahan yang dikirim' }, 400);
+  }
 
   const { data, error } = await db
     .from('associate_tasks')
@@ -1966,6 +2028,12 @@ associateRoutes.post('/assignments/:id/progress-log', async (c) => {
 
   if (!notes || typeof notes !== 'string' || !notes.trim()) {
     return c.json({ success: false, error: 'Catatan progres wajib diisi' }, 400);
+  }
+  if (notes.trim().length > 5000) {
+    return c.json({ success: false, error: 'Catatan progres maksimal 5.000 karakter' }, 400);
+  }
+  if (!Array.isArray(photo_urls) || photo_urls.length > 10 || !photo_urls.every(isStableFileReference)) {
+    return c.json({ success: false, error: 'Lampiran progres tidak valid atau melebihi batas 10 berkas' }, 400);
   }
 
   // 1. Fetch associate ID
@@ -2055,6 +2123,8 @@ associateRoutes.use('*', requireRole(['admin']));
 associateRoutes.get('/', async (c) => {
   const db = getDb();
   const { limit = '50', offset = '0', status } = c.req.query();
+  const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 50, 1), 100);
+  const safeOffset = Math.max(Number.parseInt(offset, 10) || 0, 0);
   
   let query = db
     .from('associates')
@@ -2063,7 +2133,7 @@ associateRoutes.get('/', async (c) => {
       profile:associate_profiles(full_name, headline, phone),
       skills:associate_skills(skill_name)
     `, { count: 'exact' })
-    .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1)
+    .range(safeOffset, safeOffset + safeLimit - 1)
     .order('created_at', { ascending: false });
 
   if (status) {

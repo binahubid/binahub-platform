@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
-import { supabase } from '../../../../lib/supabase-client';
 import { Avatar, StatusBadge, Tabs, useToast } from '../../../../components/ui';
+import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
 
 type DetailData = {
   id: string;
@@ -89,7 +89,6 @@ type DetailData = {
 
 export default function AssociateDetailPage() {
   const { user, accessToken } = useAuth();
-  const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
   const [data, setData] = useState<DetailData | null>(null);
@@ -99,26 +98,7 @@ export default function AssociateDetailPage() {
   const [reviewing, setReviewing] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
-  const resolveFileUrl = (url: string | null | undefined) => {
-    if (!url) return '#';
-    let targetUrl = url;
-    if (!url.startsWith('http') && !url.startsWith('data:')) {
-      targetUrl = url.startsWith('/') ? `${apiUrl}${url}` : `${apiUrl}/${url}`;
-    }
-    // Always append active access token for API file view endpoints
-    if (targetUrl.includes('/api/files/')) {
-      const token = accessToken || '';
-      if (token) {
-        const separator = targetUrl.includes('?') ? '&' : '?';
-        // Remove existing token parameter if present to avoid duplication
-        const cleanUrl = targetUrl.replace(/([?&])token=[^&]*/, '$1').replace(/[?&]$/, '');
-        const finalSep = cleanUrl.includes('?') ? '&' : '?';
-        return `${cleanUrl}${finalSep}token=${encodeURIComponent(token)}`;
-      }
-    }
-    return targetUrl;
-  };
+  const isReviewer = user?.app_metadata?.role === 'reviewer';
 
   const extractAttachments = (description: string | null | undefined) => {
     if (!description) return { cleanDesc: '', files: [] as { name: string; url: string }[] };
@@ -126,7 +106,7 @@ export default function AssociateDetailPage() {
     const regex = /\[(?:File\s+)?Lampiran:\s*([^\]]+)\]\(([^)]+)\)/gi;
     let match;
     while ((match = regex.exec(description)) !== null) {
-      files.push({ name: match[1], url: resolveFileUrl(match[2]) });
+      files.push({ name: match[1], url: match[2] });
     }
     const cleanDesc = description.replace(regex, '').trim();
     return { cleanDesc, files };
@@ -135,7 +115,10 @@ export default function AssociateDetailPage() {
   const fetchDetail = useCallback(async () => {
     if (!user || !accessToken || !params.id) return;
     try {
-      const resp = await fetch(`${apiUrl}/api/admin/associates/${params.id}`, {
+      const endpoint = isReviewer
+        ? `${apiUrl}/api/reviews/queue/${params.id}`
+        : `${apiUrl}/api/admin/associates/${params.id}`;
+      const resp = await fetch(endpoint, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const d = await resp.json();
@@ -150,7 +133,7 @@ export default function AssociateDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, accessToken, params.id, apiUrl, toast]);
+  }, [user, accessToken, params.id, apiUrl, toast, isReviewer]);
 
   useEffect(() => {
     fetchDetail();
@@ -160,7 +143,7 @@ export default function AssociateDetailPage() {
     if (!user || !accessToken) return;
     setReviewing(true);
     try {
-      const resp = await fetch(`${apiUrl}/api/admin/associates/${params.id}/review`, {
+      const resp = await fetch(`${apiUrl}/api/reviews/associate/${params.id}/decision`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ status, notes: reviewNotes }),
@@ -217,7 +200,7 @@ export default function AssociateDetailPage() {
     { id: 'certifications', label: 'Certifications' },
     { id: 'portfolio', label: 'Portfolio' },
     { id: 'documents', label: 'Documents' },
-    { id: 'financial', label: 'Financial' },
+    ...(!isReviewer ? [{ id: 'financial', label: 'Financial' }] : []),
     { id: 'reviews', label: `Reviews (${data.reviews?.length || 0})` },
   ];
 
@@ -231,7 +214,7 @@ export default function AssociateDetailPage() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-slate-500">
-        <Link href="/admin/associates" className="hover:text-slate-700">Associates</Link>
+        <Link href={isReviewer ? '/admin/reviews' : '/admin/associates'} className="hover:text-slate-700">{isReviewer ? 'Reviews' : 'Associates'}</Link>
         <span>/</span>
         <span className="text-slate-900">{data.profile?.full_name || data.email}</span>
       </div>
@@ -243,7 +226,7 @@ export default function AssociateDetailPage() {
           <div className="flex items-end justify-between -mt-12">
             <Avatar
               name={data.profile?.full_name || data.email}
-              src={data.profile?.photo_url ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(data.profile.photo_url)}&token=${accessToken || ''}` : undefined}
+              src={data.profile?.photo_url ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(data.profile.photo_url)}` : undefined}
               size="xl"
               className="border-4 border-white shadow-lg"
             />
@@ -255,14 +238,14 @@ export default function AssociateDetailPage() {
                 Bagikan Profil
               </button>
               {data.documents?.find((d) => d.type === 'cv') && (
-                <a
-                  href={resolveFileUrl(`/api/files/${data.documents.find((d) => d.type === 'cv')!.id}/view`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <ProtectedFileLink
+                  href={`/api/files/${data.documents.find((d) => d.type === 'cv')!.id}/view`}
+                  accessToken={accessToken}
+                  onOpenError={(message) => toast('error', message)}
                   className="rounded-lg border border-[#0B2C6B] text-[#0B2C6B] bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
                 >
                   Buka CV Asli (PDF/Word)
-                </a>
+                </ProtectedFileLink>
               )}
               <Link
                 href={`/admin/associates/${params.id}/cv`}
@@ -400,11 +383,11 @@ export default function AssociateDetailPage() {
                 <h3 className="text-lg font-semibold text-slate-900">Dokumen</h3>
                 <div className="mt-3 space-y-2">
                   {data.documents?.slice(0, 3).map((doc) => (
-                    <a
+                    <ProtectedFileLink
                       key={doc.id}
                       href={doc.url ? `${apiUrl}/api/files/${doc.id}/view` : '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      accessToken={accessToken}
+                      onOpenError={(message) => toast('error', message)}
                       className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
@@ -419,7 +402,7 @@ export default function AssociateDetailPage() {
                       <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                    </a>
+                    </ProtectedFileLink>
                   ))}
                 </div>
               </div>
@@ -499,31 +482,31 @@ export default function AssociateDetailPage() {
                     <div className="mt-2">
                       {/\.(jpg|jpeg|png|webp)/i.test(cert.credential_url) ? (
                         <div className="relative group max-w-[200px] rounded-lg overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-50">
-                          <img src={resolveFileUrl(cert.credential_url)} alt={cert.name} className="w-full h-full object-cover" />
-                          <a
-                            href={resolveFileUrl(cert.credential_url)}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <ProtectedFileImage src={cert.credential_url} accessToken={accessToken} alt={cert.name} className="w-full h-full object-cover" />
+                          <ProtectedFileLink
+                            href={cert.credential_url}
+                            accessToken={accessToken}
+                            onOpenError={(message) => toast('error', message)}
                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
                             Buka File
-                          </a>
+                          </ProtectedFileLink>
                         </div>
                       ) : (
-                        <a
-                          href={resolveFileUrl(cert.credential_url)}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <ProtectedFileLink
+                          href={cert.credential_url}
+                          accessToken={accessToken}
+                          onOpenError={(message) => toast('error', message)}
                           className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-100 transition-colors"
                         >
                           <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                           <span className="truncate max-w-[150px] text-[10px]">Lihat Dokumen Sertifikat</span>
-                        </a>
+                        </ProtectedFileLink>
                       )}
                     </div>
                   )}
@@ -555,28 +538,28 @@ export default function AssociateDetailPage() {
                               <div key={fIdx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-50 flex flex-col justify-between">
                                 {/\.(jpg|jpeg|png|webp)/i.test(file.url) ? (
                                   <>
-                                    <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
-                                    <a
+                                    <ProtectedFileImage src={file.url} accessToken={accessToken} alt={file.name} className="w-full h-full object-cover" />
+                                    <ProtectedFileLink
                                       href={file.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
+                                      accessToken={accessToken}
+                                      onOpenError={(message) => toast('error', message)}
                                       className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
                                     >
                                       Buka File
-                                    </a>
+                                    </ProtectedFileLink>
                                   </>
                                 ) : (
-                                  <a
+                                  <ProtectedFileLink
                                     href={file.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    accessToken={accessToken}
+                                    onOpenError={(message) => toast('error', message)}
                                     className="flex flex-col items-center justify-center h-full p-3 gap-2 text-center text-[#0B2C6B] hover:bg-slate-100 transition-colors"
                                   >
                                     <svg className="h-6 w-6 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     <span className="truncate max-w-[120px] text-[9px] font-semibold">{file.name}</span>
-                                  </a>
+                                  </ProtectedFileLink>
                                 )}
                               </div>
                             ))}
@@ -598,13 +581,13 @@ export default function AssociateDetailPage() {
             <div className="space-y-3">
               {data.documents?.map((doc) => {
                 const isCV = doc.type === 'cv';
-                const fileViewUrl = resolveFileUrl(`/api/files/${doc.id}/view`);
+                const fileViewUrl = `/api/files/${doc.id}/view`;
                 return (
-                  <a
+                  <ProtectedFileLink
                     key={doc.id}
                     href={fileViewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    accessToken={accessToken}
+                    onOpenError={(message) => toast('error', message)}
                     className={`w-full flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-slate-50 text-left ${isCV ? 'border-[#0B2C6B]/30 bg-[#0B2C6B]/[0.02]' : 'border-slate-200'}`}
                   >
                     <div className="flex items-center gap-3">
@@ -628,7 +611,7 @@ export default function AssociateDetailPage() {
                         Buka File ↗
                       </span>
                     </div>
-                  </a>
+                  </ProtectedFileLink>
                 );
               })}
               {(!data.documents || data.documents.length === 0) && (

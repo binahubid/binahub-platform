@@ -1,28 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../components/ui';
-
-const getFileUrlWithToken = (urlStr: string | null | undefined, token: string | null) => {
-  if (!urlStr) return '';
-  if (!token) return urlStr;
-  try {
-    const url = new URL(urlStr);
-    url.searchParams.set('token', token);
-    return url.toString();
-  } catch {
-    if (urlStr.includes('?')) {
-      if (urlStr.includes('token=')) {
-        return urlStr.replace(/token=[^&]+/, `token=${token}`);
-      }
-      return `${urlStr}&token=${token}`;
-    }
-    return `${urlStr}?token=${token}`;
-  }
-};
+import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
 type Assignment = {
   id: string;
   title: string;
@@ -84,16 +67,6 @@ const statusConfig: Record<string, { label: string; bg: string; text: string }> 
   withdrawn: { label: 'Mundur', bg: 'bg-slate-100 text-slate-400', text: '' },
 };
 
-const assigneeStatusOptions = [
-  { value: 'invited', label: 'Diundang' },
-  { value: 'applied', label: 'Melamar' },
-  { value: 'accepted', label: 'Diterima' },
-  { value: 'declined', label: 'Ditolak' },
-  { value: 'in_progress', label: 'Berjalan' },
-  { value: 'completed', label: 'Laporan Dikirim' },
-  { value: 'reviewed', label: 'Disetujui' },
-];
-
 const parseEvidence = (notes: string | null | undefined) => {
   if (!notes) return { photos: [] as string[], report: '' };
   const photoHeaderIdx = notes.indexOf('[FOTO DOKUMENTASI]');
@@ -126,7 +99,6 @@ const getStepIndex = (status: string) => {
 
 export default function AssignmentDetailPage() {
   const { id } = useParams();
-  const router = useRouter();
   const { user, accessToken } = useAuth();
   const { toast } = useToast();
   const [assignment, setAssignment] = useState<Assignment | null>(null);
@@ -275,25 +247,6 @@ export default function AssignmentDetailPage() {
       toast('error', 'Gagal terhubung ke server');
     } finally {
       setInviting(false);
-    }
-  };
-
-  const handleStatusChange = async (assigneeId: string, newStatus: string) => {
-    try {
-      const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}/assignees/${assigneeId}`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-        body: JSON.stringify({ status: newStatus }),
-      });
-      const data = await resp.json();
-      if (data.success) {
-        toast('success', 'Status berhasil diubah');
-        fetchAssignees();
-      } else {
-        toast('error', data.error || 'Gagal mengubah status');
-      }
-    } catch {
-      toast('error', 'Gagal terhubung ke server');
     }
   };
 
@@ -552,7 +505,7 @@ export default function AssignmentDetailPage() {
                         <div className="mt-3 rounded-lg bg-[#0B2C6B]/[0.03] border border-[#0B2C6B]/10 p-2.5 flex items-start gap-2">
                           <span className="text-xs">💡</span>
                           <p className="text-xs italic text-slate-600 leading-normal">
-                            <strong className="text-[#0B2C6B] not-italic font-bold">AI Rekomendasi:</strong> "{a.reasoning}"
+                            <strong className="text-[#0B2C6B] not-italic font-bold">AI Rekomendasi:</strong> &ldquo;{a.reasoning}&rdquo;
                           </p>
                         </div>
                       )}
@@ -596,7 +549,7 @@ export default function AssignmentDetailPage() {
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-10 w-10 overflow-hidden rounded-full bg-[#0B2C6B] flex-shrink-0 border border-slate-200">
                         {avatarSrc ? (
-                          <img src={avatarSrc} alt="" className="h-full w-full object-cover" />
+                          <ProtectedFileImage src={avatarSrc} accessToken={accessToken} alt="" className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
                             {(a.profile?.full_name || a.associate?.email || '?').charAt(0).toUpperCase()}
@@ -734,15 +687,15 @@ export default function AssignmentDetailPage() {
                                 {log.photo_urls && Array.isArray(log.photo_urls) && log.photo_urls.length > 0 && (
                                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-1 pt-1">
                                     {log.photo_urls.map((photoUrl: string, pIdx: number) => (
-                                      <a 
+                                      <ProtectedFileLink
                                         key={pIdx} 
-                                        href={getFileUrlWithToken(photoUrl, accessToken)} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
+                                        href={photoUrl}
+                                        accessToken={accessToken}
+                                        onOpenError={(message) => toast('error', message)}
                                         className="relative rounded overflow-hidden border border-slate-200 aspect-square bg-slate-50 block hover:opacity-85 transition"
                                       >
-                                        <img src={getFileUrlWithToken(photoUrl, accessToken)} alt="Progres" className="w-full h-full object-cover" />
-                                      </a>
+                                        <ProtectedFileImage src={photoUrl} accessToken={accessToken} alt="Progres" className="w-full h-full object-cover" />
+                                      </ProtectedFileLink>
                                     ))}
                                   </div>
                                 )}
@@ -758,12 +711,12 @@ export default function AssignmentDetailPage() {
                         {photos.length > 0 ? (
                           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
                             {photos.map((pUrl, pIdx) => (
-                              <a key={pIdx} href={getFileUrlWithToken(pUrl, accessToken)} target="_blank" rel="noopener noreferrer" className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 hover:opacity-90 transition shadow-sm">
-                                <img src={getFileUrlWithToken(pUrl, accessToken)} alt="" className="w-full h-full object-cover" />
+                              <ProtectedFileLink key={pIdx} href={pUrl} accessToken={accessToken} onOpenError={(message) => toast('error', message)} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 hover:opacity-90 transition shadow-sm">
+                                <ProtectedFileImage src={pUrl} accessToken={accessToken} alt="" className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                   <span className="text-white text-[10px] font-bold">Buka Foto ↗</span>
                                 </div>
-                              </a>
+                              </ProtectedFileLink>
                             ))}
                           </div>
                         ) : (
@@ -786,17 +739,17 @@ export default function AssignmentDetailPage() {
                       {/* File attachment */}
                       {a.evidence_url && (
                         <div className="pt-2">
-                          <a
-                            href={getFileUrlWithToken(a.evidence_url, accessToken)}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <ProtectedFileLink
+                            href={a.evidence_url}
+                            accessToken={accessToken}
+                            onOpenError={(message) => toast('error', message)}
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors"
                           >
                             <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             Download / Buka Berkas Laporan Akhir
-                          </a>
+                          </ProtectedFileLink>
                         </div>
                       )}
 
@@ -834,7 +787,7 @@ export default function AssignmentDetailPage() {
                           <span className="text-xs">✓</span>
                           <div>
                             <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">Umpan Balik Terakhir Admin</p>
-                            <p className="text-slate-600 italic">"{a.evidence_reviewer_notes}"</p>
+                            <p className="text-slate-600 italic">&ldquo;{a.evidence_reviewer_notes}&rdquo;</p>
                             {a.evidence_reviewed_at && (
                               <p className="text-[9px] text-slate-400 mt-1 font-semibold">Tinjau Tanggal: {new Date(a.evidence_reviewed_at).toLocaleDateString('id-ID')}</p>
                             )}

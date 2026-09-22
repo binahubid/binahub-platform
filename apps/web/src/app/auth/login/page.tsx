@@ -45,8 +45,8 @@ function LoginForm() {
     }
 
     const role = signInData.user?.app_metadata?.role;
-    if (role === 'admin') {
-      router.push('/admin');
+    if (role === 'admin' || role === 'reviewer') {
+      router.push(role === 'reviewer' ? '/admin/reviews' : '/admin');
       return;
     }
 
@@ -239,13 +239,12 @@ function LoginForm() {
               </div>
 
               <div className="flex items-center justify-end">
-                <button
-                  type="button"
+                <Link
+                  href="/auth/forgot-password"
                   className="text-xs font-medium text-slate-500 transition-colors hover:text-[#0B2C6B]"
-                  onClick={() => setError('Fitur ini akan segera tersedia.')}
                 >
                   Lupa password?
-                </button>
+                </Link>
               </div>
 
               <button

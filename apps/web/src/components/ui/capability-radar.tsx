@@ -42,7 +42,8 @@ export function CapabilityRadar({ data, size = 280 }: { data: CapabilityData[]; 
         const angle = angleStep * i - Math.PI / 2;
         const x = cx + r * Math.cos(angle);
         const y = cy + r * Math.sin(angle);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
       }
       ctx.closePath();
       ctx.strokeStyle = ring === 5 ? '#cbd5e1' : '#e2e8f0';
@@ -68,7 +69,8 @@ export function CapabilityRadar({ data, size = 280 }: { data: CapabilityData[]; 
       const r = (maxR * data[i].score) / 100;
       const x = cx + r * Math.cos(angle);
       const y = cy + r * Math.sin(angle);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     }
     ctx.closePath();
     ctx.fillStyle = 'rgba(11, 44, 107, 0.15)';

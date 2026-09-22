@@ -52,6 +52,7 @@ export function ProfileCompletionCard({
   };
 
   const steps = [
+    { label: 'Complete Basic Profile', done: hasProfile, href: '/dashboard/profile?tab=profile' },
     { label: 'Upload CV', done: hasCV, href: '/dashboard/profile?tab=documents', priority: true },
     { label: 'Add Experience', done: hasExperience, href: '/dashboard/profile?tab=experience' },
     { label: 'Add Education', done: hasEducation, href: '/dashboard/profile?tab=education' },
@@ -110,7 +111,7 @@ export function ProfileCompletionCard({
           <input
             ref={inputRef}
             type="file"
-            accept=".pdf,.doc,.docx"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={(e) => e.target.files?.[0] && handleCVUpload(e.target.files[0])}
             className="hidden"
           />

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { CapabilityRadar, ProfileStrength, Avatar } from '../../components/ui';
 import { OnboardingChecklist } from '../../components/onboarding/checklist';
 import { usePageVisibility } from '../../hooks/use-page-visibility';
+import { ProtectedFileImage, ProtectedFileLink } from '../../components/ui/protected-file';
 
 type ProfileData = {
   full_name: string;
@@ -72,12 +73,11 @@ type DashboardData = {
   availability: Availability | null;
 };
 
-const getPhotoUrl = (path: string | null | undefined, token?: string | null) => {
+const getPhotoUrl = (path: string | null | undefined) => {
   if (!path) return undefined;
   if (path.startsWith('http') || path.startsWith('data:')) return path;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const url = `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
-  return token ? `${url}&token=${token}` : url;
+  return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
 };
 
 function getGreeting() {
@@ -353,21 +353,6 @@ export default function DashboardPage() {
   const hasCertifications = !!(data?.certifications && data.certifications.length > 0);
   const hasPortfolio = !!(data?.portfolios && data.portfolios.length > 0);
 
-  // Notification count = incomplete profile items
-  const notificationCount = (() => {
-    if (!data) return 0;
-    let count = 0;
-    if (!data.profile?.full_name) count++;
-    if (!data.profile?.photo_url) count++;
-    if (!hasCV) count++;
-    if (!hasExperience) count++;
-    if (!hasEducation) count++;
-    if (!hasSkills) count++;
-    if (!hasCertifications) count++;
-    if (!hasPortfolio) count++;
-    return count;
-  })();
-
   const capabilityData: CapabilityData[] = data?.skills?.length
     ? data.skills.map((s) => {
         const levelMap: Record<string, number> = { beginner: 25, intermediate: 50, advanced: 75, expert: 95 };
@@ -535,7 +520,12 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 overflow-hidden rounded-full bg-[#0B2C6B] flex items-center justify-center">
               {data?.profile?.photo_url ? (
-                <img src={getPhotoUrl(data.profile.photo_url, accessToken)} alt="" className="h-full w-full object-cover" />
+                <ProtectedFileImage
+                  src={getPhotoUrl(data.profile.photo_url) || data.profile.photo_url}
+                  accessToken={accessToken}
+                  alt="Foto profil"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
                   {getInitials(data?.profile?.full_name || user?.email)}
@@ -621,7 +611,12 @@ export default function DashboardPage() {
             <div className="relative flex-shrink-0">
               <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-white/30 shadow-lg sm:h-24 sm:w-24 bg-slate-100 flex items-center justify-center">
                 {data?.profile?.photo_url ? (
-                  <img src={getPhotoUrl(data.profile.photo_url, accessToken)} alt="" className="h-full w-full object-cover" />
+                  <ProtectedFileImage
+                    src={getPhotoUrl(data.profile.photo_url) || data.profile.photo_url}
+                    accessToken={accessToken}
+                    alt="Foto profil"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <Avatar name={data?.profile?.full_name} size="xl" className="h-full w-full" />
                 )}
@@ -799,14 +794,14 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 {cvDoc && (
-                  <a
-                    href={`${apiUrl}/api/files/${cvDoc.id}/view${accessToken ? `?token=${accessToken}` : ''}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <ProtectedFileLink
+                    href={`${apiUrl}/api/files/${cvDoc.id}/view`}
+                    accessToken={accessToken}
+                    onOpenError={(message) => setToast({ message, type: 'error' })}
                     className="flex-shrink-0 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-bold text-emerald-100 hover:text-white transition-colors"
                   >
                     Lihat CV
-                  </a>
+                  </ProtectedFileLink>
                 )}
               </div>
             )}
@@ -979,7 +974,12 @@ export default function DashboardPage() {
                           <div className="mt-2 flex items-center justify-end gap-2">
                             <div className="h-6 w-6 overflow-hidden rounded-full bg-slate-200">
                               {assignment.reviewer_avatar ? (
-                                <img src={getPhotoUrl(assignment.reviewer_avatar)} alt="" className="h-full w-full object-cover" />
+                                <ProtectedFileImage
+                                  src={getPhotoUrl(assignment.reviewer_avatar) || assignment.reviewer_avatar}
+                                  accessToken={accessToken}
+                                  alt={`Foto ${assignment.reviewer}`}
+                                  className="h-full w-full object-cover"
+                                />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center text-[8px] font-semibold text-slate-500">
                                   {getInitials(assignment.reviewer)}
@@ -1126,7 +1126,6 @@ export default function DashboardPage() {
           <OnboardingChecklist 
             hasCV={hasCV}
             hasProfile={!!data?.profile?.full_name}
-            hasCapability={capabilityScore > 0}
           />
  
           {/* Profile Strength */}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useOnboarding } from './context';
 
 export function OnboardingModal() {
-  const { currentStep, currentStepIndex, totalSteps, completedSteps, isVisible, skipAll, completeStep, completionPercent } = useOnboarding();
+  const { currentStep, totalSteps, completedSteps, isVisible, skipAll, completeStep, completionPercent } = useOnboarding();
 
   if (!currentStep || !isVisible) return null;
 

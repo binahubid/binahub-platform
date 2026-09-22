@@ -1,5 +1,3 @@
-import type { AssociateProfile, AssociateSkill, AssociateExperience, AssociateEducation, AssociateCertification } from '@ams/shared';
-
 // ============================================
 // PARSED CV TYPES
 // ============================================

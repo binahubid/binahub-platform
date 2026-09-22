@@ -2,51 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { Avatar, Tabs } from '../../../components/ui';
 import { useSearchParams } from 'next/navigation';
-import { StepIndicator, StepProfile, StepExperience, StepSkills, StepDocuments, StepAvailability, StepCertifications, StepPortfolio, StepFinancial } from './components';
+import { StepProfile, StepExperience, StepSkills, StepDocuments, StepAvailability, StepCertifications, StepPortfolio, StepFinancial } from './components';
 import { ProfileView } from './components/profile-view';
-import type { ProfileData, Experience, Document, Skill, Language, Availability, AssociateData, FinancialDetails } from './types';
-
-// ============================================
-// HELPER COMPONENTS
-// ============================================
-
-function SectionHeader({ title, description }: { title: string; description?: string }) {
-  return (
-    <div className="mb-4">
-      <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-      {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
-    </div>
-  );
-}
-
-function InfoCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#0B2C6B]/5">
-        {icon}
-      </div>
-      <div>
-        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{label}</p>
-        <p className="text-sm text-slate-700">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 mb-3">
-        <svg className="h-7 w-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-        </svg>
-      </div>
-      <p className="text-sm font-medium text-slate-500">{text}</p>
-    </div>
-  );
-}
+import type { ProfileData, AssociateData } from './types';
 
 // ============================================
 // STEP DEFINITIONS
@@ -68,7 +27,7 @@ const STEPS = [
 // ============================================
 
 export default function ProfilePage() {
-  const { accessToken, user } = useAuth();
+  const { accessToken } = useAuth();
   const searchParams = useSearchParams();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -76,14 +35,7 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<AssociateData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const getPhotoUrl = (path: string | null | undefined) => {
-    if (!path) return undefined;
-    if (path.startsWith('http') || path.startsWith('data:')) return path;
-    const url = `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
-    return accessToken ? `${url}&token=${accessToken}` : url;
-  };
   const [isEditing, setIsEditing] = useState(false);
-  const [viewTab, setViewTab] = useState('profile');
 
   // Step state (edit mode)
   const tabParam = searchParams.get('tab');
@@ -205,53 +157,10 @@ export default function ProfilePage() {
       } else {
         showToastNotification(result?.error || 'Gagal menyimpan profil', 'error');
       }
-    } catch (e) {
+    } catch {
       showToastNotification('Gagal menyimpan profil', 'error');
     } finally {
       setSaving(false);
-    }
-  };
-
-  // ============================================
-  // PHOTO UPLOAD
-  // ============================================
-
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !accessToken) return;
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      showToastNotification('Ukuran foto maksimal 5MB', 'error');
-      return;
-    }
-    try {
-      const presignRes = await fetch(`${apiUrl}/api/files/presigned-url`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({
-          fileName: `photo-${Date.now()}.jpg`,
-          fileType: file.type,
-          fileSize: file.size,
-          ownerId: profileData?.id || user?.id,
-          ownerType: 'associate',
-          category: 'avatar'
-        }),
-      });
-      const presignData = await presignRes.json();
-      if (!presignData.success) throw new Error('Gagal presign');
-      await fetch(presignData.data.presignedUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
-      const res = await fetch(`${apiUrl}/api/associate/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ photoUrl: presignData.data.path }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        await fetchProfile();
-        showToastNotification('Foto profil berhasil diupdate', 'success');
-      }
-    } catch (err) {
-      showToastNotification('Gagal upload foto', 'error');
     }
   };
 
@@ -409,10 +318,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  const p = profileData?.profile;
-  const skills = profileData?.skills || [];
-  const availability = profileData?.availability;
 
   // ============================================
   // EDIT MODE (Step-by-Step)

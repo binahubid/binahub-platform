@@ -1,6 +1,9 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import { getDb } from '../lib/database.js';
 
+type LocalBucket = { count: number; resetAt: number };
+const localBuckets = new Map<string, LocalBucket>();
+
 function key(c: Context): string {
   const ip =
     c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -21,47 +24,21 @@ export function rateLimit(opts: {
     const now = new Date();
 
     try {
-      // 1. Fetch current rate limit record from Postgres
-      const { data: record, error } = await db
-        .from('rate_limits')
-        .select('*')
-        .eq('key', k)
-        .maybeSingle();
+      const { data, error } = await db.rpc('consume_rate_limit', {
+        p_key: k,
+        p_window_ms: windowMs,
+        p_max: max,
+      });
+      if (error) throw error;
 
-      if (error) {
-        console.error('Rate limit DB fetch error:', error);
-        // Fallback gracefully on DB failure
-        await next();
-        return;
-      }
+      const record = Array.isArray(data) ? data[0] : data;
+      if (!record || typeof record.allowed !== 'boolean') throw new Error('Invalid rate limit response');
 
-      if (!record || new Date(record.reset_at) <= now) {
-        // Upsert new rate limit window bucket
-        const resetAt = new Date(Date.now() + windowMs).toISOString();
-        const { error: upsertError } = await db
-          .from('rate_limits')
-          .upsert({ key: k, count: 1, reset_at: resetAt }, { onConflict: 'key' });
+      c.header('RateLimit-Limit', String(max));
+      c.header('RateLimit-Remaining', String(record.remaining ?? 0));
 
-        if (upsertError) {
-          console.error('Rate limit upsert error:', upsertError);
-        }
-        await next();
-        return;
-      }
-
-      // Increment hit count
-      const newCount = record.count + 1;
-      const { error: updateError } = await db
-        .from('rate_limits')
-        .update({ count: newCount })
-        .eq('key', k);
-
-      if (updateError) {
-        console.error('Rate limit update error:', updateError);
-      }
-
-      if (newCount > max) {
-        const retryAfter = Math.ceil((new Date(record.reset_at).getTime() - Date.now()) / 1000);
+      if (!record.allowed) {
+        const retryAfter = Math.max(1, Math.ceil((new Date(record.reset_at).getTime() - now.getTime()) / 1000));
         c.header('Retry-After', String(retryAfter));
         return c.json(
           {
@@ -73,6 +50,29 @@ export function rateLimit(opts: {
       }
     } catch (err) {
       console.error('Rate limit middleware exception:', err);
+
+      // Never fail open on sensitive endpoints. This per-instance fallback is
+      // intentionally conservative while the shared database is unavailable.
+      const current = localBuckets.get(k);
+      const nowMs = Date.now();
+      const bucket = !current || current.resetAt <= nowMs
+        ? { count: 1, resetAt: nowMs + windowMs }
+        : { count: current.count + 1, resetAt: current.resetAt };
+      localBuckets.set(k, bucket);
+
+      if (localBuckets.size > 5000) {
+        for (const [bucketKey, value] of localBuckets) {
+          if (value.resetAt <= nowMs) localBuckets.delete(bucketKey);
+        }
+      }
+
+      c.header('RateLimit-Limit', String(max));
+      c.header('RateLimit-Remaining', String(Math.max(max - bucket.count, 0)));
+      if (bucket.count > max) {
+        const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - nowMs) / 1000));
+        c.header('Retry-After', String(retryAfter));
+        return c.json({ success: false, error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, 429);
+      }
     }
 
     await next();

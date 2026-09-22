@@ -62,7 +62,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   }, [accessToken]);
 
   const { isVisible, justBecameVisible } = usePageVisibility();
-  const isAssociate = !!user && user.app_metadata?.role !== 'admin';
+  const role = user?.app_metadata?.role;
+  const isAssociate = !!user && role !== 'admin' && role !== 'reviewer';
 
   useEffect(() => {
     if (isAssociate) {
@@ -93,10 +94,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login');
-    } else if (!loading && user && user.app_metadata?.role === 'admin') {
-      router.push('/admin');
+    } else if (!loading && user && role === 'admin') {
+      router.replace('/admin');
+    } else if (!loading && user && role === 'reviewer') {
+      router.replace('/admin/reviews');
     }
-  }, [user, loading, router]);
+  }, [user, loading, role, router]);
 
   if (loading) {
     return (
@@ -109,7 +112,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user || user.app_metadata?.role === 'admin') return null;
+  if (!user || role === 'admin' || role === 'reviewer') return null;
 
   const initials = user.email?.substring(0, 2).toUpperCase() || 'A';
 

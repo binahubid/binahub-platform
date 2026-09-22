@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
 
 type Certification = {
   id: string;
@@ -285,31 +286,34 @@ export function StepCertifications({ certifications, associateId, apiUrl, access
                       <div className="mt-3">
                         {/\.(jpg|jpeg|png|webp)/i.test(cert.credential_url) ? (
                           <div className="relative group max-w-xs rounded-lg overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-50">
-                            <img src={cert.credential_url} alt={cert.name} className="w-full h-full object-cover" />
-                            <a
+                            <ProtectedFileImage
+                              src={cert.credential_url}
+                              accessToken={accessToken}
+                              alt={cert.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <ProtectedFileLink
                               href={cert.credential_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              accessToken={accessToken}
                               className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                               </svg>
                               Buka File
-                            </a>
+                            </ProtectedFileLink>
                           </div>
                         ) : (
-                          <a
+                          <ProtectedFileLink
                             href={cert.credential_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            accessToken={accessToken}
                             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-100 transition-colors"
                           >
                             <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             <span className="truncate max-w-[200px] text-[10px]">Lihat Dokumen Sertifikat</span>
-                          </a>
+                          </ProtectedFileLink>
                         )}
                       </div>
                     )}

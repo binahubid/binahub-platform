@@ -10,7 +10,7 @@ import { CTA } from '../components/landing/CTA';
 import { Footer } from '../components/landing/Footer';
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
 
   if (loading) {
     return (

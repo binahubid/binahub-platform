@@ -1,5 +1,5 @@
 import { getDb } from '../lib/database.js';
-import { OpenAIProvider, extractTextFromPDF } from '@ams/ai';
+import { OpenAIProvider, extractTextFromDocx, extractTextFromPDF } from '@ams/ai';
 import type { EventQueue } from '@ams/shared/types/events';
 
 // ============================================
@@ -26,31 +26,46 @@ export async function processPendingEvents(limit: number = 10) {
     return { processed: 0, events: [] };
   }
 
-  const results = [];
+  const results: Array<{ id: string; type: string; status: string; error?: string }> = [];
   
   for (const event of events) {
-    await processEvent(event);
-    results.push({ id: event.id, type: event.type, status: 'done' });
+    const result = await processEvent(event as EventQueue);
+    if (result) results.push(result);
   }
 
-  return { processed: results.length, events: results };
+  return {
+    processed: results.filter((result) => result.status === 'done').length,
+    failed: results.filter((result) => result.status === 'failed').length,
+    retrying: results.filter((result) => result.status === 'pending').length,
+    events: results,
+  };
 }
 
 // ============================================
 // PROCESS SINGLE EVENT
 // ============================================
 
-async function processEvent(event: EventQueue) {
+async function processEvent(event: EventQueue): Promise<{ id: string; type: string; status: string; error?: string } | null> {
   const db = getDb();
+  const currentAttempts = Number(event.attempts || 0);
+  const maxAttempts = Number((event as unknown as { max_attempts?: number }).max_attempts || event.maxAttempts || 3);
   
-  // Mark as processing
-  await db
+  // Claim only while the row is still pending. This prevents two serverless
+  // workers from processing the same side effect concurrently.
+  const { data: claimed, error: claimError } = await db
     .from('event_queue')
     .update({
       status: 'processing',
-      attempts: (event.attempts || 0) + 1
+      attempts: currentAttempts + 1,
+      error_message: null,
     })
-    .eq('id', event.id);
+    .eq('id', event.id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
+
+  if (claimError) throw new Error('Failed to claim event');
+  if (!claimed) return null;
 
   try {
     switch (event.type) {
@@ -70,7 +85,7 @@ async function processEvent(event: EventQueue) {
         await processSearchSync(event);
         break;
       default:
-        console.log(`Unknown event type: ${event.type}`);
+        throw new Error(`Unsupported event type: ${event.type}`);
     }
 
     // Mark as done
@@ -82,19 +97,29 @@ async function processEvent(event: EventQueue) {
       })
       .eq('id', event.id);
 
+    return { id: event.id, type: event.type, status: 'done' };
+
   } catch (error) {
     console.error(`Error processing event ${event.id}:`, error);
-    
-    // Mark as failed
+    const nextAttempt = currentAttempts + 1;
+    const shouldRetry = nextAttempt < maxAttempts;
+    const retryAt = new Date(Date.now() + Math.min(2 ** nextAttempt, 60) * 60 * 1000).toISOString();
+
     await db
       .from('event_queue')
       .update({
-        status: 'failed',
-        error_message: error instanceof Error ? error.message : 'Unknown error'
+        status: shouldRetry ? 'pending' : 'failed',
+        available_at: shouldRetry ? retryAt : new Date().toISOString(),
+        error_message: error instanceof Error ? error.message.slice(0, 1000) : 'Unknown error'
       })
       .eq('id', event.id);
-    
-    throw error;
+
+    return {
+      id: event.id,
+      type: event.type,
+      status: shouldRetry ? 'pending' : 'failed',
+      error: shouldRetry ? `Dijadwalkan ulang pada ${retryAt}` : 'Batas percobaan tercapai',
+    };
   }
 }
 
@@ -128,94 +153,37 @@ async function processCVUploaded(event: EventQueue) {
     throw new Error('Failed to download file');
   }
 
-  // 3. Extract text from PDF (simplified - in production use pdf-parse)
-  // For now, we'll simulate extraction
   const text = await extractTextFromFile(fileData, file.mime);
+  if (text.trim().length < 10) throw new Error('CV content could not be extracted');
+  if (!process.env.OPENAI_API_KEY) throw new Error('AI provider is not configured');
 
   // 4. Parse with AI
   const aiProvider = new OpenAIProvider({
-    apiKey: process.env.OPENAI_API_KEY!
+    apiKey: process.env.OPENAI_API_KEY,
+    model: process.env.OPENAI_MODEL || 'aihubmix/xiaomi-mimo-v2.5-free',
   });
 
-  const parsed = await aiProvider.parseCV(text);
+  const parsed = await aiProvider.parseCV(text.slice(0, 200_000));
 
-  // 5. Update associate profile with parsed data
-  if (parsed.headline || parsed.bio) {
-    await db
-      .from('associate_profiles')
-      .update({
-        headline: parsed.headline,
-        bio: parsed.bio,
-        updated_at: new Date().toISOString()
-      })
-      .eq('associate_id', associate_id);
-  }
-
-  // 6. Add skills
-  for (const skill of parsed.skills) {
-    await db
-      .from('associate_skills')
-      .upsert({
-        associate_id,
-        skill_name: skill.name,
-        category: skill.category || 'other',
-        proficiency: skill.proficiency || 'intermediate',
-        years_experience: skill.yearsExperience
-      }, { onConflict: 'associate_id,skill_name' });
-  }
-
-  // 7. Add experience
-  for (const exp of parsed.experience) {
-    await db
-      .from('associate_experiences')
-      .insert({
-        associate_id,
-        company: exp.company,
-        position: exp.position,
-        description: exp.description,
-        start_date: exp.startDate,
-        end_date: exp.endDate,
-        is_current: !exp.endDate
-      });
-  }
-
-  // 8. Add education
-  for (const edu of parsed.education) {
-    await db
-      .from('associate_educations')
-      .insert({
-        associate_id,
-        institution: edu.institution,
-        degree: edu.degree,
-        field_of_study: edu.fieldOfStudy,
-        start_year: edu.startYear,
-        end_year: edu.endYear
-      });
-  }
-
-  // 9. Add certifications
-  for (const cert of parsed.certifications) {
-    await db
-      .from('associate_certifications')
-      .insert({
-        associate_id,
-        name: cert.name,
-        issuer: cert.issuer,
-        issue_date: cert.issueDate,
-        expiry_date: cert.expiryDate
-      });
-  }
-
-  // 10. Add languages
-  for (const lang of parsed.languages) {
-    await db
-      .from('associate_languages')
-      .upsert({
-        associate_id,
-        language: lang.language,
-        proficiency: lang.proficiency || 'conversational'
-      }, { onConflict: 'associate_id,language' });
-  }
+  // Apply the whole parsed payload transactionally. The RPC replaces prior
+  // imported collections, making worker retries deterministic instead of
+  // duplicating experience and certification rows.
+  const { error: importError } = await db.rpc('import_cv_data', {
+    p_associate_id: associate_id,
+    p_profile: {
+      fullName: parsed.fullName,
+      phone: parsed.phone,
+      city: parsed.location,
+      headline: parsed.headline,
+      bio: parsed.bio,
+    },
+    p_experiences: parsed.experience,
+    p_educations: parsed.education,
+    p_skills: parsed.skills,
+    p_languages: parsed.languages,
+    p_certifications: parsed.certifications,
+  });
+  if (importError) throw new Error('Transactional CV import failed');
 
   // 11. Update file metadata
   await db
@@ -262,8 +230,12 @@ async function extractTextFromFile(fileData: Blob, mime: string): Promise<string
   }
 
   if (mime.includes('word')) {
-    // TODO: Word document extraction (e.g. mammoth). Return empty so AI can skip gracefully.
-    return '';
+    try {
+      return await extractTextFromDocx(buffer);
+    } catch (error) {
+      console.error('Word text extraction failed:', error);
+      return '';
+    }
   }
 
   // Fallback: treat as plain text
@@ -284,8 +256,28 @@ async function processAssociateSubmitted(event: EventQueue) {
   
   console.log(`Processing associate submission for ${associate_id}`);
   
-  // Send notification to admin (email/WhatsApp)
-  // TODO: Implement notification service
+  const { data: profile } = await db
+    .from('associate_profiles')
+    .select('full_name')
+    .eq('associate_id', associate_id)
+    .maybeSingle();
+
+  const adminIds = await getAdminUserIds();
+  if (adminIds.length === 0) throw new Error('No administrator available for submission notification');
+
+  const { error } = await db.from('notifications').upsert(
+    adminIds.map((adminId) => ({
+      recipient_id: adminId,
+      recipient_role: 'admin',
+      type: 'submitted',
+      title: 'Profil associate menunggu review',
+      message: `${profile?.full_name || 'Seorang associate'} telah mengirim profil untuk ditinjau.`,
+      link: `/admin/associates/${associate_id}`,
+      reference_id: associate_id,
+    })),
+    { onConflict: 'recipient_id,type,reference_id' },
+  );
+  if (error) throw new Error('Failed to create submission notification');
   
   console.log(`Associate submission processed for ${associate_id}`);
 }
@@ -296,12 +288,20 @@ async function processAssociateSubmitted(event: EventQueue) {
 
 async function processAssociateApproved(event: EventQueue) {
   const db = getDb();
-  const { associate_id, approved_by } = event.payload as { associate_id: string; approved_by: string };
+  const { associate_id } = event.payload as { associate_id: string; approved_by: string };
   
   console.log(`Processing associate approval for ${associate_id}`);
   
-  // Send approval email to associate
-  // TODO: Implement email service
+  const { error: notificationError } = await db.from('notifications').upsert({
+    recipient_id: associate_id,
+    recipient_role: 'associate',
+    type: 'approved',
+    title: 'Profil Anda telah disetujui',
+    message: 'Profil associate Anda sudah aktif dan dapat digunakan untuk menerima penugasan.',
+    link: '/dashboard/profile',
+    reference_id: associate_id,
+  }, { onConflict: 'recipient_id,type,reference_id' });
+  if (notificationError) throw new Error('Failed to create approval notification');
   
   // Sync to search index
   await db.rpc('enqueue_transformation_event', {
@@ -320,7 +320,7 @@ async function processAssociateApproved(event: EventQueue) {
 
 async function processAssociateRejected(event: EventQueue) {
   const db = getDb();
-  const { associate_id, rejected_by, reason } = event.payload as {
+  const { associate_id, reason } = event.payload as {
     associate_id: string;
     rejected_by: string;
     reason?: string;
@@ -328,8 +328,16 @@ async function processAssociateRejected(event: EventQueue) {
   
   console.log(`Processing associate rejection for ${associate_id}`);
   
-  // Send rejection email to associate with reason
-  // TODO: Implement email service
+  const { error: notificationError } = await db.from('notifications').upsert({
+    recipient_id: associate_id,
+    recipient_role: 'associate',
+    type: 'rejected',
+    title: 'Profil perlu diperbaiki',
+    message: reason ? `Catatan reviewer: ${reason.slice(0, 1000)}` : 'Profil dikembalikan untuk diperbaiki sebelum diajukan kembali.',
+    link: '/dashboard/profile',
+    reference_id: associate_id,
+  }, { onConflict: 'recipient_id,type,reference_id' });
+  if (notificationError) throw new Error('Failed to create rejection notification');
   
   console.log(`Associate rejection processed for ${associate_id}`);
 }
@@ -339,25 +347,21 @@ async function processAssociateRejected(event: EventQueue) {
 // ============================================
 
 async function processSearchSync(event: EventQueue) {
-  const db = getDb();
   const { associate_id, action } = event.payload as { associate_id: string; action: string };
   
   console.log(`Processing search sync for associate ${associate_id}`);
   
-  // TODO: Implement Meilisearch sync
-  // For now, just log the action
-  console.log(`Search sync: ${action} for associate ${associate_id}`);
-  
-  // Log to search_sync_log table
-  await db
-    .from('search_sync_log')
-    .insert({
-      entity_type: 'associate',
-      entity_id: associate_id,
-      action,
-      status: 'synced',
-      synced_at: new Date().toISOString()
-    });
-  
-  console.log(`Search sync completed for associate ${associate_id}`);
+  // AMS currently searches the authoritative Postgres data directly. No
+  // external index is required, so the event is an explicit no-op rather than
+  // falsely recording a Meilisearch sync that never happened.
+  console.log(`Database-backed search is current (${action}) for associate ${associate_id}`);
+}
+
+async function getAdminUserIds(): Promise<string[]> {
+  const db = getDb();
+  const { data, error } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) throw new Error('Failed to list administrators');
+  return data.users
+    .filter((user) => user.app_metadata?.role === 'admin')
+    .map((user) => user.id);
 }
