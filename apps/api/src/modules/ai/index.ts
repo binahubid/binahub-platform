@@ -3,12 +3,13 @@ import { authMiddleware } from '../auth/middleware/auth.js';
 import { getDb } from '../../lib/database.js';
 import { extractTextFromDocx, extractTextFromPDF, OpenAIProvider } from '@ams/ai';
 import type { AppEnv } from '../../types/env.js';
+import { rateLimit } from '../../middleware/rate-limit.js';
 
 const ai = new Hono<AppEnv>();
 
 ai.use('*', authMiddleware);
 
-ai.post('/parse-cv', async (c) => {
+ai.post('/parse-cv', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c) => {
   const user = c.get('user');
   const body = await c.req.json().catch(() => null) as { document_id?: unknown; text?: unknown } | null;
   if (!body) return c.json({ success: false, error: 'Format JSON tidak valid' }, 400);
@@ -35,6 +36,12 @@ ai.post('/parse-cv', async (c) => {
 
     if (error || !doc) {
       return c.json({ success: false, error: 'Dokumen tidak ditemukan' }, 404);
+    }
+
+    // Reuse a completed parse so retrying the same document does not trigger
+    // another paid AI call.
+    if (doc.parsed_data && typeof doc.parsed_data === 'object') {
+      return c.json({ success: true, data: doc.parsed_data, cached: true });
     }
 
     const downloadDebug: Record<string, unknown> = {};
@@ -107,7 +114,6 @@ ai.post('/parse-cv', async (c) => {
     cvText = cvText.slice(0, 200_000);
 
     downloadDebug.cvTextLength = cvText.length;
-    downloadDebug.cvTextPreview = cvText.substring(0, 150);
 
     try {
       if (!process.env.OPENAI_API_KEY) {
@@ -121,10 +127,14 @@ ai.post('/parse-cv', async (c) => {
       const parsed = await provider.parseCV(cvText);
       console.log('AI CV parsing succeeded. Parsed keys:', Object.keys(parsed));
 
-      await db
+      const { error: persistError } = await db
         .from('associate_documents')
         .update({ parsed_data: parsed })
         .eq('id', document_id);
+      if (persistError) {
+        console.error('Persist parsed CV failed:', persistError);
+        return c.json({ success: false, error: 'Hasil analisis belum dapat disimpan' }, 500);
+      }
 
       return c.json({ success: true, data: parsed });
     } catch (err) {

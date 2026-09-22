@@ -13,6 +13,7 @@ import {
   updateCertificationSchema,
   createSkillSchema,
   createLanguageSchema,
+  importCVSchema,
   updateAvailabilitySchema,
   createSocialLinkSchema,
   updateEmergencyContactSchema,
@@ -383,8 +384,15 @@ associateRoutes.post('/', async (c) => {
 // Import CV payload and run Pl/pgSQL RPC transactionally
 associateRoutes.post('/import-cv', async (c) => {
   const user = c.get('user') as AuthUser;
-  const body = await c.req.json();
-  const { profile, experiences, educations, skills, languages, certifications } = body;
+  const body = await c.req.json().catch(() => null);
+  const validation = importCVSchema.safeParse(body);
+  if (!validation.success) {
+    return c.json({
+      success: false,
+      error: validation.error.issues[0]?.message || 'Data hasil CV tidak valid',
+    }, 400);
+  }
+  const { profile, experiences, educations, skills, languages, certifications } = validation.data;
 
   const db = getDb();
 
@@ -401,7 +409,7 @@ associateRoutes.post('/import-cv', async (c) => {
 
     if (error) {
       console.error('RPC import_cv_data failed:', error);
-      return c.json({ success: false, error: error.message }, 500);
+      return c.json({ success: false, error: 'Gagal menyimpan data CV' }, 500);
     }
 
     return c.json({ success: true, message: 'Data CV berhasil diimpor' });

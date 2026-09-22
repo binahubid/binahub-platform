@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.8.1] — 2026-09-22
+
+### Security
+
+- Menambahkan validasi skema dan batas jumlah/panjang pada seluruh keluaran AI CV sebelum hasil boleh disimpan atau diimpor.
+- Menghapus inferensi gender, kewarganegaraan, dan tanggal lahir dari prompt; atribut sensitif hanya boleh diambil jika tertulis eksplisit pada CV.
+- Menambahkan rate limit terdistribusi pada endpoint parsing CV serta timeout provider AI agar satu pengguna atau provider lambat tidak menghabiskan resource serverless.
+- Membatasi eksekusi RPC `import_cv_data` hanya untuk `service_role` melalui migration `008_harden_cv_import.sql`.
+
+### Changed
+
+- Parsing CV sekarang hanya menghasilkan draft. Data profil dan riwayat baru ditimpa setelah associate melihat hasil dan menekan konfirmasi impor.
+- Unggahan baru memakai satu pemicu parsing eksplisit dari UI; konfirmasi file tidak lagi sekaligus menjadwalkan worker yang dapat berlomba memanggil provider AI.
+- Impor CV menyimpan nama panggilan, industri pengalaman, LinkedIn, dan website; data tanggal yang tidak tercantum tidak lagi diganti dengan tanggal buatan.
+- Kategori skill dan tingkat bahasa dari cache parser lama dinormalisasi ke enum resmi sebelum impor.
+- Konfigurasi build Turborepo kini meneruskan environment API yang memang digunakan pada Vercel.
+
+### Added
+
+- Runner opt-in `npm run test:cv` untuk membuktikan upload, storage, parsing AI, review/import, read-back, dan cache pada akun associate UAT khusus.
+
+### Fixed
+
+- Memperbaiki kegagalan deploy Vercel `Property 'app_metadata' does not exist on type 'never'` pada pencarian administrator worker.
+- Konfirmasi upload kini memastikan objek benar-benar ada di Supabase Storage, mendaftarkan CV baru sebelum menonaktifkan CV lama, memeriksa setiap kegagalan database, dan aman diulang.
+- Mencegah panggilan AI berulang ketika hasil parsing dokumen sudah tersedia.
+- Menyamakan dukungan upload frontend/backend menjadi PDF dan DOCX; `.doc` lama tidak lagi lolos validasi browser lalu ditolak server.
+- Menghapus jalur parser CV lama yang menerima JSON AI tanpa validasi.
+
+### Deployment Notes
+
+- Jalankan migration `008_harden_cv_import.sql` setelah migration v0.8.0 dan sebelum UAT impor CV v0.8.1.
+- Deploy API dan web v0.8.1, lalu pastikan `/api/health` mengembalikan `version: 0.8.1`.
+- Audit dan batas UAT CV didokumentasikan di `docs/AUDIT-CV-WORKFLOW-0.8.1.md`.
+
 ## [0.8.0] — 2026-09-22
 
 ### Security

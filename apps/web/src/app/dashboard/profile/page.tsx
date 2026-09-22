@@ -22,6 +22,30 @@ const STEPS = [
   { label: 'Data Finansial', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
 ];
 
+function normalizeSkillCategory(value: unknown): 'technical' | 'soft_skill' | 'industry' | 'other' {
+  if (value === 'technical' || value === 'soft_skill' || value === 'industry' || value === 'other') return value;
+  if (value === 'facilitation' || value === 'training' || value === 'coaching') return 'soft_skill';
+  return 'other';
+}
+
+function normalizeSkillProficiency(value: unknown): 'beginner' | 'intermediate' | 'advanced' | 'expert' {
+  return value === 'beginner' || value === 'advanced' || value === 'expert' ? value : 'intermediate';
+}
+
+function normalizeLanguageProficiency(value: unknown): 'basic' | 'conversational' | 'fluent' | 'native' {
+  return value === 'basic' || value === 'fluent' || value === 'native' ? value : 'conversational';
+}
+
+function validHttpUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
@@ -211,23 +235,37 @@ export default function ProfilePage() {
     try {
       const parsed = parsedCVData;
 
+      const incompleteExperience = (parsed.experience || []).find(
+        (exp: any) => !exp.company?.trim() || !exp.position?.trim() || !exp.startDate,
+      );
+      if (incompleteExperience) {
+        throw new Error(
+          `Tanggal mulai tidak ditemukan untuk pengalaman ${incompleteExperience.position || incompleteExperience.company || 'kerja'}. Lengkapi CV atau tambahkan pengalaman tersebut secara manual agar sistem tidak mengarang tanggal.`,
+        );
+      }
+
       // Map parsed CV data payload to match backend schema format
       const payload = {
         profile: {
           fullName: parsed.fullName,
+          preferredName: parsed.preferredName,
           phone: parsed.phone,
           city: parsed.location,
           headline: parsed.headline,
           bio: parsed.bio,
           nationality: parsed.nationality,
           dateOfBirth: parsed.dateOfBirth,
-          gender: parsed.gender
+          gender: parsed.gender,
+          ...(parsed.linkedIn ? { linkedIn: validHttpUrl(parsed.linkedIn) } : {}),
+          ...(parsed.website ? { website: validHttpUrl(parsed.website) } : {}),
         },
         experiences: (parsed.experience || []).map((exp: any) => ({
           organization: exp.company,
           position: exp.position,
+          industry: exp.industry || null,
           description: exp.description || '',
-          startDate: exp.startDate || new Date().toISOString().substring(0, 7),
+          achievement: exp.achievement || null,
+          startDate: exp.startDate,
           endDate: exp.endDate || null,
           isCurrent: !exp.endDate
         })),
@@ -235,24 +273,26 @@ export default function ProfilePage() {
           institution: edu.institution,
           degree: edu.degree,
           fieldOfStudy: edu.fieldOfStudy || '',
-          startYear: edu.startYear || new Date().getFullYear() - 4,
-          endYear: edu.endYear || new Date().getFullYear()
+          startYear: edu.startYear || null,
+          endYear: edu.endYear || null
         })),
         skills: (parsed.skills || []).map((sk: any) => ({
           skillName: sk.name,
-          category: sk.category || 'technical',
-          proficiency: sk.proficiency || 'intermediate',
+          category: normalizeSkillCategory(sk.category),
+          proficiency: normalizeSkillProficiency(sk.proficiency),
           yearsExperience: sk.yearsExperience || null
         })),
         languages: (parsed.languages || []).map((lang: any) => ({
           language: lang.language,
-          proficiency: lang.proficiency || 'conversational'
+          proficiency: normalizeLanguageProficiency(lang.proficiency)
         })),
         certifications: (parsed.certifications || []).map((cert: any) => ({
           name: cert.name,
           issuer: cert.issuer,
           issueDate: cert.issueDate || null,
-          expiryDate: cert.expiryDate || null
+          expiryDate: cert.expiryDate || null,
+          credentialId: cert.credentialId || null,
+          credentialUrl: validHttpUrl(cert.credentialUrl),
         }))
       };
 
@@ -264,7 +304,7 @@ export default function ProfilePage() {
       });
 
       const resJson = await res.json();
-      if (!resJson.success) {
+      if (!res.ok || !resJson.success) {
         throw new Error(resJson.error || 'Gagal menyimpan data impor CV');
       }
 
@@ -540,11 +580,12 @@ export default function ProfilePage() {
 
               <div className="px-6 py-4 space-y-5">
                 {/* Profile Info */}
-                {(parsedCVData.fullName || parsedCVData.phone || parsedCVData.location || parsedCVData.headline) && (
+                {(parsedCVData.fullName || parsedCVData.email || parsedCVData.phone || parsedCVData.location || parsedCVData.headline) && (
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Data Profil</h4>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1.5">
                       {parsedCVData.fullName && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Nama:</span> {parsedCVData.fullName}</p>}
+                      {parsedCVData.email && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Email di CV:</span> {parsedCVData.email} <span className="text-xs text-slate-400">(tidak mengubah akun)</span></p>}
                       {parsedCVData.phone && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Telepon:</span> {parsedCVData.phone}</p>}
                       {parsedCVData.location && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Lokasi:</span> {parsedCVData.location}</p>}
                       {parsedCVData.headline && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Headline:</span> {parsedCVData.headline}</p>}
@@ -563,6 +604,7 @@ export default function ProfilePage() {
                           <p className="text-sm font-semibold text-slate-900">{exp.position}</p>
                           <p className="text-xs text-[#0B2C6B] font-medium">{exp.company}</p>
                           {(exp.startDate || exp.endDate) && <p className="text-[10px] text-slate-400 mt-1">{exp.startDate || '?'} — {exp.endDate || 'Sekarang'}</p>}
+                          {exp.achievement && <p className="mt-2 text-xs text-slate-600">Pencapaian: {exp.achievement}</p>}
                         </div>
                       ))}
                     </div>

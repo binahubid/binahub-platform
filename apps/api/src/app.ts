@@ -139,7 +139,7 @@ app.route("/workers", workerRoutes);
 
 app.get("/", (c) => c.json({ status: "ok", message: "BinaApps API is running" }));
 app.get("/api", (c) => c.json({ status: "ok", message: "BinaApps API is running" }));
-app.get("/api/health", (c) => c.json({ status: "ok", version: "0.8.0" }));
-app.get("/health", (c) => c.json({ status: "ok", version: "0.8.0" }));
+app.get("/api/health", (c) => c.json({ status: "ok", version: "0.8.1" }));
+app.get("/health", (c) => c.json({ status: "ok", version: "0.8.1" }));
 
 export default app;

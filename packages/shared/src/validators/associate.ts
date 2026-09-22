@@ -278,6 +278,74 @@ export const createLanguageSchema = z.object({
   proficiency: languageProficiencySchema
 });
 
+function isValidCVDate(value: string): boolean {
+  if (!/^\d{4}(?:-\d{2})?(?:-\d{2})?$/.test(value)) return false;
+  const [yearText, monthText, dayText] = value.split('-');
+  const year = Number(yearText);
+  if (!monthText) return year >= 1900 && year <= 2100;
+  const month = Number(monthText);
+  if (month < 1 || month > 12) return false;
+  if (!dayText) return true;
+  const day = Number(dayText);
+  return day >= 1 && day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+const cvDateSchema = z.string().refine(isValidCVDate, 'Format tanggal hasil CV tidak valid');
+
+// Payload approved by the associate after reviewing an AI-generated CV draft.
+// Limits prevent an untrusted model response or client request from replacing
+// profile collections with unbounded/invalid data.
+export const importCVSchema = z.object({
+  profile: z.object({
+    fullName: z.string().trim().min(1).max(255).nullable().optional(),
+    preferredName: z.string().trim().max(100).nullable().optional(),
+    phone: z.string().trim().max(20).nullable().optional(),
+    city: z.string().trim().max(100).nullable().optional(),
+    headline: z.string().trim().max(255).nullable().optional(),
+    bio: z.string().trim().max(5000).nullable().optional(),
+    nationality: z.string().trim().max(100).nullable().optional(),
+    dateOfBirth: cvDateSchema.nullable().optional(),
+    gender: z.enum(['male', 'female', 'other']).nullable().optional(),
+    linkedIn: z.string().trim().url('URL LinkedIn hasil CV tidak valid').max(2000).nullable().optional(),
+    website: z.string().trim().url('URL website hasil CV tidak valid').max(2000).nullable().optional(),
+  }).strict().optional().default({}),
+  experiences: z.array(z.object({
+    organization: z.string().trim().min(1).max(255),
+    position: z.string().trim().min(1).max(255),
+    industry: z.string().trim().max(100).nullable().optional(),
+    description: z.string().trim().max(5000).nullable().optional(),
+    achievement: z.string().trim().max(5000).nullable().optional(),
+    startDate: cvDateSchema,
+    endDate: cvDateSchema.nullable().optional(),
+    isCurrent: z.boolean().optional().default(false),
+  }).strict()).max(100).optional().default([]),
+  educations: z.array(z.object({
+    institution: z.string().trim().min(1).max(255),
+    degree: z.string().trim().min(1).max(255),
+    fieldOfStudy: z.string().trim().max(255).nullable().optional(),
+    startYear: z.number().int().min(1900).max(2100).nullable().optional(),
+    endYear: z.number().int().min(1900).max(2100).nullable().optional(),
+  }).strict()).max(100).optional().default([]),
+  skills: z.array(z.object({
+    skillName: z.string().trim().min(1).max(100),
+    category: skillCategorySchema.nullable().optional(),
+    proficiency: skillProficiencySchema.nullable().optional(),
+    yearsExperience: z.number().int().min(0).max(100).nullable().optional(),
+  }).strict()).max(200).optional().default([]),
+  languages: z.array(z.object({
+    language: z.string().trim().min(1).max(100),
+    proficiency: languageProficiencySchema.nullable().optional(),
+  }).strict()).max(50).optional().default([]),
+  certifications: z.array(z.object({
+    name: z.string().trim().min(1).max(255),
+    issuer: z.string().trim().max(255).nullable().optional(),
+    issueDate: cvDateSchema.nullable().optional(),
+    expiryDate: cvDateSchema.nullable().optional(),
+    credentialId: z.string().trim().max(255).nullable().optional(),
+    credentialUrl: z.string().trim().url('URL kredensial hasil CV tidak valid').max(2000).nullable().optional(),
+  }).strict()).max(100).optional().default([]),
+}).strict();
+
 export const deleteLanguageSchema = z.object({
   langId: z.string().uuid()
 });

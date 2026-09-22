@@ -4,7 +4,22 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "API_URL",
+        "APP_URL",
+        "CORS_ALLOWED_ORIGINS",
+        "DATABASE_URL",
+        "FRONTEND_URL",
+        "OPENAI_API_BASE",
+        "OPENAI_API_KEY",
+        "OPENAI_MODEL",
+        "PORT",
+        "STORAGE_BUCKET",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_URL"
+      ]
     },
     "dev": {
       "cache": false,

@@ -75,7 +75,7 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ];
-    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
+    if (!allowedTypes.includes(file.type) || !file.name.match(/\.(pdf|docx)$/i)) {
       alert('Format file tidak didukung. Gunakan berkas PDF atau DOCX. Format Word lama (.doc) belum didukung.');
       return;
     }

@@ -26,6 +26,10 @@ function expectedPathPrefix(ownerType: string, ownerId: string, category: string
   return `${ownerType}/${ownerId}/${category}/`;
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 async function canReadRegisteredFile(
   user: AuthUser,
   file: { owner_id: string; uploaded_by: string; owner_type?: string | null },
@@ -608,11 +612,11 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
 fileRoutes.post('/associate/:id/cv/confirm', authMiddleware, async (c) => {
   const associateId = c.req.param('id');
   const user = c.get('user') as AuthUser;
-  const body = await c.req.json();
-  const { fileId } = body;
+  const body = await c.req.json().catch(() => null);
+  const fileId = typeof body?.fileId === 'string' ? body.fileId : '';
 
-  if (!fileId) {
-    return c.json({ success: false, error: 'fileId wajib diisi' }, 400);
+  if (!isUuid(fileId)) {
+    return c.json({ success: false, error: 'fileId tidak valid' }, 400);
   }
 
   // Check if user owns this associate profile
@@ -628,15 +632,61 @@ fileRoutes.post('/associate/:id/cv/confirm', authMiddleware, async (c) => {
       .select('*')
       .eq('id', fileId)
       .eq('owner_id', associateId)
+      .eq('owner_type', 'associate')
       .eq('category', 'cv')
+      .is('deleted_at', null)
       .single();
 
     if (fileError || !file) {
       return c.json({ success: false, error: 'Berkas CV tidak ditemukan atau tidak valid' }, 404);
     }
 
-    // 2. Soft-delete old CVs from files
-    await db
+    // A database row is created before the browser uploads the binary. Confirm
+    // the object really exists before replacing the associate's previous CV.
+    const pathParts = String(file.path).split('/');
+    const objectName = pathParts.pop();
+    const folder = pathParts.join('/');
+    if (!objectName || !folder) {
+      return c.json({ success: false, error: 'Lokasi berkas CV tidak valid' }, 409);
+    }
+
+    const { data: storedObjects, error: storageError } = await db.storage
+      .from(file.bucket || 'ams-files')
+      .list(folder, { limit: 10, search: objectName });
+    if (storageError || !storedObjects?.some((object) => object.name === objectName)) {
+      console.error('Confirm CV storage verification failed:', storageError);
+      return c.json({ success: false, error: 'Unggahan CV belum tersedia di storage' }, 409);
+    }
+
+    // Register the replacement first. A retry is safe and the previous CV is
+    // not removed until this row exists successfully.
+    const { error: docError } = await db
+      .from('associate_documents')
+      .upsert({
+        id: file.id,
+        associate_id: associateId,
+        type: 'cv',
+        name: file.original_name,
+        url: file.path
+      }, { onConflict: 'id' });
+
+    if (docError) {
+      console.error('Register associate CV document failed:', docError);
+      return c.json({ success: false, error: 'Gagal mendaftarkan dokumen CV' }, 500);
+    }
+
+    const { error: oldDocumentError } = await db
+      .from('associate_documents')
+      .delete()
+      .eq('associate_id', associateId)
+      .eq('type', 'cv')
+      .neq('id', fileId);
+    if (oldDocumentError) {
+      console.error('Remove previous associate CV documents failed:', oldDocumentError);
+      return c.json({ success: false, error: 'Gagal mengganti dokumen CV sebelumnya' }, 500);
+    }
+
+    const { error: oldFileError } = await db
       .from('files')
       .update({ deleted_at: new Date().toISOString() })
       .eq('owner_id', associateId)
@@ -644,37 +694,14 @@ fileRoutes.post('/associate/:id/cv/confirm', authMiddleware, async (c) => {
       .eq('category', 'cv')
       .neq('id', fileId)
       .is('deleted_at', null);
-
-    // 3. Hard-delete old CVs from associate_documents
-    await db
-      .from('associate_documents')
-      .delete()
-      .eq('associate_id', associateId)
-      .eq('type', 'cv');
-
-    // 4. Register the new CV in associate_documents
-    const { error: docError } = await db
-      .from('associate_documents')
-      .insert({
-        id: file.id,
-        associate_id: associateId,
-        type: 'cv',
-        name: file.original_name,
-        url: file.path
-      });
-
-    if (docError) {
-      console.error('Failed to register associate document:', docError);
+    if (oldFileError) {
+      console.error('Soft-delete previous CV files failed:', oldFileError);
+      return c.json({ success: false, error: 'Gagal menonaktifkan CV sebelumnya' }, 500);
     }
 
-    // 5. Enqueue CVUploaded event
-    await db.rpc('enqueue_transformation_event', {
-      p_type: 'CVUploaded',
-      p_aggregate_type: 'file',
-      p_aggregate_id: file.id,
-      p_payload: { associate_id: associateId, file_id: file.id, file_name: file.original_name }
-    });
-
+    // Parsing is initiated explicitly by the authenticated UI after confirm.
+    // Do not also enqueue a background parse here: both paths could otherwise
+    // reach the AI provider before either one has persisted its cached result.
     return c.json({ success: true, data: { fileId: file.id } });
   } catch (error) {
     console.error('CV confirm error:', error);

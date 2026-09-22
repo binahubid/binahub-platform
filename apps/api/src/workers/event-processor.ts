@@ -144,6 +144,18 @@ async function processCVUploaded(event: EventQueue) {
     throw new Error('File not found');
   }
 
+  const { data: document, error: documentError } = await db
+    .from('associate_documents')
+    .select('id, parsed_data')
+    .eq('id', file_id)
+    .eq('associate_id', associate_id)
+    .maybeSingle();
+  if (documentError || !document) throw new Error('CV document is not registered');
+  if (document.parsed_data && typeof document.parsed_data === 'object') {
+    console.log(`CV ${file_id} was already parsed; skipping duplicate AI call`);
+    return;
+  }
+
   // 2. Download file from Supabase Storage
   const { data: fileData, error: downloadError } = await db.storage
     .from(file.bucket)
@@ -165,49 +177,23 @@ async function processCVUploaded(event: EventQueue) {
 
   const parsed = await aiProvider.parseCV(text.slice(0, 200_000));
 
-  // Apply the whole parsed payload transactionally. The RPC replaces prior
-  // imported collections, making worker retries deterministic instead of
-  // duplicating experience and certification rows.
-  const { error: importError } = await db.rpc('import_cv_data', {
-    p_associate_id: associate_id,
-    p_profile: {
-      fullName: parsed.fullName,
-      phone: parsed.phone,
-      city: parsed.location,
-      headline: parsed.headline,
-      bio: parsed.bio,
-    },
-    p_experiences: parsed.experience,
-    p_educations: parsed.education,
-    p_skills: parsed.skills,
-    p_languages: parsed.languages,
-    p_certifications: parsed.certifications,
-  });
-  if (importError) throw new Error('Transactional CV import failed');
-
-  // 11. Update file metadata
-  await db
+  // Parsing only prepares a draft. Profile/history data is imported later,
+  // after the associate reviews and explicitly confirms it in the UI.
+  const { error: fileUpdateError } = await db
     .from('files')
     .update({
       metadata: { parsed: true, parsedAt: new Date().toISOString(), parsedData: parsed }
     })
     .eq('id', file_id);
+  if (fileUpdateError) throw new Error('Failed to persist parsed CV metadata');
 
-  // Update associate document with parsed data
-  await db
+  const { error: documentUpdateError } = await db
     .from('associate_documents')
     .update({
       parsed_data: parsed as any
     })
     .eq('id', file_id);
-
-  // 12. Enqueue search sync event
-  await db.rpc('enqueue_transformation_event', {
-    p_type: 'SearchSyncNeeded',
-    p_aggregate_type: 'associate',
-    p_aggregate_id: associate_id,
-    p_payload: { associate_id, action: 'update' }
-  });
+  if (documentUpdateError) throw new Error('Failed to persist parsed CV draft');
 
   console.log(`CV processing completed for associate ${associate_id}`);
 }
@@ -361,7 +347,11 @@ async function getAdminUserIds(): Promise<string[]> {
   const db = getDb();
   const { data, error } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (error) throw new Error('Failed to list administrators');
-  return data.users
+  const users = (data?.users || []) as Array<{
+    id: string;
+    app_metadata?: Record<string, unknown>;
+  }>;
+  return users
     .filter((user) => user.app_metadata?.role === 'admin')
     .map((user) => user.id);
 }

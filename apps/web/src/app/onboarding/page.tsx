@@ -70,6 +70,7 @@ type AI_Experience = {
   position: string;
   industry?: string;
   description?: string;
+  achievement?: string;
   startDate: string;
   endDate?: string;
   isCurrent?: boolean;
@@ -82,6 +83,30 @@ type AI_Education = {
   startYear?: number;
   endYear?: number;
 };
+
+function normalizeSkillCategory(value: unknown): 'technical' | 'soft_skill' | 'industry' | 'other' {
+  if (value === 'technical' || value === 'soft_skill' || value === 'industry' || value === 'other') return value;
+  if (value === 'facilitation' || value === 'training' || value === 'coaching') return 'soft_skill';
+  return 'other';
+}
+
+function normalizeSkillProficiency(value: unknown): 'beginner' | 'intermediate' | 'advanced' | 'expert' {
+  return value === 'beginner' || value === 'advanced' || value === 'expert' ? value : 'intermediate';
+}
+
+function normalizeLanguageProficiency(value: unknown): 'basic' | 'conversational' | 'fluent' | 'native' {
+  return value === 'basic' || value === 'fluent' || value === 'native' ? value : 'conversational';
+}
+
+function validHttpUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Step Config ──────────────────────────────────────────────────────────────
 
@@ -266,8 +291,8 @@ export default function OnboardingPage() {
       if (dataToUse.skills) {
         setSkillsList(dataToUse.skills.map((sk: any) => ({
           name: sk.name,
-          category: sk.category || 'other',
-          proficiency: sk.proficiency || 'intermediate'
+          category: normalizeSkillCategory(sk.category),
+          proficiency: normalizeSkillProficiency(sk.proficiency)
         })));
       }
       if (dataToUse.experience) {
@@ -276,8 +301,9 @@ export default function OnboardingPage() {
           position: exp.position,
           industry: exp.industry,
           description: exp.description,
-          startDate: exp.startDate,
-          endDate: exp.endDate,
+          achievement: exp.achievement,
+          startDate: typeof exp.startDate === 'string' ? exp.startDate : '',
+          endDate: typeof exp.endDate === 'string' ? exp.endDate : '',
           isCurrent: !exp.endDate
         })));
       }
@@ -291,7 +317,10 @@ export default function OnboardingPage() {
         })));
       }
       if (dataToUse.languages) {
-        setLanguagesList(dataToUse.languages);
+        setLanguagesList(dataToUse.languages.map((lang: any) => ({
+          language: lang.language,
+          proficiency: normalizeLanguageProficiency(lang.proficiency),
+        })));
       }
       if (dataToUse.certifications) {
         setCertificationsList(dataToUse.certifications);
@@ -338,6 +367,26 @@ export default function OnboardingPage() {
 
   const handleCompleteOnboarding = async () => {
     setError('');
+
+    const incompleteExperience = experiencesList.find(
+      (experience) => !experience.organization.trim() || !experience.position.trim() || !experience.startDate,
+    );
+    if (incompleteExperience) {
+      setError(
+        `Lengkapi perusahaan, jabatan, dan tanggal mulai untuk pengalaman ${incompleteExperience.position || incompleteExperience.organization || 'kerja'} sebelum menyimpan. Sistem tidak akan mengarang tanggal yang tidak ada di CV.`,
+      );
+      return;
+    }
+
+    if (draft.linkedin && !validHttpUrl(draft.linkedin)) {
+      setError('URL LinkedIn harus lengkap, misalnya https://www.linkedin.com/in/nama.');
+      return;
+    }
+    if (draft.website && !validHttpUrl(draft.website)) {
+      setError('URL website harus lengkap dan diawali https:// atau http://.');
+      return;
+    }
+
     setSaving(true);
     setSavingPhase('profile');
 
@@ -387,7 +436,10 @@ export default function OnboardingPage() {
       // 4. Save history lists transactionally (experiences, educations, skills, languages, certifications)
       setSavingPhase('history');
       const payload = {
-        profile: {}, // Empty since profile is already saved in step 1
+        profile: {
+          ...(draft.linkedin ? { linkedIn: validHttpUrl(draft.linkedin) } : {}),
+          ...(draft.website ? { website: validHttpUrl(draft.website) } : {}),
+        },
         experiences: experiencesList,
         educations: educationsList,
         skills: skillsList.map(sk => ({
@@ -671,8 +723,12 @@ export default function OnboardingPage() {
                   <StepHistory
                     experiences={experiencesList}
                     educations={educationsList}
+                    languages={languagesList}
+                    certifications={certificationsList}
                     onChangeExperiences={setExperiencesList}
                     onChangeEducations={setEducationsList}
+                    onChangeLanguages={setLanguagesList}
+                    onChangeCertifications={setCertificationsList}
                   />
                 )}
                 {currentStep === 5 && (

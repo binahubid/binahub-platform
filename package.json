@@ -1,12 +1,13 @@
 {
   "name": "binahub-platform",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "eslint \"apps/*/src/**/*.{ts,tsx}\" \"apps/api/api/**/*.ts\" \"packages/*/src/**/*.{ts,tsx}\"",
     "test:smoke": "node scripts/ams-production-smoke.mjs",
+    "test:cv": "node scripts/ams-cv-workflow-smoke.mjs",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",

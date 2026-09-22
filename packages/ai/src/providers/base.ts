@@ -4,10 +4,17 @@
 
 export interface ParsedCV {
   fullName: string | null;
+  preferredName: string | null;
+  email: string | null;
   phone: string | null;
   location: string | null;
+  nationality: string | null;
+  dateOfBirth: string | null;
+  gender: 'male' | 'female' | 'other' | null;
   headline: string | null;
   bio: string | null;
+  linkedIn: string | null;
+  website: string | null;
   skills: ParsedSkill[];
   experience: ParsedExperience[];
   education: ParsedEducation[];
@@ -25,7 +32,9 @@ export interface ParsedSkill {
 export interface ParsedExperience {
   company: string;
   position: string;
+  industry: string | null;
   description: string | null;
+  achievement: string | null;
   startDate: string | null;
   endDate: string | null;
 }
@@ -43,6 +52,8 @@ export interface ParsedCertification {
   issuer: string;
   issueDate: string | null;
   expiryDate: string | null;
+  credentialId: string | null;
+  credentialUrl: string | null;
 }
 
 export interface ParsedLanguage {

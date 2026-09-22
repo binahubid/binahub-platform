@@ -112,7 +112,7 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ];
-    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
+    if (!allowedTypes.includes(file.type) || !file.name.match(/\.(pdf|docx)$/i)) {
       setError('Format tidak didukung. Gunakan berkas PDF atau DOCX. Format Word lama (.doc) belum didukung.');
       return;
     }
@@ -188,10 +188,12 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
         setStatusText('Upload berhasil. Isi profil secara manual.');
         setTimeout(() => onDone(fileId, null), 1200);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       const isTimeout = e instanceof DOMException && e.name === 'AbortError';
       setState('error');
-      setError(isTimeout ? 'Proses timeout. CV sudah tersimpan — lanjutkan isi manual.' : 'Terjadi kesalahan saat mengunggah.');
+      setError(isTimeout
+        ? 'Proses timeout. CV sudah tersimpan — Anda dapat mencoba analisis lagi dari halaman profil.'
+        : e instanceof Error ? e.message : 'Terjadi kesalahan saat mengunggah.');
     }
   }, [associateId, apiUrl, accessToken, onDone]);
 
