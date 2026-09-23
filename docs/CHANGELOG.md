@@ -18,6 +18,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
 - Install step Vercel API kini membangun package workspace `@ams/*` sebelum Hono dibundel. Ini mencegah deployment berstatus sukses tetapi gagal saat runtime karena entry `dist/` milik dependency monorepo tidak tersedia di Git.
 - Memperbaiki entry ESM `@ams/ai` yang sebelumnya menghasilkan import relatif tanpa ekstensi `.js`. Build dapat terlihat sukses, tetapi Vercel Function gagal saat cold start dengan `ERR_MODULE_NOT_FOUND` sebelum route health sempat berjalan.
 - Parser PDF/DOCX tidak lagi diekspor dari entry utama `@ams/ai`. Parser dimuat secara dinamis dari subpath khusus hanya saat CV benar-benar diproses, dan build API memakai code splitting agar mesin parser dokumen yang besar tidak membebani cold start seluruh endpoint.
+- Halaman `/status` kini mengirim public anon key saat memeriksa Supabase Auth. Sebelumnya layanan yang sehat selalu ditampilkan sebagai gangguan karena endpoint health Supabase membalas HTTP 401 tanpa header `apikey`.
 
 ### Deployment Notes
 

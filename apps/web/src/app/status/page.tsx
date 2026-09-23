@@ -11,18 +11,31 @@ interface HealthCheck {
   message?: string;
 }
 
+interface HealthCheckDefinition {
+  name: string;
+  url: string;
+  headers?: Record<string, string>;
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const EXPECTED_API_VERSION = '0.8.3';
 
-const checks: Omit<HealthCheck, 'status' | 'latency' | 'message'>[] = [
+const checks: HealthCheckDefinition[] = [
   { name: 'API Health', url: `${API_URL}/api/health` },
-  { name: 'Supabase Auth', url: `${SUPABASE_URL}/auth/v1/health` },
+  {
+    name: 'Supabase Auth',
+    url: `${SUPABASE_URL}/auth/v1/health`,
+    headers: SUPABASE_ANON_KEY
+      ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
+      : undefined,
+  },
 ];
 
 export default function StatusPage() {
   const [results, setResults] = useState<HealthCheck[]>(
-    checks.map((c) => ({ ...c, status: 'loading', latency: null }))
+    checks.map(({ name, url }) => ({ name, url, status: 'loading', latency: null }))
   );
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
@@ -32,28 +45,42 @@ export default function StatusPage() {
     const updated = await Promise.all(
       checks.map(async (check) => {
         const start = performance.now();
+        const resultBase = { name: check.name, url: check.url };
         try {
-          const res = await fetch(check.url, { method: 'GET', signal: AbortSignal.timeout(10000) });
+          if (check.name === 'Supabase Auth' && (!SUPABASE_URL || !SUPABASE_ANON_KEY)) {
+            return {
+              ...resultBase,
+              status: 'error' as const,
+              latency: null,
+              message: 'Konfigurasi Supabase belum tersedia',
+            };
+          }
+
+          const res = await fetch(check.url, {
+            method: 'GET',
+            headers: check.headers,
+            signal: AbortSignal.timeout(10000),
+          });
           const latency = Math.round(performance.now() - start);
           if (res.ok && check.name === 'API Health') {
             const body = await res.json().catch(() => null);
             if (body?.status === 'ok' && body?.version === EXPECTED_API_VERSION) {
-              return { ...check, status: 'ok' as const, latency, message: `Versi ${body.version}` };
+              return { ...resultBase, status: 'ok' as const, latency, message: `Versi ${body.version}` };
             }
             return {
-              ...check,
+              ...resultBase,
               status: 'error' as const,
               latency,
               message: `Respons health tidak sesuai (diharapkan ${EXPECTED_API_VERSION})`,
             };
           }
           if (res.ok) {
-            return { ...check, status: 'ok' as const, latency };
+            return { ...resultBase, status: 'ok' as const, latency };
           }
-          return { ...check, status: 'error' as const, latency, message: `HTTP ${res.status}` };
+          return { ...resultBase, status: 'error' as const, latency, message: `HTTP ${res.status}` };
         } catch {
           const latency = Math.round(performance.now() - start);
-          return { ...check, status: 'error' as const, latency, message: 'Tidak dapat dijangkau' };
+          return { ...resultBase, status: 'error' as const, latency, message: 'Tidak dapat dijangkau' };
         }
       })
     );
