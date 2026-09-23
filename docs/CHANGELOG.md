@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.8.7] — 2026-09-24
+
+### Fixed
+
+- Parser CV tidak lagi menolak seluruh hasil LapakVIP hanya karena variasi bentuk keluaran. Field `snake_case`, wrapper `data/cv/resume/profile`, alias field umum, kategori dan proficiency berbeda, tanggal `Present`, URL tanpa protokol, serta koleksi string dinormalisasi sebelum validasi akhir.
+- Teks pengantar atau penutup di luar objek JSON sekarang dipisahkan secara aman; hanya objek JSON pertama sampai penutup terakhir yang diproses.
+- Entri koleksi yang tidak mempunyai natural key wajib dilewati secara individual, bukan menggagalkan seluruh draft CV. Skema Zod dan batas panjang/jumlah tetap menjadi validasi akhir.
+
+### Added
+
+- Self-test router mencakup keluaran LapakVIP berbungkus `data`, memakai `snake_case`, nilai enum nonstandar, tanggal aktif, dan teks di luar JSON.
+
+### Deployment Notes
+
+- Tidak ada migration SQL pada versi 0.8.7. Deploy API dan web, pastikan `/api/health` menampilkan `0.8.7`, lalu ulangi **Analisis ulang CV tersimpan**.
+
 ## [0.8.6] — 2026-09-23
 
 ### Fixed

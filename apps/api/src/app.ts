@@ -11,7 +11,7 @@ import { workerRoutes } from "./workers/routes.js";
 import type { AppEnv } from "./types/env.js";
 
 const app = new Hono<AppEnv>();
-const apiVersion = "0.8.6";
+const apiVersion = "0.8.7";
 const requiredConfiguration = [
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
