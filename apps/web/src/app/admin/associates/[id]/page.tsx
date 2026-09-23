@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
 import { Avatar, StatusBadge, Tabs, useToast } from '../../../../components/ui';
 import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
-import { AdminCVEnrichment } from './components/admin-cv-enrichment';
+import { AdminCVEnrichment, type AdminParsedCV } from './components/admin-cv-enrichment';
 
 type DetailData = {
   id: string;
@@ -64,6 +64,7 @@ type DetailData = {
     type: string;
     name: string;
     url?: string;
+    parsed_data?: AdminParsedCV | null;
     created_at: string;
   }>;
   portfolios?: Array<{
@@ -192,6 +193,10 @@ export default function AssociateDetailPage() {
       </div>
     );
   }
+
+  const currentCVDocument = data.documents
+    ?.filter((document) => document.type === 'cv')
+    .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())[0];
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -585,8 +590,9 @@ export default function AssociateDetailPage() {
                   associateId={String(params.id)}
                   accessToken={accessToken}
                   apiUrl={apiUrl}
-                  currentDocumentId={data.documents?.find((document) => document.type === 'cv')?.id}
-                  onApplied={fetchDetail}
+                  currentDocumentId={currentCVDocument?.id}
+                  initialParsedData={currentCVDocument?.parsed_data}
+                  onChanged={fetchDetail}
                 />
               )}
               {data.documents?.map((doc) => {

@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.8.8] — 2026-09-24
+
+### Added
+
+- Admin dapat memilih field profil dan kelompok data CV yang ingin diterapkan, termasuk nama, kontak, headline, bio, tautan, peran, keahlian, pengalaman, pendidikan, sertifikasi, bahasa, dan portofolio.
+- Pilihan penerapan disimpan per dokumen pada browser admin sehingga tetap tersedia ketika berpindah tab atau melakukan refresh.
+
+### Changed
+
+- Draft parsing AI yang sudah tersimpan di `associate_documents.parsed_data` dimuat langsung dari detail associate. Membuka ulang tab Documents atau me-refresh halaman tidak lagi memanggil provider AI dan tidak memakai token baru.
+- Tombol analisis membedakan CV yang belum dianalisis dari tindakan **Analisis ulang dengan AI**, sehingga biaya token hanya timbul saat admin memang meminta analisis baru.
+- Endpoint penerapan CV memvalidasi daftar field yang dipilih di server. Field yang tidak dipilih tidak mengubah profil; koleksi yang dipilih tetap digabungkan secara idempoten.
+
+### Deployment Notes
+
+- Tidak ada migration SQL pada versi 0.8.8. Deploy API dan web bersama-sama, lalu pastikan `/api/health` menampilkan `0.8.8`.
+
 ## [0.8.7] — 2026-09-24
 
 ### Fixed

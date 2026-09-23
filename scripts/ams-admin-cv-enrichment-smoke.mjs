@@ -16,6 +16,11 @@ const countKeys = [
   'certificationsAdded',
   'portfoliosAdded',
 ];
+const applyFields = [
+  'fullName', 'preferredName', 'phone', 'location', 'nationality', 'dateOfBirth',
+  'gender', 'headline', 'bio', 'linkedIn', 'website', 'roles', 'expertises',
+  'experience', 'education', 'skills', 'certifications', 'languages', 'portfolios',
+];
 let failures = 0;
 
 function report(ok, label, detail = '') {
@@ -138,10 +143,16 @@ try {
   const apply = await jsonRequest(`${apiUrl}/api/admin/associates/${associateId}/cv/apply`, {
     method: 'POST',
     headers: { ...authHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ documentId: fileId }),
+    body: JSON.stringify({ documentId: fileId, fields: applyFields }),
   });
   const merge = apply.body?.data;
-  report(apply.response.ok && apply.body?.success === true && merge?.profileUpdated === true, 'admin menerapkan draft yang telah ditinjau');
+  report(
+    apply.response.ok
+      && apply.body?.success === true
+      && merge?.profileUpdated === true
+      && applyFields.every((field) => merge?.appliedFields?.includes(field)),
+    'admin menerapkan hanya field draft yang dipilih',
+  );
   if (!apply.response.ok) throw new Error('Penerapan CV gagal');
 
   const after = await jsonRequest(`${apiUrl}/api/admin/associates/${associateId}/cv`, { headers: authHeaders });
@@ -159,7 +170,7 @@ try {
   const retry = await jsonRequest(`${apiUrl}/api/admin/associates/${associateId}/cv/apply`, {
     method: 'POST',
     headers: { ...authHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ documentId: fileId }),
+    body: JSON.stringify({ documentId: fileId, fields: applyFields }),
   });
   const retryCountsAreZero = countKeys.every((key) => Number(retry.body?.data?.[key] || 0) === 0);
   report(retry.response.ok && retry.body?.success === true && retryCountsAreZero, 'retry penerapan idempoten dan tidak menggandakan koleksi');

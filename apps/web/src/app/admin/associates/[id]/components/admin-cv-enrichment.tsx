@@ -1,36 +1,92 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '../../../../../components/ui';
 
-type ParsedCV = {
+type ParsedExperience = {
+  company?: string | null;
+  position?: string | null;
+  startDate?: string | null;
+};
+
+type ParsedEducation = {
+  institution?: string | null;
+  degree?: string | null;
+};
+
+type NamedEntry = {
+  name?: string | null;
+  title?: string | null;
+  language?: string | null;
+};
+
+export type AdminParsedCV = {
   fullName?: string | null;
   preferredName?: string | null;
   email?: string | null;
   phone?: string | null;
   location?: string | null;
+  nationality?: string | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
   headline?: string | null;
   bio?: string | null;
+  linkedIn?: string | null;
+  website?: string | null;
   roles?: string[];
   expertises?: string[];
-  skills?: unknown[];
-  experience?: Array<{ startDate?: string | null }>;
-  education?: unknown[];
-  certifications?: unknown[];
-  languages?: unknown[];
-  portfolios?: unknown[];
+  skills?: NamedEntry[];
+  experience?: ParsedExperience[];
+  education?: ParsedEducation[];
+  certifications?: NamedEntry[];
+  languages?: NamedEntry[];
+  portfolios?: NamedEntry[];
 };
+
+const APPLY_FIELDS = [
+  'fullName', 'preferredName', 'phone', 'location', 'nationality', 'dateOfBirth',
+  'gender', 'headline', 'bio', 'linkedIn', 'website', 'roles', 'expertises',
+  'experience', 'education', 'skills', 'certifications', 'languages', 'portfolios',
+] as const;
+
+type ApplyField = typeof APPLY_FIELDS[number];
 
 type Props = {
   associateId: string;
   accessToken: string;
   apiUrl: string;
   currentDocumentId?: string;
-  onApplied: () => Promise<void> | void;
+  initialParsedData?: AdminParsedCV | null;
+  onChanged: () => Promise<void> | void;
 };
 
 const PDF_MIME = 'application/pdf';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+const scalarFields: Array<{ key: ApplyField; label: string }> = [
+  { key: 'fullName', label: 'Nama lengkap' },
+  { key: 'preferredName', label: 'Nama panggilan' },
+  { key: 'phone', label: 'Nomor telepon' },
+  { key: 'location', label: 'Lokasi' },
+  { key: 'nationality', label: 'Kewarganegaraan' },
+  { key: 'dateOfBirth', label: 'Tanggal lahir' },
+  { key: 'gender', label: 'Gender' },
+  { key: 'headline', label: 'Headline profesional' },
+  { key: 'bio', label: 'Ringkasan profil' },
+  { key: 'linkedIn', label: 'LinkedIn' },
+  { key: 'website', label: 'Website' },
+  { key: 'roles', label: 'Peran' },
+  { key: 'expertises', label: 'Bidang keahlian' },
+];
+
+const collectionFields: Array<{ key: ApplyField; label: string }> = [
+  { key: 'experience', label: 'Pengalaman' },
+  { key: 'education', label: 'Pendidikan' },
+  { key: 'skills', label: 'Keahlian' },
+  { key: 'certifications', label: 'Sertifikasi' },
+  { key: 'languages', label: 'Bahasa' },
+  { key: 'portfolios', label: 'Portofolio' },
+];
 
 function resolveMime(file: File): string | null {
   const lowerName = file.name.toLowerCase();
@@ -47,13 +103,86 @@ async function responseJson(response: Response) {
   return body;
 }
 
-export function AdminCVEnrichment({ associateId, accessToken, apiUrl, currentDocumentId, onApplied }: Props) {
+function hasValue(parsed: AdminParsedCV, key: ApplyField): boolean {
+  const value = parsed[key];
+  if (Array.isArray(value)) return value.length > 0;
+  return typeof value === 'string' ? value.trim().length > 0 : value !== null && value !== undefined;
+}
+
+function displayScalar(parsed: AdminParsedCV, key: ApplyField): string {
+  const value = parsed[key];
+  if (Array.isArray(value)) return value.join(', ');
+  if (typeof value !== 'string') return 'Tidak terbaca';
+  return value.trim() || 'Tidak terbaca';
+}
+
+function entryLabel(key: ApplyField, entry: unknown): string {
+  if (!entry || typeof entry !== 'object') return 'Entri CV';
+  const item = entry as Record<string, unknown>;
+  if (key === 'experience') return [item.position, item.company].filter(Boolean).join(' · ') || 'Pengalaman';
+  if (key === 'education') return [item.degree, item.institution].filter(Boolean).join(' · ') || 'Pendidikan';
+  return String(item.name || item.language || item.title || 'Entri CV');
+}
+
+function selectionStorageKey(documentId: string): string {
+  return `ams:cv-apply-selection:${documentId}`;
+}
+
+export function AdminCVEnrichment({
+  associateId,
+  accessToken,
+  apiUrl,
+  currentDocumentId,
+  initialParsedData,
+  onChanged,
+}: Props) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<'uploading' | 'parsing' | 'applying' | null>(null);
   const [documentId, setDocumentId] = useState(currentDocumentId || '');
-  const [parsed, setParsed] = useState<ParsedCV | null>(null);
+  const [parsed, setParsed] = useState<AdminParsedCV | null>(initialParsedData || null);
+  const [selectedFields, setSelectedFields] = useState<ApplyField[]>([]);
   const [applied, setApplied] = useState(false);
+
+  const availableFields = useMemo(
+    () => parsed ? APPLY_FIELDS.filter((field) => hasValue(parsed, field)) : [],
+    [parsed],
+  );
+
+  useEffect(() => {
+    if (!currentDocumentId) return;
+    setDocumentId(currentDocumentId);
+    setParsed(initialParsedData || null);
+  }, [currentDocumentId, initialParsedData]);
+
+  useEffect(() => {
+    if (!parsed || !documentId) {
+      setSelectedFields([]);
+      return;
+    }
+    let restored: ApplyField[] = [];
+    let hasSavedSelection = false;
+    try {
+      const stored = window.localStorage.getItem(selectionStorageKey(documentId));
+      const saved = stored === null ? null : JSON.parse(stored);
+      if (Array.isArray(saved)) {
+        hasSavedSelection = true;
+        restored = saved.filter((field): field is ApplyField =>
+          typeof field === 'string'
+          && (APPLY_FIELDS as readonly string[]).includes(field)
+          && availableFields.includes(field as ApplyField));
+      }
+    } catch {
+      restored = [];
+    }
+    setSelectedFields(hasSavedSelection ? restored : availableFields);
+  }, [parsed, documentId, availableFields]);
+
+  const saveSelection = (next: ApplyField[]) => {
+    setSelectedFields(next);
+    setApplied(false);
+    if (documentId) window.localStorage.setItem(selectionStorageKey(documentId), JSON.stringify(next));
+  };
 
   const parseDocument = async (id: string, force = false) => {
     setBusy('parsing');
@@ -66,8 +195,11 @@ export function AdminCVEnrichment({ associateId, accessToken, apiUrl, currentDoc
       });
       const body = await responseJson(response);
       setDocumentId(id);
-      setParsed(body.data as ParsedCV);
-      toast('success', body.cached ? 'Hasil analisis tersimpan berhasil dimuat.' : 'CV berhasil dianalisis. Periksa ringkasannya sebelum diterapkan.');
+      setParsed(body.data as AdminParsedCV);
+      await onChanged();
+      toast('success', body.cached
+        ? 'Draft analisis tersimpan berhasil dimuat tanpa memakai token AI.'
+        : 'CV berhasil dianalisis dan draftnya disimpan. Pilih data yang ingin diterapkan.');
     } catch (error) {
       toast('error', error instanceof Error ? error.message : 'CV gagal dianalisis');
     } finally {
@@ -88,6 +220,7 @@ export function AdminCVEnrichment({ associateId, accessToken, apiUrl, currentDoc
 
     setBusy('uploading');
     setParsed(null);
+    setSelectedFields([]);
     setApplied(false);
     try {
       const prepare = await fetch(`${apiUrl}/api/files/associate/${associateId}/cv`, {
@@ -120,18 +253,18 @@ export function AdminCVEnrichment({ associateId, accessToken, apiUrl, currentDoc
   };
 
   const applyToProfile = async () => {
-    if (!parsed || !documentId) return;
+    if (!parsed || !documentId || selectedFields.length === 0) return;
     setBusy('applying');
     try {
       const response = await fetch(`${apiUrl}/api/admin/associates/${associateId}/cv/apply`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId }),
+        body: JSON.stringify({ documentId, fields: selectedFields }),
       });
       const body = await responseJson(response);
       setApplied(true);
-      toast('success', body.message || 'Profil berhasil dilengkapi dari CV.');
-      await onApplied();
+      toast('success', body.message || `${selectedFields.length} kelompok data berhasil diterapkan.`);
+      await onChanged();
     } catch (error) {
       toast('error', error instanceof Error ? error.message : 'Data CV gagal diterapkan');
     } finally {
@@ -139,15 +272,16 @@ export function AdminCVEnrichment({ associateId, accessToken, apiUrl, currentDoc
     }
   };
 
-  const counts = parsed ? [
-    ['Pengalaman', parsed.experience?.length || 0],
-    ['Pendidikan', parsed.education?.length || 0],
-    ['Keahlian', parsed.skills?.length || 0],
-    ['Sertifikasi', parsed.certifications?.length || 0],
-    ['Bahasa', parsed.languages?.length || 0],
-    ['Portofolio', parsed.portfolios?.length || 0],
-  ] as const : [];
+  const toggleField = (field: ApplyField) => {
+    const next = selectedFields.includes(field)
+      ? selectedFields.filter((item) => item !== field)
+      : [...selectedFields, field];
+    saveSelection(next);
+  };
+
   const missingExperienceDates = parsed?.experience?.filter((item) => !item.startDate).length || 0;
+  const allAvailableSelected = availableFields.length > 0
+    && availableFields.every((field) => selectedFields.includes(field));
 
   return (
     <section className="rounded-xl border border-[#0B2C6B]/15 bg-gradient-to-br from-[#F8FAFF] to-white p-5">
@@ -156,18 +290,23 @@ export function AdminCVEnrichment({ associateId, accessToken, apiUrl, currentDoc
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-600">AI Profile Enrichment</p>
           <h3 className="mt-1 text-lg font-semibold text-slate-950">Lengkapi profil dari CV</h3>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            Admin mengunggah atau menganalisis ulang CV, memeriksa hasilnya, lalu menerapkannya. Data koleksi yang sudah ada dipertahankan; entri baru ditambahkan tanpa duplikasi sederhana.
+            Hasil AI disimpan pada dokumen CV dan akan tetap tersedia setelah pindah halaman atau refresh. Pilih hanya data yang memang ingin diterapkan.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {currentDocumentId && (
             <button
               type="button"
-              onClick={() => parseDocument(currentDocumentId, true)}
+              onClick={() => parseDocument(currentDocumentId, Boolean(initialParsedData))}
               disabled={busy !== null}
+              title={initialParsedData ? 'Memanggil AI kembali dan mengganti draft analisis tersimpan' : 'Menganalisis CV karena belum ada draft tersimpan'}
               className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {busy === 'parsing' ? 'Menganalisis...' : 'Analisis ulang CV tersimpan'}
+              {busy === 'parsing'
+                ? 'Menganalisis...'
+                : initialParsedData
+                  ? 'Analisis ulang dengan AI'
+                  : 'Analisis CV tersimpan'}
             </button>
           )}
           <label className="cursor-pointer rounded-lg bg-[#0B2C6B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#09245A] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
@@ -196,45 +335,92 @@ export function AdminCVEnrichment({ associateId, accessToken, apiUrl, currentDoc
 
       {parsed && (
         <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-semibold text-emerald-700">Hasil siap ditinjau</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-semibold text-emerald-700">Draft analisis tersimpan</p>
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Tidak memakai token saat dimuat ulang</span>
+              </div>
               <h4 className="mt-1 text-base font-semibold text-slate-950">{parsed.fullName || 'Nama tidak terbaca'}</h4>
-              <p className="mt-0.5 text-sm text-slate-500">{parsed.headline || parsed.email || 'Periksa data sumber sebelum menerapkan.'}</p>
+              <p className="mt-0.5 text-sm text-slate-500">{parsed.headline || parsed.email || 'Periksa setiap data sebelum menerapkan.'}</p>
             </div>
             <button
               type="button"
               onClick={applyToProfile}
-              disabled={busy !== null || applied}
+              disabled={busy !== null || applied || selectedFields.length === 0}
               className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {busy === 'applying' ? 'Menerapkan...' : applied ? 'Sudah diterapkan' : 'Terapkan ke profil'}
+              {busy === 'applying'
+                ? 'Menerapkan...'
+                : applied
+                  ? 'Sudah diterapkan'
+                  : `Terapkan ${selectedFields.length} pilihan`}
             </button>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {counts.map(([label, count]) => (
-              <div key={label} className="rounded-lg bg-slate-50 px-3 py-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">{count}</p>
-              </div>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h5 className="text-sm font-semibold text-slate-900">Pilih data yang ingin diterapkan</h5>
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                Data profil terpilih dapat memperbarui nilai lama. Daftar terpilih ditambahkan tanpa duplikasi sederhana. Pilihan ini tersimpan di browser.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => saveSelection(allAvailableSelected ? [] : availableFields)}
+              className="self-start rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-50"
+            >
+              {allAvailableSelected ? 'Batalkan semua' : 'Pilih semua tersedia'}
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {scalarFields.filter(({ key }) => availableFields.includes(key)).map(({ key, label }) => (
+              <label key={key} className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${selectedFields.includes(key) ? 'border-blue-200 bg-blue-50/60' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                <input
+                  type="checkbox"
+                  checked={selectedFields.includes(key)}
+                  onChange={() => toggleField(key)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-[#0B2C6B]"
+                />
+                <span className="min-w-0">
+                  <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
+                  <span className="mt-0.5 block max-h-16 overflow-hidden text-sm leading-5 text-slate-700">{displayScalar(parsed, key)}</span>
+                </span>
+              </label>
             ))}
           </div>
 
-          {(parsed.roles?.length || parsed.expertises?.length) ? (
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Peran terdeteksi</p>
-                <p className="mt-1 text-sm text-slate-700">{parsed.roles?.join(', ') || '—'}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Bidang keahlian</p>
-                <p className="mt-1 text-sm text-slate-700">{parsed.expertises?.join(', ') || '—'}</p>
-              </div>
-            </div>
-          ) : null}
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {collectionFields.filter(({ key }) => availableFields.includes(key)).map(({ key, label }) => {
+              const entries = Array.isArray(parsed[key]) ? parsed[key] as unknown[] : [];
+              return (
+                <label key={key} className={`cursor-pointer rounded-lg border p-3 transition-colors ${selectedFields.includes(key) ? 'border-emerald-200 bg-emerald-50/70' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}>
+                  <span className="flex items-start justify-between gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedFields.includes(key)}
+                      onChange={() => toggleField(key)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-emerald-600"
+                    />
+                    <span className="text-lg font-semibold text-slate-900">{entries.length}</span>
+                  </span>
+                  <span className="mt-2 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+                  <span className="mt-1 block truncate text-[10px] text-slate-400" title={entries.slice(0, 3).map((entry) => entryLabel(key, entry)).join(', ')}>
+                    {entries.slice(0, 2).map((entry) => entryLabel(key, entry)).join(', ')}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
 
-          {missingExperienceDates > 0 && (
+          {selectedFields.length === 0 && (
+            <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+              Belum ada data yang dipilih. Profil tidak akan berubah sampai Anda mencentang minimal satu pilihan.
+            </p>
+          )}
+
+          {missingExperienceDates > 0 && selectedFields.includes('experience') && (
             <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
               {missingExperienceDates} pengalaman tidak mempunyai tanggal mulai dan akan dilewati agar sistem tidak membuat tanggal palsu.
             </p>

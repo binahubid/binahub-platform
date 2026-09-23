@@ -11,6 +11,29 @@ const admin = new Hono<AppEnv>();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ASSIGNMENT_STATUSES = ['draft', 'active', 'completed', 'cancelled'] as const;
 const ASSIGNEE_STATUSES = ['invited', 'applied', 'accepted', 'declined', 'in_progress', 'completed', 'reviewed', 'withdrawn'] as const;
+const CV_APPLY_FIELDS = [
+  'fullName',
+  'preferredName',
+  'phone',
+  'location',
+  'nationality',
+  'dateOfBirth',
+  'gender',
+  'headline',
+  'bio',
+  'linkedIn',
+  'website',
+  'roles',
+  'expertises',
+  'experience',
+  'education',
+  'skills',
+  'certifications',
+  'languages',
+  'portfolios',
+] as const;
+type CVApplyField = typeof CV_APPLY_FIELDS[number];
+const CV_APPLY_FIELD_SET = new Set<string>(CV_APPLY_FIELDS);
 
 function textField(value: unknown, max: number, required = false): string | null {
   if (value === undefined || value === null) return required ? null : '';
@@ -43,29 +66,39 @@ function normalizedRoles(value: unknown): string[] | null {
   )).slice(0, 50);
 }
 
-function parsedCVImportPayload(parsed: ParsedCV) {
-  const experiences = Array.isArray(parsed.experience) ? parsed.experience : [];
-  const educations = Array.isArray(parsed.education) ? parsed.education : [];
-  const skills = Array.isArray(parsed.skills) ? parsed.skills : [];
-  const languages = Array.isArray(parsed.languages) ? parsed.languages : [];
-  const certifications = Array.isArray(parsed.certifications) ? parsed.certifications : [];
-  const portfolios = Array.isArray(parsed.portfolios) ? parsed.portfolios : [];
-  const roles = Array.isArray(parsed.roles) ? parsed.roles : [];
-  const expertises = Array.isArray(parsed.expertises) ? parsed.expertises : [];
+function parseCVApplyFields(value: unknown): CVApplyField[] | null {
+  // Keep backward compatibility for the CLI/UAT runner. The admin UI always
+  // sends an explicit selection.
+  if (value === undefined) return [...CV_APPLY_FIELDS];
+  if (!Array.isArray(value) || value.length === 0 || value.length > CV_APPLY_FIELDS.length) return null;
+  if (value.some((field) => typeof field !== 'string' || !CV_APPLY_FIELD_SET.has(field))) return null;
+  return Array.from(new Set(value)) as CVApplyField[];
+}
+
+function parsedCVImportPayload(parsed: ParsedCV, selectedFields: CVApplyField[]) {
+  const selected = new Set<CVApplyField>(selectedFields);
+  const experiences = selected.has('experience') && Array.isArray(parsed.experience) ? parsed.experience : [];
+  const educations = selected.has('education') && Array.isArray(parsed.education) ? parsed.education : [];
+  const skills = selected.has('skills') && Array.isArray(parsed.skills) ? parsed.skills : [];
+  const languages = selected.has('languages') && Array.isArray(parsed.languages) ? parsed.languages : [];
+  const certifications = selected.has('certifications') && Array.isArray(parsed.certifications) ? parsed.certifications : [];
+  const portfolios = selected.has('portfolios') && Array.isArray(parsed.portfolios) ? parsed.portfolios : [];
+  const roles = selected.has('roles') && Array.isArray(parsed.roles) ? parsed.roles : [];
+  const expertises = selected.has('expertises') && Array.isArray(parsed.expertises) ? parsed.expertises : [];
   const skippedExperiences = experiences.filter((item) => !item.company || !item.position || !item.startDate).length;
   const payload = {
     profile: {
-      fullName: parsed.fullName,
-      preferredName: parsed.preferredName,
-      phone: parsed.phone,
-      city: parsed.location,
-      headline: parsed.headline,
-      bio: parsed.bio,
-      nationality: parsed.nationality,
-      dateOfBirth: parsed.dateOfBirth,
-      gender: parsed.gender,
-      linkedIn: parsed.linkedIn,
-      website: parsed.website,
+      fullName: selected.has('fullName') ? parsed.fullName : null,
+      preferredName: selected.has('preferredName') ? parsed.preferredName : null,
+      phone: selected.has('phone') ? parsed.phone : null,
+      city: selected.has('location') ? parsed.location : null,
+      headline: selected.has('headline') ? parsed.headline : null,
+      bio: selected.has('bio') ? parsed.bio : null,
+      nationality: selected.has('nationality') ? parsed.nationality : null,
+      dateOfBirth: selected.has('dateOfBirth') ? parsed.dateOfBirth : null,
+      gender: selected.has('gender') ? parsed.gender : null,
+      linkedIn: selected.has('linkedIn') ? parsed.linkedIn : null,
+      website: selected.has('website') ? parsed.website : null,
       roles: Array.from(new Set(roles)),
       expertises: Array.from(new Set(expertises)),
     },
@@ -1349,11 +1382,15 @@ admin.get('/associates/:id/cv', async (c) => {
 admin.post('/associates/:id/cv/apply', async (c) => {
   const associateId = c.req.param('id');
   const actor = c.get('user');
-  const body = await c.req.json().catch(() => null) as { documentId?: unknown } | null;
+  const body = await c.req.json().catch(() => null) as { documentId?: unknown; fields?: unknown } | null;
   const documentId = typeof body?.documentId === 'string' ? body.documentId : '';
+  const selectedFields = parseCVApplyFields(body?.fields);
 
   if (!UUID_RE.test(associateId) || !UUID_RE.test(documentId)) {
     return c.json({ success: false, error: 'Associate atau dokumen tidak valid' }, 400);
+  }
+  if (!selectedFields) {
+    return c.json({ success: false, error: 'Pilih minimal satu field CV yang valid untuk diterapkan' }, 400);
   }
 
   const db = getDb();
@@ -1381,7 +1418,10 @@ admin.post('/associates/:id/cv/apply', async (c) => {
     return c.json({ success: false, error: 'CV belum dianalisis oleh AI' }, 409);
   }
 
-  const { payload, skippedExperiences } = parsedCVImportPayload(document.parsed_data as unknown as ParsedCV);
+  const { payload, skippedExperiences } = parsedCVImportPayload(
+    document.parsed_data as unknown as ParsedCV,
+    selectedFields,
+  );
   const validation = importCVSchema.safeParse(payload);
   if (!validation.success) {
     console.error('Admin CV apply validation failed:', validation.error.flatten());
@@ -1409,6 +1449,7 @@ admin.post('/associates/:id/cv/apply', async (c) => {
     actorId: actor.id,
     associateId,
     documentId,
+    selectedFields,
     skippedExperiences,
   });
 
@@ -1416,6 +1457,7 @@ admin.post('/associates/:id/cv/apply', async (c) => {
     success: true,
     data: {
       ...(mergeResult && typeof mergeResult === 'object' ? mergeResult : {}),
+      appliedFields: selectedFields,
       skippedExperiences,
     },
     message: skippedExperiences > 0
