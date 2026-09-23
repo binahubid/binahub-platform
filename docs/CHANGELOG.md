@@ -15,6 +15,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
 - Halaman status kini memvalidasi marker versi API `0.8.3`, bukan sekadar menerima respons HTTP 200.
 - Production smoke kini memeriksa preflight CORS dari `https://ams.binahub.id` agar konfigurasi browser diverifikasi sebelum login.
 - Inisialisasi Supabase API kini lazy sehingga konfigurasi deployment yang belum lengkap tidak lagi menjatuhkan seluruh Vercel Function saat cold start. Endpoint health tetap dapat dibaca dan mengembalikan HTTP 503 beserta **nama** environment yang belum tersedia, tanpa mengekspos nilainya.
+- Install step Vercel API kini membangun package workspace `@ams/*` sebelum Hono dibundel. Ini mencegah deployment berstatus sukses tetapi gagal saat runtime karena entry `dist/` milik dependency monorepo tidak tersedia di Git.
 
 ### Deployment Notes
 
