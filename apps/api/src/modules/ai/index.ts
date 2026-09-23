@@ -24,6 +24,9 @@ function aiFailureResponse(c: Context<AppEnv>, error: unknown) {
       success: false,
       error: 'Layanan AI sedang sibuk. Coba lagi dalam 30 detik.',
       code: 'AI_PROVIDER_UNAVAILABLE',
+      details: {
+        attempts: error.failures.map(({ provider, reason }) => ({ provider, reason })),
+      },
     }, 503);
   }
   c.header('X-Public-Error-Code', 'AI_PARSING_FAILED');

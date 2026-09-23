@@ -11,7 +11,7 @@ import { workerRoutes } from "./workers/routes.js";
 import type { AppEnv } from "./types/env.js";
 
 const app = new Hono<AppEnv>();
-const apiVersion = "0.8.5";
+const apiVersion = "0.8.6";
 const requiredConfiguration = [
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
@@ -115,6 +115,29 @@ app.use("*", async (c, next) => {
       AI_PROVIDER_UNAVAILABLE: "Layanan AI sedang sibuk. Coba lagi dalam 30 detik.",
       AI_PARSING_FAILED: "Analisis CV belum berhasil. Silakan coba lagi.",
     };
+    const safeAttempts = publicErrorCode === "AI_PROVIDER_UNAVAILABLE"
+      && internalError
+      && typeof internalError === "object"
+      && "details" in internalError
+      && internalError.details
+      && typeof internalError.details === "object"
+      && "attempts" in internalError.details
+      && Array.isArray(internalError.details.attempts)
+      ? internalError.details.attempts.flatMap((attempt) => {
+        if (!attempt || typeof attempt !== "object") return [];
+        const provider = "provider" in attempt && typeof attempt.provider === "string"
+          ? attempt.provider
+          : "unknown";
+        const reason = "reason" in attempt && typeof attempt.reason === "string"
+          ? attempt.reason
+          : "unknown_error";
+        if (!/^[a-z0-9_-]{1,32}$/i.test(provider) || !/^[a-z0-9_-]{1,32}$/i.test(reason)) return [];
+        return [{ provider, reason }];
+      })
+      : [];
+    const diagnosticSuffix = safeAttempts.length
+      ? ` Diagnosis: ${safeAttempts.map(({ provider, reason }) => `${provider}:${reason}`).join(", ")}.`
+      : "";
     const headers = new Headers(c.res.headers);
     headers.delete("X-Public-Error-Code");
     headers.set("Content-Type", "application/json; charset=UTF-8");
@@ -122,9 +145,10 @@ app.use("*", async (c, next) => {
       JSON.stringify({
         success: false,
         error: publicErrorCode && safePublicErrors[publicErrorCode]
-          ? safePublicErrors[publicErrorCode]
+          ? `${safePublicErrors[publicErrorCode]}${diagnosticSuffix}`
           : "Terjadi kesalahan pada server",
         ...(publicErrorCode && safePublicErrors[publicErrorCode] ? { code: publicErrorCode } : {}),
+        ...(safeAttempts.length ? { details: { attempts: safeAttempts } } : {}),
         requestId,
       }),
       { status: c.res.status, headers },

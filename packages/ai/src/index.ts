@@ -38,9 +38,9 @@ export async function rankCandidates(
 ): Promise<Array<{ associate_id: string; score: number; reasoning: string }>> {
   const client = createAIClient();
   const modelName = process.env.LAPAKVIP_API_KEY
-    ? process.env.LAPAKVIP_MODEL || "lv/deepseek-3.2"
+    ? process.env.LAPAKVIP_MODEL || "lv/deepseek-v4.1-flash"
     : process.env.OPENROUTER_API_KEY
-      ? process.env.OPENROUTER_MODEL || "qwen/qwen3.8-27b:free"
+      ? process.env.OPENROUTER_MODEL || "deepseek/deepseek-v4.1-flash"
       : process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   const systemPrompt = `You are an AI Talent Matcher. Analyze the project assignment details and a list of candidates.

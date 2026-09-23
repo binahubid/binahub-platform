@@ -19,6 +19,25 @@ function commaList(value: string | undefined): string[] {
   return (value || '').split(',').map((item) => item.trim()).filter(Boolean);
 }
 
+function normalizeLapakVipModel(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, '-');
+  if (normalized.startsWith('lv/')) return normalized;
+  if (normalized.startsWith('deepseek/')) return `lv/${normalized.slice('deepseek/'.length)}`;
+  if (normalized.startsWith('x-ai/')) return `lv/${normalized.slice('x-ai/'.length)}`;
+  return `lv/${normalized}`;
+}
+
+function normalizeOpenRouterModel(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, '-');
+  if (normalized === 'lv/deepseek-v4.1-flash' || normalized === 'deepseek-v4.1-flash') {
+    return 'deepseek/deepseek-v4.1-flash';
+  }
+  if (normalized === 'lv/grok-4.6' || normalized === 'grok-4.6') {
+    return 'x-ai/grok-4.6';
+  }
+  return normalized;
+}
+
 function uniqueAttempts(attempts: CVProviderAttempt[]): CVProviderAttempt[] {
   const seen = new Set<string>();
   return attempts.filter((attempt) => {
@@ -36,9 +55,9 @@ export function buildCVProviderAttempts(
   const lapakVipKey = environment.LAPAKVIP_API_KEY?.trim();
   if (lapakVipKey) {
     const models = [
-      environment.LAPAKVIP_MODEL?.trim() || 'lv/deepseek-3.2',
-      ...commaList(environment.LAPAKVIP_FALLBACK_MODELS),
-    ];
+      environment.LAPAKVIP_MODEL?.trim() || 'lv/deepseek-v4.1-flash',
+      ...commaList(environment.LAPAKVIP_FALLBACK_MODELS || 'lv/grok-4.6'),
+    ].map(normalizeLapakVipModel);
     for (const model of new Set(models)) {
       attempts.push({
         provider: 'lapakvip',
@@ -53,9 +72,9 @@ export function buildCVProviderAttempts(
   const openRouterKey = environment.OPENROUTER_API_KEY?.trim();
   if (openRouterKey) {
     const models = [
-      environment.OPENROUTER_MODEL?.trim() || 'qwen/qwen3.8-27b:free',
-      ...commaList(environment.OPENROUTER_FALLBACK_MODELS || 'google/gemma-4-31b-it:free'),
-    ];
+      environment.OPENROUTER_MODEL?.trim() || 'deepseek/deepseek-v4.1-flash',
+      ...commaList(environment.OPENROUTER_FALLBACK_MODELS || 'x-ai/grok-4.6'),
+    ].map(normalizeOpenRouterModel);
     for (const model of new Set(models)) {
       attempts.push({
         provider: 'openrouter',

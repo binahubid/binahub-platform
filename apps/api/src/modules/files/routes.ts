@@ -285,17 +285,24 @@ fileRoutes.post('/signed-url', authMiddleware, async (c) => {
     return c.json({ success: false, error: 'Gagal memverifikasi berkas' }, 500);
   }
 
-  if (!file) {
+  const legacyAvatarMatch = !file
+    ? path.match(/^associate\/([0-9a-f-]{36})\/avatar\//i)
+    : null;
+  if (!file && !legacyAvatarMatch) {
     return c.json({ success: false, error: 'Berkas tidak ditemukan' }, 404);
   }
 
-  if (!await canReadRegisteredFile(user, file)) {
+  if (file) {
+    if (!await canReadRegisteredFile(user, file)) {
+      return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
+    }
+  } else if (legacyAvatarMatch?.[1] !== user.id && user.role !== 'admin') {
     return c.json({ success: false, error: 'Tidak memiliki akses' }, 403);
   }
 
   const { data, error } = await db.storage
-    .from(file.bucket || 'ams-files')
-    .createSignedUrl(file.path, 300);
+    .from(file?.bucket || 'ams-files')
+    .createSignedUrl(file?.path || path, 300);
 
   if (error || !data?.signedUrl) {
     console.error('Create signed file URL failed:', error);

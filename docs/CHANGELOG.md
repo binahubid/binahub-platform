@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.8.6] — 2026-09-23
+
+### Fixed
+
+- Memulihkan foto profil associate lama yang masih ada di Supabase Storage tetapi belum mempunyai baris registrasi pada tabel `files`. Endpoint signed URL hanya menerima pola avatar legacy yang ketat dan tetap memverifikasi UUID pemilik atau peran admin.
+- Menormalisasi nama/ID model agar `DeepSeek V4.1 Flash`, `deepseek-v4.1-flash`, dan `lv/deepseek-v4.1-flash` semuanya menjadi ID LapakVIP yang valid. Alias Grok dan ID OpenRouter yang setara ikut dinormalisasi.
+- Respons error OpenAI-compatible berbentuk HTTP 200 dengan objek `error` kini mempertahankan status upstream yang aman untuk diagnosis fallback.
+- HTTP 503 AI menyertakan ringkasan diagnosis aman per provider, misalnya `lapakvip:http_401` atau `openrouter:http_429`, tanpa mengekspos key maupun respons mentah provider.
+
+### Changed
+
+- Default parsing mengikuti konfigurasi operasional: LapakVIP `lv/deepseek-v4.1-flash`, fallback LapakVIP `lv/grok-4.6`, kemudian OpenRouter `deepseek/deepseek-v4.1-flash` dan `x-ai/grok-4.6`.
+
+### Deployment Notes
+
+- Tidak ada migration SQL pada versi 0.8.6. Deploy API dan web, lalu pastikan `/api/health` menampilkan `0.8.6`.
+
 ## [0.8.5] — 2026-09-23
 
 ### Changed

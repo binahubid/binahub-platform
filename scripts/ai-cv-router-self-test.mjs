@@ -16,7 +16,7 @@ const server = http.createServer(async (request, response) => {
   requestedModels.push(body.model);
 
   response.setHeader('Content-Type', 'application/json');
-  if (body.model === 'lv/deepseek-3.2') {
+  if (body.model === 'lv/deepseek-v4.1-flash') {
     response.end(JSON.stringify({
       id: 'primary-overloaded',
       error: { message: 'Provider overloaded', code: 503 },
@@ -45,7 +45,8 @@ try {
   const parsed = await parseCVWithFallback('Nama: Pengguna Uji\nPengalaman: Fasilitator', {
     LAPAKVIP_API_KEY: 'lapak-test-key',
     LAPAKVIP_BASE_URL: baseURL,
-    LAPAKVIP_MODEL: 'lv/deepseek-3.2',
+    LAPAKVIP_MODEL: 'DeepSeek V4.1 Flash',
+    LAPAKVIP_FALLBACK_MODELS: 'lv/deepseek-v4.1-flash',
     OPENROUTER_API_KEY: 'openrouter-test-key',
     OPENROUTER_BASE_URL: baseURL,
     OPENROUTER_MODEL: 'openrouter-fallback',
@@ -54,7 +55,7 @@ try {
     AI_TOTAL_TIMEOUT_MS: '15000',
   });
 
-  assert.deepEqual(requestedModels, ['lv/deepseek-3.2', 'openrouter-fallback']);
+  assert.deepEqual(requestedModels, ['lv/deepseek-v4.1-flash', 'openrouter-fallback']);
   assert.equal(parsed.fullName, null);
   assert.deepEqual(parsed.skills, []);
   console.log('[PASS] LapakVIP overload berpindah ke OpenRouter fallback');

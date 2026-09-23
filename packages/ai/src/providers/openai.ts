@@ -125,7 +125,14 @@ export class OpenAIProvider implements AIProvider {
     };
     if (providerResponse.error) {
       const code = providerResponse.error.code ? ` (${providerResponse.error.code})` : '';
-      throw new Error(`AI provider error${code}: ${providerResponse.error.message || 'unknown error'}`);
+      const providerError = new Error(`AI provider error${code}: ${providerResponse.error.message || 'unknown error'}`) as Error & {
+        status?: number;
+      };
+      const numericStatus = Number(providerResponse.error.code);
+      if (Number.isInteger(numericStatus) && numericStatus >= 400 && numericStatus <= 599) {
+        providerError.status = numericStatus;
+      }
+      throw providerError;
     }
 
     const content = providerResponse.choices?.[0]?.message?.content;
