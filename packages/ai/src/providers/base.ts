@@ -104,6 +104,9 @@ export interface AIProvider {
 export interface AIProviderConfig {
   apiKey: string;
   model?: string;
+  baseURL?: string;
   temperature?: number;
   maxTokens?: number;
+  timeoutMs?: number;
+  jsonMode?: boolean;
 }

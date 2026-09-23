@@ -1,10 +1,18 @@
 import OpenAI from "openai";
 import { OpenAIProvider } from "./providers/openai.js";
+import { parseCVWithFallback } from "./providers/cv-router.js";
 import type { ParsedCV } from "./providers/base.js";
 
 export function createAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY ?? "";
-  const baseURL = process.env.OPENAI_API_BASE || "https://opencode.ai/zen/v1"; // OpenCode Zen default
+  const apiKey = process.env.LAPAKVIP_API_KEY
+    || process.env.OPENROUTER_API_KEY
+    || process.env.OPENAI_API_KEY
+    || "";
+  const baseURL = process.env.LAPAKVIP_API_KEY
+    ? process.env.LAPAKVIP_BASE_URL || "https://router.lapakvip.com/api/v1"
+    : process.env.OPENROUTER_API_KEY
+      ? process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1"
+      : process.env.OPENAI_API_BASE || "https://api.openai.com/v1";
   return new OpenAI({
     apiKey,
     baseURL,
@@ -12,14 +20,16 @@ export function createAIClient() {
 }
 
 export async function parseCV(text: string): Promise<ParsedCV> {
-  const provider = new OpenAIProvider({
-    apiKey: process.env.OPENAI_API_KEY || '',
-    model: process.env.OPENAI_MODEL || 'aihubmix/xiaomi-mimo-v2.5-free',
-  });
-  return provider.parseCV(text);
+  return parseCVWithFallback(text);
 }
 
 export { OpenAIProvider };
+export {
+  AIProviderConfigurationError,
+  AIProviderExhaustedError,
+  buildCVProviderAttempts,
+  parseCVWithFallback,
+} from "./providers/cv-router.js";
 export type { AIProvider, AIProviderConfig, ParsedCV } from "./providers/base.js";
 
 export async function rankCandidates(
@@ -27,7 +37,11 @@ export async function rankCandidates(
   candidates: Array<{ id: string; name: string; roles: string[]; expertises: string[]; skills: string[]; bio: string }>
 ): Promise<Array<{ associate_id: string; score: number; reasoning: string }>> {
   const client = createAIClient();
-  const modelName = process.env.OPENAI_MODEL || "aihubmix/xiaomi-mimo-v2.5-free";
+  const modelName = process.env.LAPAKVIP_API_KEY
+    ? process.env.LAPAKVIP_MODEL || "lv/deepseek-3.2"
+    : process.env.OPENROUTER_API_KEY
+      ? process.env.OPENROUTER_MODEL || "qwen/qwen3.8-27b:free"
+      : process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   const systemPrompt = `You are an AI Talent Matcher. Analyze the project assignment details and a list of candidates.
 Rerank the candidates based on how well their skills, experience, and role preferences match the project requirements.

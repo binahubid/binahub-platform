@@ -84,39 +84,62 @@ export class OpenAIProvider implements AIProvider {
   private model: string;
   private temperature: number;
   private maxTokens: number;
+  private jsonMode: boolean;
+  private timeoutMs: number;
 
   constructor(config: AIProviderConfig) {
+    this.timeoutMs = config.timeoutMs ?? 30_000;
     this.client = new OpenAI({
       apiKey: config.apiKey,
-      baseURL: process.env.OPENAI_API_BASE || "https://opencode.ai/zen/v1",
-      timeout: 45_000,
-      maxRetries: 1,
+      baseURL: config.baseURL || process.env.OPENAI_API_BASE || "https://opencode.ai/zen/v1",
+      timeout: this.timeoutMs,
+      maxRetries: 0,
     });
     this.model = config.model || process.env.OPENAI_MODEL || 'gpt-4o';
     this.temperature = config.temperature ?? 0.1;
     this.maxTokens = config.maxTokens ?? 12_000;
+    this.jsonMode = config.jsonMode ?? true;
   }
 
   async parseCV(text: string): Promise<ParsedCV> {
-    const response = await this.client.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: 'system', content: CV_PARSING_PROMPT },
-        { role: 'user', content: text }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: this.temperature,
-      max_tokens: this.maxTokens
-    });
+    const controller = new AbortController();
+    const hardTimeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    let response;
+    try {
+      response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: CV_PARSING_PROMPT },
+          { role: 'user', content: text }
+        ],
+        response_format: this.jsonMode ? { type: 'json_object' } : undefined,
+        temperature: this.temperature,
+        max_tokens: this.maxTokens
+      }, { signal: controller.signal });
+    } finally {
+      clearTimeout(hardTimeout);
+    }
 
-    const content = response.choices[0]?.message?.content;
+    const providerResponse = response as typeof response & {
+      error?: { message?: string; code?: string | number };
+    };
+    if (providerResponse.error) {
+      const code = providerResponse.error.code ? ` (${providerResponse.error.code})` : '';
+      throw new Error(`AI provider error${code}: ${providerResponse.error.message || 'unknown error'}`);
+    }
+
+    const content = providerResponse.choices?.[0]?.message?.content;
     if (!content) {
       throw new Error('No response from OpenAI');
     }
 
     let decoded: unknown;
     try {
-      decoded = JSON.parse(content);
+      const normalized = content
+        .trim()
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/, '');
+      decoded = JSON.parse(normalized);
     } catch {
       throw new Error('AI provider returned invalid JSON');
     }

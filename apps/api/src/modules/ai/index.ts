@@ -1,11 +1,38 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { authMiddleware } from '../auth/middleware/auth.js';
 import { getDb } from '../../lib/database.js';
-import { OpenAIProvider } from '@ams/ai';
+import {
+  AIProviderConfigurationError,
+  AIProviderExhaustedError,
+  parseCVWithFallback,
+} from '@ams/ai';
 import type { AppEnv } from '../../types/env.js';
 import { rateLimit } from '../../middleware/rate-limit.js';
 
 const ai = new Hono<AppEnv>();
+
+function aiFailureResponse(c: Context<AppEnv>, error: unknown) {
+  if (error instanceof AIProviderConfigurationError) {
+    c.header('X-Public-Error-Code', 'AI_NOT_CONFIGURED');
+    return c.json({ success: false, error: 'Layanan AI belum dikonfigurasi', code: 'AI_NOT_CONFIGURED' }, 503);
+  }
+  if (error instanceof AIProviderExhaustedError) {
+    c.header('Retry-After', '30');
+    c.header('X-Public-Error-Code', 'AI_PROVIDER_UNAVAILABLE');
+    console.error('All CV parsing providers failed', { failures: error.failures });
+    return c.json({
+      success: false,
+      error: 'Layanan AI sedang sibuk. Coba lagi dalam 30 detik.',
+      code: 'AI_PROVIDER_UNAVAILABLE',
+    }, 503);
+  }
+  c.header('X-Public-Error-Code', 'AI_PARSING_FAILED');
+  return c.json({
+    success: false,
+    error: 'Analisis CV belum berhasil. Silakan coba lagi.',
+    code: 'AI_PARSING_FAILED',
+  }, 500);
+}
 
 ai.use('*', authMiddleware);
 
@@ -136,15 +163,8 @@ ai.post('/parse-cv', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c)
     downloadDebug.cvTextLength = cvText.length;
 
     try {
-      if (!process.env.OPENAI_API_KEY) {
-        return c.json({ success: false, error: 'Layanan AI belum dikonfigurasi' }, 503);
-      }
-      const provider = new OpenAIProvider({
-        apiKey: process.env.OPENAI_API_KEY,
-        model: process.env.OPENAI_MODEL || "aihubmix/xiaomi-mimo-v2.5-free"
-      });
       console.log('Sending text to AI provider for CV parsing. Length:', cvText.length);
-      const parsed = await provider.parseCV(cvText);
+      const parsed = await parseCVWithFallback(cvText);
       console.log('AI CV parsing succeeded. Parsed keys:', Object.keys(parsed));
 
       const { error: persistError } = await db
@@ -159,7 +179,7 @@ ai.post('/parse-cv', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c)
       return c.json({ success: true, data: parsed });
     } catch (err) {
       console.error('AI CV parsing failed:', err);
-      return c.json({ success: false, error: 'AI parsing gagal' }, 500);
+      return aiFailureResponse(c, err);
     }
   }
 
@@ -171,18 +191,11 @@ ai.post('/parse-cv', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c)
   }
 
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return c.json({ success: false, error: 'Layanan AI belum dikonfigurasi' }, 503);
-    }
-    const provider = new OpenAIProvider({
-      apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.OPENAI_MODEL || "aihubmix/xiaomi-mimo-v2.5-free"
-    });
-    const parsed = await provider.parseCV(cvText);
+    const parsed = await parseCVWithFallback(cvText);
     return c.json({ success: true, data: parsed });
   } catch (err) {
     console.error('AI CV parsing failed (direct text):', err);
-    return c.json({ success: false, error: 'AI parsing gagal' }, 500);
+    return aiFailureResponse(c, err);
   }
 });
 

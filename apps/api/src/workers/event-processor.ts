@@ -1,5 +1,5 @@
 import { getDb } from '../lib/database.js';
-import { OpenAIProvider } from '@ams/ai';
+import { parseCVWithFallback } from '@ams/ai';
 import type { EventQueue } from '@ams/shared/types/events';
 
 // ============================================
@@ -167,15 +167,8 @@ async function processCVUploaded(event: EventQueue) {
 
   const text = await extractTextFromFile(fileData, file.mime);
   if (text.trim().length < 10) throw new Error('CV content could not be extracted');
-  if (!process.env.OPENAI_API_KEY) throw new Error('AI provider is not configured');
-
   // 4. Parse with AI
-  const aiProvider = new OpenAIProvider({
-    apiKey: process.env.OPENAI_API_KEY,
-    model: process.env.OPENAI_MODEL || 'aihubmix/xiaomi-mimo-v2.5-free',
-  });
-
-  const parsed = await aiProvider.parseCV(text.slice(0, 200_000));
+  const parsed = await parseCVWithFallback(text.slice(0, 200_000));
 
   // Parsing only prepares a draft. Profile/history data is imported later,
   // after the associate reviews and explicitly confirms it in the UI.

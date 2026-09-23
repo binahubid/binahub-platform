@@ -11,7 +11,7 @@ import { workerRoutes } from "./workers/routes.js";
 import type { AppEnv } from "./types/env.js";
 
 const app = new Hono<AppEnv>();
-const apiVersion = "0.8.4";
+const apiVersion = "0.8.5";
 const requiredConfiguration = [
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
@@ -109,12 +109,22 @@ app.use("*", async (c, next) => {
       internalError,
     });
 
+    const publicErrorCode = c.res.headers.get("X-Public-Error-Code");
+    const safePublicErrors: Record<string, string> = {
+      AI_NOT_CONFIGURED: "Layanan AI belum dikonfigurasi",
+      AI_PROVIDER_UNAVAILABLE: "Layanan AI sedang sibuk. Coba lagi dalam 30 detik.",
+      AI_PARSING_FAILED: "Analisis CV belum berhasil. Silakan coba lagi.",
+    };
     const headers = new Headers(c.res.headers);
+    headers.delete("X-Public-Error-Code");
     headers.set("Content-Type", "application/json; charset=UTF-8");
     c.res = new Response(
       JSON.stringify({
         success: false,
-        error: "Terjadi kesalahan pada server",
+        error: publicErrorCode && safePublicErrors[publicErrorCode]
+          ? safePublicErrors[publicErrorCode]
+          : "Terjadi kesalahan pada server",
+        ...(publicErrorCode && safePublicErrors[publicErrorCode] ? { code: publicErrorCode } : {}),
         requestId,
       }),
       { status: c.res.status, headers },

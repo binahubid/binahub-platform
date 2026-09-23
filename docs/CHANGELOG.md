@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.8.5] — 2026-09-23
+
+### Changed
+
+- Mengganti provider utama parsing CV AMS menjadi LapakVIP melalui endpoint OpenAI-compatible. Model default `lv/deepseek-3.2` dipilih karena konteks 128K mencukupi untuk ekstraksi CV berbasis teks dengan biaya yang proporsional; model vision/frontier tidak diperlukan untuk dokumen yang sudah diekstrak menjadi teks.
+- OpenRouter sekarang menjadi provider fallback. Konfigurasi lama `OPENAI_*` tetap didukung sementara agar deployment yang belum mengganti nama environment tidak langsung terputus.
+- Seluruh jalur parsing CV—permintaan langsung, analisis ulang dokumen admin, dan worker—menggunakan router provider yang sama.
+
+### Added
+
+- Menambahkan `npm run test:ai-router` untuk membuktikan secara lokal bahwa overload LapakVIP beralih ke OpenRouter dan keluaran JSON tetap melewati validasi skema.
+
+### Fixed
+
+- Respons gateway berbentuk objek `error` tanpa `choices` sekarang dikenali sebagai kegagalan provider. Sebelumnya respons overload dari model NVIDIA menyebabkan akses `choices[0]` melempar HTTP 500 generik.
+- Menambahkan hard timeout per model dan batas waktu total agar request provider yang menggantung benar-benar dihentikan sebelum mencoba fallback berikutnya.
+- Keluaran JSON berbungkus code fence dinormalisasi sebelum validasi tanpa mengendurkan skema CV.
+- Ketika semua provider sibuk, API mengembalikan kode aman `AI_PROVIDER_UNAVAILABLE`, pesan yang dapat ditindaklanjuti, serta `Retry-After`, sementara rincian internal tetap hanya tercatat di log server.
+
+### Deployment Notes
+
+- Di project Vercel API AMS, isi `LAPAKVIP_API_KEY`, lalu set `LAPAKVIP_BASE_URL=https://router.lapakvip.com/api/v1` dan `LAPAKVIP_MODEL=lv/deepseek-3.2`. Jangan menaruh key di source code.
+- Untuk fallback, isi `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL=https://openrouter.ai/api/v1`, dan model/fallback yang tersedia pada akun tersebut. Deploy ulang API setelah environment disimpan.
+- Tidak ada migration SQL pada versi 0.8.5.
+
 ## [0.8.4] — 2026-09-23
 
 ### Added
