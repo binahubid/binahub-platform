@@ -13,6 +13,7 @@ interface HealthCheck {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const EXPECTED_API_VERSION = '0.8.3';
 
 const checks: Omit<HealthCheck, 'status' | 'latency' | 'message'>[] = [
   { name: 'API Health', url: `${API_URL}/api/health` },
@@ -34,6 +35,18 @@ export default function StatusPage() {
         try {
           const res = await fetch(check.url, { method: 'GET', signal: AbortSignal.timeout(10000) });
           const latency = Math.round(performance.now() - start);
+          if (res.ok && check.name === 'API Health') {
+            const body = await res.json().catch(() => null);
+            if (body?.status === 'ok' && body?.version === EXPECTED_API_VERSION) {
+              return { ...check, status: 'ok' as const, latency, message: `Versi ${body.version}` };
+            }
+            return {
+              ...check,
+              status: 'error' as const,
+              latency,
+              message: `Respons health tidak sesuai (diharapkan ${EXPECTED_API_VERSION})`,
+            };
+          }
           if (res.ok) {
             return { ...check, status: 'ok' as const, latency };
           }
@@ -116,7 +129,12 @@ export default function StatusPage() {
                 }`} />
                 <div>
                   <p className="text-sm font-medium text-slate-900">{check.name}</p>
-                  {check.message && <p className="text-xs text-red-500">{check.message}</p>}
+                  {check.message && (
+                    <p className={`text-xs ${check.status === 'ok' ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {check.message}
+                    </p>
+                  )}
+                  <p className="mt-0.5 max-w-sm break-all text-[10px] text-slate-400">{check.url}</p>
                 </div>
               </div>
               <div className="text-right">

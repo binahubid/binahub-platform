@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -20,20 +20,20 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [counter, setCounter] = useState(0);
+  const counterRef = useRef(0);
 
   const dismiss = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const toast = useCallback((type: ToastType, message: string) => {
-    const id = counter + 1;
-    setCounter(id);
+    counterRef.current += 1;
+    const id = counterRef.current;
     setToasts((prev) => [...prev, { id, type, message }]);
     setTimeout(() => {
       dismiss(id);
     }, 4000);
-  }, [counter, dismiss]);
+  }, [dismiss]);
 
   return (
     <ToastContext.Provider value={{ toasts, toast, dismiss }}>

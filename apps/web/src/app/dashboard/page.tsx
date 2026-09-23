@@ -3,7 +3,7 @@
 import { useAuth } from '../../context/AuthContext';
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { CapabilityRadar, ProfileStrength, Avatar } from '../../components/ui';
+import { CapabilityRadar, ProfileStrength, Avatar, ServiceError } from '../../components/ui';
 import { OnboardingChecklist } from '../../components/onboarding/checklist';
 import { usePageVisibility } from '../../hooks/use-page-visibility';
 import { ProtectedFileImage, ProtectedFileLink } from '../../components/ui/protected-file';
@@ -104,6 +104,7 @@ export default function DashboardPage() {
   const { user, accessToken } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
@@ -211,33 +212,46 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchDashboard = useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      const response = await fetch(`${apiUrl}/api/associate/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body?.success || !body?.data) {
+        throw new Error(body?.error || `Server merespons HTTP ${response.status}`);
+      }
+
+      const associate = body.data;
+      setData({
+        status: associate.status || 'draft',
+        profile: associate.profile || null,
+        assignments: associate.assignments || [],
+        skills: associate.skills || [],
+        capability_scores: associate.capability_scores || [],
+        experiences: associate.experiences || [],
+        educations: associate.educations || [],
+        certifications: associate.certifications || [],
+        portfolios: associate.portfolios || [],
+        documents: associate.documents || [],
+        availability: associate.availability || null,
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Gagal terhubung ke server';
+      setData(null);
+      setLoadError(`Profil Anda tidak dapat dimuat. ${detail}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, apiUrl]);
+
   useEffect(() => {
-    if (!user || !accessToken) return;
-    fetch(`${apiUrl}/api/associate/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d && d.success && d.data) {
-          const associate = d.data;
-          setData({
-            status: associate.status || 'draft',
-            profile: associate.profile || null,
-            assignments: associate.assignments || [],
-            skills: associate.skills || [],
-            capability_scores: associate.capability_scores || [],
-            experiences: associate.experiences || [],
-            educations: associate.educations || [],
-            certifications: associate.certifications || [],
-            portfolios: associate.portfolios || [],
-            documents: associate.documents || [],
-            availability: associate.availability || null,
-          });
-        }
-      })
-      .catch(() => { console.error('Gagal memuat data profil'); })
-      .finally(() => setLoading(false));
-  }, [user, accessToken, apiUrl]);
+    if (user && accessToken) fetchDashboard();
+  }, [user, accessToken, fetchDashboard]);
 
   // ⌘K / Ctrl+K shortcut to focus search
   useEffect(() => {
@@ -375,6 +389,18 @@ export default function DashboardPage() {
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
       </div>
+    );
+  }
+
+  if (loadError || !data) {
+    return (
+      <ServiceError
+        title="Dashboard belum dapat dibuka"
+        message={loadError || 'Data profil tidak tersedia. Silakan coba lagi.'}
+        onRetry={fetchDashboard}
+        retrying={loading}
+        className="min-h-[420px]"
+      />
     );
   }
 

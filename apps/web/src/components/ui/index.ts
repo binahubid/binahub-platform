@@ -22,3 +22,4 @@ export { EvidenceUpload } from './evidence-upload';
 export { ProfileCompletionCard } from './profile-completion-card';
 export { ProfileStrength } from './profile-strength';
 export { ToastProvider, useToast } from './toast';
+export { ServiceError } from './service-error';

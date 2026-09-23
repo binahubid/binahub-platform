@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
+import { ServiceError } from '../../components/ui';
 
 type Stats = {
   total: number;
@@ -50,26 +51,47 @@ export default function AdminDashboard() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const headers = useMemo(() => ({ Authorization: `Bearer ${accessToken}` }), [accessToken]);
 
+  const fetchDashboard = useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setLoadError(null);
+
+    const getJson = async (path: string) => {
+      const response = await fetch(`${apiUrl}${path}`, { headers });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body?.success) {
+        throw new Error(body?.error || `${path} merespons HTTP ${response.status}`);
+      }
+      return body;
+    };
+
+    try {
+      const [statsBody, pendingBody, activitiesBody, capabilitiesBody] = await Promise.all([
+        getJson('/api/admin/stats'),
+        getJson('/api/admin/associates?status=pending_review&limit=5'),
+        getJson('/api/admin/activities?limit=5'),
+        getJson('/api/admin/capabilities'),
+      ]);
+      setStats(statsBody.data);
+      setPending(pendingBody.data || []);
+      setActivities(activitiesBody.data || []);
+      setCapabilities(capabilitiesBody.data || []);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Gagal terhubung ke server';
+      setLoadError(`Ringkasan admin tidak dapat dimuat. ${detail}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, apiUrl, headers]);
+
   useEffect(() => {
-    if (!user || !accessToken) return;
-    Promise.allSettled([
-      fetch(`${apiUrl}/api/admin/stats`, { headers }).then((r) => r.json()),
-      fetch(`${apiUrl}/api/admin/associates?status=pending_review&limit=5`, { headers }).then((r) => r.json()),
-      fetch(`${apiUrl}/api/admin/activities?limit=5`, { headers }).then((r) => r.json()),
-      fetch(`${apiUrl}/api/admin/capabilities`, { headers }).then((r) => r.json()),
-    ])
-      .then(([statsResult, pendingResult, activitiesResult, capResult]) => {
-        if (statsResult.status === 'fulfilled' && statsResult.value.success) setStats(statsResult.value.data);
-        if (pendingResult.status === 'fulfilled' && pendingResult.value.success) setPending(pendingResult.value.data || []);
-        if (activitiesResult.status === 'fulfilled' && activitiesResult.value.success) setActivities(activitiesResult.value.data || []);
-        if (capResult.status === 'fulfilled' && capResult.value.success) setCapabilities(capResult.value.data || []);
-        setLoading(false);
-      });
-  }, [user, accessToken, apiUrl, headers]);
+    if (user && accessToken) fetchDashboard();
+  }, [user, accessToken, fetchDashboard]);
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -87,6 +109,29 @@ export default function AdminDashboard() {
   const completionPct = stats.total > 0
     ? Math.round(((stats.total - stats.incomplete_profiles) / stats.total) * 100)
     : 0;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center">
+        <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24" aria-label="Memuat dashboard">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <ServiceError
+        title="Dashboard admin gagal dimuat"
+        message={loadError}
+        onRetry={fetchDashboard}
+        retrying={loading}
+        className="min-h-[420px]"
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -32,9 +32,23 @@ if (!apiUrl || !/^https:\/\//i.test(apiUrl)) {
   try {
     const health = await request('/api/health');
     report(
-      health.response.ok && health.body?.status === 'ok' && health.body?.version === '0.8.2',
-      'health API versi 0.8.2 tersedia',
+      health.response.ok && health.body?.status === 'ok' && health.body?.version === '0.8.3',
+      'health API versi 0.8.3 tersedia',
       `HTTP ${health.response.status}`,
+    );
+
+    const preflight = await request('/api/associate/me', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://ams.binahub.id',
+        'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Headers': 'authorization',
+      },
+    });
+    report(
+      preflight.response.ok && preflight.response.headers.get('access-control-allow-origin') === 'https://ams.binahub.id',
+      'preflight CORS AMS diizinkan',
+      `HTTP ${preflight.response.status}`,
     );
 
     const protectedRoutes = [

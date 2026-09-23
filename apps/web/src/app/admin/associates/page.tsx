@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
-import { Avatar, StatusBadge, Tabs, SearchInput, useToast } from '../../../components/ui';
+import { Avatar, ServiceError, StatusBadge, Tabs, SearchInput, useToast } from '../../../components/ui';
 
 type Associate = {
   id: string;
@@ -138,6 +138,7 @@ export default function AdminAssociatesPage() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [counts, setCounts] = useState({ all: 0, active: 0, pending_review: 0, draft: 0 });
   const itemsPerPage = 10;
@@ -161,7 +162,11 @@ export default function AdminAssociatesPage() {
     fetch(`${apiUrl}/api/admin/associates?limit=1000`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((r) => r.json())
+      .then(async (r) => {
+        const body = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(body?.error || `HTTP ${r.status}`);
+        return body;
+      })
       .then((d) => {
         if (d?.success && Array.isArray(d.data)) {
           setCounts({
@@ -175,8 +180,10 @@ export default function AdminAssociatesPage() {
       .catch((e) => console.error('Failed to fetch counts:', e));
   }, [user, accessToken, apiUrl]);
 
-  const fetchAssociates = async () => {
+  const fetchAssociates = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
+    setLoadError(null);
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (activeTab !== 'all') params.set('status', activeTab);
@@ -187,24 +194,26 @@ export default function AdminAssociatesPage() {
       const resp = await fetch(`${apiUrl}/api/admin/associates?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await resp.json();
-      if (data?.success) {
-        setAssociates(data.data || []);
-        setTotal(data.total || 0);
-      } else {
-        toast('error', data?.error || 'Gagal memuat data associate');
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data?.success) {
+        throw new Error(data?.error || `Server merespons HTTP ${resp.status}`);
       }
-    } catch {
-      toast('error', 'Gagal terhubung ke server');
+      setAssociates(data.data || []);
+      setTotal(data.total || 0);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Gagal terhubung ke server';
+      setAssociates([]);
+      setTotal(0);
+      setLoadError(`Daftar associate tidak dapat dimuat. ${detail}`);
+      toast('error', 'Daftar associate gagal dimuat');
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, activeTab, apiUrl, search, toast]);
 
   useEffect(() => {
-    if (user) fetchAssociates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, accessToken, activeTab, search]);
+    if (user && accessToken) fetchAssociates();
+  }, [user, accessToken, fetchAssociates]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,6 +326,14 @@ export default function AdminAssociatesPage() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
+      ) : loadError ? (
+        <ServiceError
+          title="Daftar associate gagal dimuat"
+          message={loadError}
+          onRetry={fetchAssociates}
+          retrying={loading}
+          className="min-h-[400px]"
+        />
       ) : associates.length === 0 ? (
         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white">
           <svg className="h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

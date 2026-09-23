@@ -1,11 +1,11 @@
 {
   "name": "binahub-platform",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "private": true,
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "lint": "eslint \"apps/*/src/**/*.{ts,tsx}\" \"apps/api/api/**/*.ts\" \"packages/*/src/**/*.{ts,tsx}\"",
+    "lint": "eslint \"apps/*/src/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\"",
     "test:smoke": "node scripts/ams-production-smoke.mjs",
     "test:cv": "node scripts/ams-cv-workflow-smoke.mjs",
     "test:cv-admin": "node scripts/ams-admin-cv-enrichment-smoke.mjs",

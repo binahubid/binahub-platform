@@ -4,7 +4,6 @@ export default defineConfig({
   entry: {
     'index': 'src/index.ts',
     'app': 'src/app.ts',
-    'api/index': 'api/index.ts',
   },
   format: ['esm'],
   target: 'node20',

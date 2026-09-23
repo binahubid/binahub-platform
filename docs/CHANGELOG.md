@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.8.3] — 2026-09-23
+
+### Fixed
+
+- Menghapus function wrapper `api/index.ts`, entry build terkait, dan rewrite catch-all ke `/api/index.js` yang membuat deployment Vercel terlihat **Ready** tetapi seluruh route `/api/*` serta preflight CORS berakhir sebagai 404.
+- Mengembalikan deployment API ke integrasi Hono native Vercel melalui default export pada `src/app.ts`, sesuai mekanisme zero-configuration Vercel untuk Hono.
+- Menaikkan health marker menjadi `0.8.3` agar deployment routing yang sehat dapat dibedakan dari deployment v0.8.2 yang build-nya berhasil tetapi route production-nya tidak terpasang.
+- Halaman daftar associate, dashboard associate, dan dashboard admin kini membedakan kegagalan API dari data kosong; pengguna mendapat pesan gangguan, tautan status, dan aksi coba ulang, bukan angka nol atau status "belum ada" yang menyesatkan.
+- Halaman status kini memvalidasi marker versi API `0.8.3`, bukan sekadar menerima respons HTTP 200.
+- Production smoke kini memeriksa preflight CORS dari `https://ams.binahub.id` agar konfigurasi browser diverifikasi sebelum login.
+
+### Deployment Notes
+
+- Pada project Vercel API, Root Directory tetap `apps/api`. Deploy ulang commit v0.8.3 dan pastikan `https://<domain-api>/api/health` mengembalikan `{"status":"ok","version":"0.8.3"}`.
+- Jangan menganggap status deployment **Ready** sebagai health check. Jalankan `npm run test:smoke` setelah alias Production berpindah ke v0.8.3.
+- Setelah health API lulus, pastikan environment build web `NEXT_PUBLIC_API_URL` berisi origin domain API yang sama tanpa path tambahan, lalu deploy ulang web.
+
 ## [0.8.2] — 2026-09-23
 
 ### Added
