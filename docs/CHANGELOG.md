@@ -16,6 +16,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
 - Production smoke kini memeriksa preflight CORS dari `https://ams.binahub.id` agar konfigurasi browser diverifikasi sebelum login.
 - Inisialisasi Supabase API kini lazy sehingga konfigurasi deployment yang belum lengkap tidak lagi menjatuhkan seluruh Vercel Function saat cold start. Endpoint health tetap dapat dibaca dan mengembalikan HTTP 503 beserta **nama** environment yang belum tersedia, tanpa mengekspos nilainya.
 - Install step Vercel API kini membangun package workspace `@ams/*` sebelum Hono dibundel. Ini mencegah deployment berstatus sukses tetapi gagal saat runtime karena entry `dist/` milik dependency monorepo tidak tersedia di Git.
+- Memperbaiki entry ESM `@ams/ai` yang sebelumnya menghasilkan import relatif tanpa ekstensi `.js`. Build dapat terlihat sukses, tetapi Vercel Function gagal saat cold start dengan `ERR_MODULE_NOT_FOUND` sebelum route health sempat berjalan.
+- Parser PDF/DOCX tidak lagi diekspor dari entry utama `@ams/ai`. Parser dimuat secara dinamis dari subpath khusus hanya saat CV benar-benar diproses, dan build API memakai code splitting agar mesin parser dokumen yang besar tidak membebani cold start seluruh endpoint.
 
 ### Deployment Notes
 

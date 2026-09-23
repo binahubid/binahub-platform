@@ -17,6 +17,10 @@
     "./prompts/*": {
       "types": "./dist/prompts/*.d.ts",
       "default": "./dist/prompts/*.js"
+    },
+    "./utils/pdf": {
+      "types": "./dist/utils/pdf.d.ts",
+      "default": "./dist/utils/pdf.js"
     }
   },
   "scripts": {

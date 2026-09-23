@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
-import type { AIProvider, AIProviderConfig, ParsedCV } from './base';
-import { CV_PARSING_PROMPT } from '../prompts/cv-parsing';
+import type { AIProvider, AIProviderConfig, ParsedCV } from './base.js';
+import { CV_PARSING_PROMPT } from '../prompts/cv-parsing.js';
 
 const nullableText = (max: number) => z.string().trim().max(max).nullable().optional().default(null);
 const nullableDate = z.string().trim().refine((value) => {

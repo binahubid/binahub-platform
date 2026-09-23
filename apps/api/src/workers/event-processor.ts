@@ -1,5 +1,5 @@
 import { getDb } from '../lib/database.js';
-import { OpenAIProvider, extractTextFromDocx, extractTextFromPDF } from '@ams/ai';
+import { OpenAIProvider } from '@ams/ai';
 import type { EventQueue } from '@ams/shared/types/events';
 
 // ============================================
@@ -208,6 +208,7 @@ async function extractTextFromFile(fileData: Blob, mime: string): Promise<string
 
   if (mime === 'application/pdf') {
     try {
+      const { extractTextFromPDF } = await import('@ams/ai/utils/pdf');
       return await extractTextFromPDF(buffer);
     } catch (e) {
       console.error('PDF text extraction failed:', e);
@@ -217,6 +218,7 @@ async function extractTextFromFile(fileData: Blob, mime: string): Promise<string
 
   if (mime.includes('word')) {
     try {
+      const { extractTextFromDocx } = await import('@ams/ai/utils/pdf');
       return await extractTextFromDocx(buffer);
     } catch (error) {
       console.error('Word text extraction failed:', error);

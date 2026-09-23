@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../auth/middleware/auth.js';
 import { getDb } from '../../lib/database.js';
-import { extractTextFromDocx, extractTextFromPDF, OpenAIProvider } from '@ams/ai';
+import { OpenAIProvider } from '@ams/ai';
 import type { AppEnv } from '../../types/env.js';
 import { rateLimit } from '../../middleware/rate-limit.js';
 
@@ -88,10 +88,12 @@ ai.post('/parse-cv', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c)
             if (isPDF) {
               const arrayBuffer = await resp.arrayBuffer();
               const buffer = Buffer.from(arrayBuffer);
+              const { extractTextFromPDF } = await import('@ams/ai/utils/pdf');
               cvText = await extractTextFromPDF(buffer);
               console.log('PDF text extraction success. Character length:', cvText?.length);
             } else if (isDocx) {
               const arrayBuffer = await resp.arrayBuffer();
+              const { extractTextFromDocx } = await import('@ams/ai/utils/pdf');
               cvText = await extractTextFromDocx(Buffer.from(arrayBuffer));
               console.log('DOCX text extraction success. Character length:', cvText?.length);
             } else {

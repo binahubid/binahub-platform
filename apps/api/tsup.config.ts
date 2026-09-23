@@ -8,7 +8,8 @@ export default defineConfig({
   format: ['esm'],
   target: 'node20',
   platform: 'node',
-  splitting: false,
+  // Keep rarely used document parsers out of the cold-start entry chunk.
+  splitting: true,
   sourcemap: true,
   clean: true,
   outDir: 'dist',

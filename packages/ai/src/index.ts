@@ -1,6 +1,6 @@
 import OpenAI from "openai";
-import { OpenAIProvider } from "./providers/openai";
-import type { ParsedCV } from "./providers/base";
+import { OpenAIProvider } from "./providers/openai.js";
+import type { ParsedCV } from "./providers/base.js";
 
 export function createAIClient() {
   const apiKey = process.env.OPENAI_API_KEY ?? "";
@@ -20,8 +20,7 @@ export async function parseCV(text: string): Promise<ParsedCV> {
 }
 
 export { OpenAIProvider };
-export type { AIProvider, AIProviderConfig, ParsedCV } from "./providers/base";
-export { extractTextFromDocx, extractTextFromPDF, extractTextFromPDFFile } from "./utils/pdf";
+export type { AIProvider, AIProviderConfig, ParsedCV } from "./providers/base.js";
 
 export async function rankCandidates(
   assignment: { title: string; client_name: string; description: string; needed_roles: string[] },
