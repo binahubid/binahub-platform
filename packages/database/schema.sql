@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS assignment_assignees (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_assignment_assignees_unique ON assignment_assignees(assignment_id, associate_id);
 
 -- 5. INDEXES
+ALTER TABLE associate_documents ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
 CREATE INDEX IF NOT EXISTS idx_assignment_assignees_assignment_id ON assignment_assignees(assignment_id);
 CREATE INDEX IF NOT EXISTS idx_assignment_assignees_associate_id ON assignment_assignees(associate_id);
 CREATE INDEX IF NOT EXISTS idx_associate_experiences_associate_id ON associate_experiences(associate_id);
@@ -74,6 +75,7 @@ CREATE INDEX IF NOT EXISTS idx_associate_skills_associate_id ON associate_skills
 CREATE INDEX IF NOT EXISTS idx_associate_languages_associate_id ON associate_languages(associate_id);
 CREATE INDEX IF NOT EXISTS idx_associate_portfolios_associate_id ON associate_portfolios(associate_id);
 CREATE INDEX IF NOT EXISTS idx_associate_documents_associate_id ON associate_documents(associate_id);
+CREATE INDEX IF NOT EXISTS idx_associate_documents_active_by_associate ON associate_documents(associate_id, created_at DESC) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_associate_social_links_associate_id ON associate_social_links(associate_id);
 CREATE INDEX IF NOT EXISTS idx_associate_emergency_contacts_associate_id ON associate_emergency_contacts(associate_id);
 CREATE INDEX IF NOT EXISTS idx_associate_reviews_associate_id ON associate_reviews(associate_id);

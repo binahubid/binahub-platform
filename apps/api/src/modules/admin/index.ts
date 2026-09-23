@@ -1364,9 +1364,17 @@ admin.post('/associates/:id/cv/apply', async (c) => {
     .eq('associate_id', associateId)
     .eq('type', 'cv')
     .is('deleted_at', null)
-    .single();
+    .maybeSingle();
 
-  if (documentError || !document) {
+  if (documentError) {
+    console.error('Admin CV document lookup failed', {
+      code: documentError.code,
+      associateId,
+      documentId,
+    });
+    return c.json({ success: false, error: 'Dokumen belum dapat dibaca. Periksa kesiapan database.' }, 500);
+  }
+  if (!document) {
     return c.json({ success: false, error: 'Dokumen CV tidak ditemukan' }, 404);
   }
   if (!document.parsed_data || typeof document.parsed_data !== 'object') {

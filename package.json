@@ -1,6 +1,6 @@
 {
   "name": "binahub-platform",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "private": true,
   "scripts": {
     "dev": "turbo dev",
@@ -9,6 +9,7 @@
     "test:smoke": "node scripts/ams-production-smoke.mjs",
     "test:cv": "node scripts/ams-cv-workflow-smoke.mjs",
     "test:cv-admin": "node scripts/ams-admin-cv-enrichment-smoke.mjs",
+    "admin:cv-enrich": "node scripts/ams-cv-enrichment-interactive.mjs",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",

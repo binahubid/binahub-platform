@@ -42,9 +42,17 @@ ai.post('/parse-cv', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c)
     if (user.role !== 'admin') {
       documentQuery = documentQuery.eq('associate_id', user.id);
     }
-    const { data: doc, error } = await documentQuery.single();
+    const { data: doc, error } = await documentQuery.maybeSingle();
 
-    if (error || !doc) {
+    if (error) {
+      console.error('CV document lookup failed', {
+        code: error.code,
+        associateId: user.role === 'admin' ? undefined : user.id,
+        documentId: document_id,
+      });
+      return c.json({ success: false, error: 'Dokumen belum dapat dibaca. Periksa kesiapan database.' }, 500);
+    }
+    if (!doc) {
       return c.json({ success: false, error: 'Dokumen tidak ditemukan' }, 404);
     }
 

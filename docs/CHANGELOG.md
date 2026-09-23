@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.8.4] — 2026-09-23
+
+### Added
+
+- Menambahkan runner operasional interaktif `npm run admin:cv-enrich`. Admin dapat melihat profil tidak lengkap yang mempunyai dokumen, memilih tepat satu pengguna, menganalisis ulang CV tersimpan, meninjau ringkasan hasil AI, lalu menerapkannya hanya setelah mengetik konfirmasi eksplisit. Runner tidak melakukan pemrosesan massal dan tidak mengganti CV aktif.
+
+### Fixed
+
+- Menambahkan migration `010_add_document_soft_delete.sql` untuk menyelaraskan database produksi dengan kontrak runtime `associate_documents.deleted_at`. Ketidaksesuaian ini sebelumnya membuat CV yang nyata dan aktif dilaporkan sebagai “Dokumen tidak ditemukan” saat admin meminta analisis ulang.
+- Kegagalan query database pada pencarian CV sekarang dibedakan dari dokumen yang benar-benar tidak ada, sehingga schema drift tidak lagi disamarkan sebagai HTTP 404.
+
+### Deployment Notes
+
+- Jalankan migration `010_add_document_soft_delete.sql` sebelum memakai analisis ulang CV atau runner `admin:cv-enrich`.
+
 ## [0.8.3] — 2026-09-23
 
 ### Fixed
