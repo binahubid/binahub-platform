@@ -32,8 +32,8 @@ if (!apiUrl || !/^https:\/\//i.test(apiUrl)) {
   try {
     const health = await request('/api/health');
     report(
-      health.response.ok && health.body?.status === 'ok' && health.body?.version === '0.8.1',
-      'health API versi 0.8.1 tersedia',
+      health.response.ok && health.body?.status === 'ok' && health.body?.version === '0.8.2',
+      'health API versi 0.8.2 tersedia',
       `HTTP ${health.response.status}`,
     );
 

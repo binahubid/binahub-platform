@@ -110,7 +110,7 @@ try {
     headers: { ...authHeaders, 'Content-Type': 'application/json' },
     body: JSON.stringify({ fileId }),
   });
-  report(confirm.response.ok && confirm.body?.success === true, 'CV dikonfirmasi dan event parsing dibuat');
+  report(confirm.response.ok && confirm.body?.success === true, 'CV dikonfirmasi dan siap dianalisis');
   if (!confirm.response.ok) throw new Error('Konfirmasi CV gagal');
 
   const parse = await jsonRequest(`${apiUrl}/api/ai/parse-cv`, {
@@ -149,7 +149,7 @@ try {
       achievement: item.achievement,
       startDate: item.startDate,
       endDate: item.endDate,
-      isCurrent: !item.endDate,
+      isCurrent: Boolean(item.isCurrent),
     })),
     educations: (parsed.education || []).map((item) => ({
       institution: item.institution,

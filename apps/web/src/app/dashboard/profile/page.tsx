@@ -267,7 +267,7 @@ export default function ProfilePage() {
           achievement: exp.achievement || null,
           startDate: exp.startDate,
           endDate: exp.endDate || null,
-          isCurrent: !exp.endDate
+          isCurrent: Boolean(exp.isCurrent)
         })),
         educations: (parsed.education || []).map((edu: any) => ({
           institution: edu.institution,

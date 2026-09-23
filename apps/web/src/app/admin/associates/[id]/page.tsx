@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
 import { Avatar, StatusBadge, Tabs, useToast } from '../../../../components/ui';
 import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
+import { AdminCVEnrichment } from './components/admin-cv-enrichment';
 
 type DetailData = {
   id: string;
@@ -579,6 +580,15 @@ export default function AssociateDetailPage() {
           {/* Documents Tab */}
           {activeTab === 'documents' && (
             <div className="space-y-3">
+              {!isReviewer && accessToken && (
+                <AdminCVEnrichment
+                  associateId={String(params.id)}
+                  accessToken={accessToken}
+                  apiUrl={apiUrl}
+                  currentDocumentId={data.documents?.find((document) => document.type === 'cv')?.id}
+                  onApplied={fetchDetail}
+                />
+              )}
               {data.documents?.map((doc) => {
                 const isCV = doc.type === 'cv';
                 const fileViewUrl = `/api/files/${doc.id}/view`;

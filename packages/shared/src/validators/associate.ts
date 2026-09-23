@@ -308,6 +308,8 @@ export const importCVSchema = z.object({
     gender: z.enum(['male', 'female', 'other']).nullable().optional(),
     linkedIn: z.string().trim().url('URL LinkedIn hasil CV tidak valid').max(2000).nullable().optional(),
     website: z.string().trim().url('URL website hasil CV tidak valid').max(2000).nullable().optional(),
+    roles: z.array(z.string().trim().min(1).max(100)).max(20).optional().default([]),
+    expertises: z.array(z.string().trim().min(1).max(100)).max(30).optional().default([]),
   }).strict().optional().default({}),
   experiences: z.array(z.object({
     organization: z.string().trim().min(1).max(255),
@@ -343,6 +345,16 @@ export const importCVSchema = z.object({
     expiryDate: cvDateSchema.nullable().optional(),
     credentialId: z.string().trim().max(255).nullable().optional(),
     credentialUrl: z.string().trim().url('URL kredensial hasil CV tidak valid').max(2000).nullable().optional(),
+  }).strict()).max(100).optional().default([]),
+  portfolios: z.array(z.object({
+    title: z.string().trim().min(1).max(255),
+    description: z.string().trim().max(5000).nullable().optional(),
+    category: z.string().trim().max(100).nullable().optional(),
+    clientName: z.string().trim().max(255).nullable().optional(),
+    projectUrl: z.string().trim().url('URL proyek hasil CV tidak valid').max(2000).nullable().optional(),
+    startDate: cvDateSchema.nullable().optional(),
+    endDate: cvDateSchema.nullable().optional(),
+    skillsUsed: z.array(z.string().trim().min(1).max(100)).max(50).optional().default([]),
   }).strict()).max(100).optional().default([]),
 }).strict();
 

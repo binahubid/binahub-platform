@@ -11,9 +11,9 @@ ai.use('*', authMiddleware);
 
 ai.post('/parse-cv', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c) => {
   const user = c.get('user');
-  const body = await c.req.json().catch(() => null) as { document_id?: unknown; text?: unknown } | null;
+  const body = await c.req.json().catch(() => null) as { document_id?: unknown; text?: unknown; force?: unknown } | null;
   if (!body) return c.json({ success: false, error: 'Format JSON tidak valid' }, 400);
-  const { document_id, text } = body;
+  const { document_id, text, force } = body;
 
   if (document_id !== undefined && typeof document_id !== 'string') {
     return c.json({ success: false, error: 'document_id tidak valid' }, 400);
@@ -21,18 +21,28 @@ ai.post('/parse-cv', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c)
   if (text !== undefined && (typeof text !== 'string' || text.length > 200_000)) {
     return c.json({ success: false, error: 'Teks CV tidak valid atau terlalu panjang' }, 400);
   }
+  if (force !== undefined && typeof force !== 'boolean') {
+    return c.json({ success: false, error: 'Nilai force tidak valid' }, 400);
+  }
+  if (force === true && user.role !== 'admin') {
+    return c.json({ success: false, error: 'Hanya admin yang dapat meminta analisis ulang' }, 403);
+  }
 
   const db = getDb();
 
   let cvText = typeof text === 'string' ? text.trim() : '';
 
   if (document_id) {
-    const { data: doc, error } = await db
+    let documentQuery = db
       .from('associate_documents')
       .select('*')
       .eq('id', document_id)
-      .eq('associate_id', user.id)
-      .single();
+      .eq('type', 'cv')
+      .is('deleted_at', null);
+    if (user.role !== 'admin') {
+      documentQuery = documentQuery.eq('associate_id', user.id);
+    }
+    const { data: doc, error } = await documentQuery.single();
 
     if (error || !doc) {
       return c.json({ success: false, error: 'Dokumen tidak ditemukan' }, 404);
@@ -40,7 +50,7 @@ ai.post('/parse-cv', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (c)
 
     // Reuse a completed parse so retrying the same document does not trigger
     // another paid AI call.
-    if (doc.parsed_data && typeof doc.parsed_data === 'object') {
+    if (force !== true && doc.parsed_data && typeof doc.parsed_data === 'object') {
       return c.json({ success: true, data: doc.parsed_data, cached: true });
     }
 

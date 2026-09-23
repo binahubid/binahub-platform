@@ -304,7 +304,7 @@ export default function OnboardingPage() {
           achievement: exp.achievement,
           startDate: typeof exp.startDate === 'string' ? exp.startDate : '',
           endDate: typeof exp.endDate === 'string' ? exp.endDate : '',
-          isCurrent: !exp.endDate
+          isCurrent: Boolean(exp.isCurrent)
         })));
       }
       if (dataToUse.education) {

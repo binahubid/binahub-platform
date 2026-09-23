@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { authMiddleware, requireRole } from '../auth/middleware/auth.js';
 import { getDb } from '../../lib/database.js';
 import { rankCandidates } from '@ams/ai';
+import type { ParsedCV } from '@ams/ai';
+import { importCVSchema } from '@ams/shared/validators/associate';
 import type { AppEnv } from '../../types/env.js';
 
 const admin = new Hono<AppEnv>();
@@ -39,6 +41,84 @@ function normalizedRoles(value: unknown): string[] | null {
       .map((role) => role.trim())
       .filter((role) => role.length > 0 && role.length <= 100),
   )).slice(0, 50);
+}
+
+function parsedCVImportPayload(parsed: ParsedCV) {
+  const experiences = Array.isArray(parsed.experience) ? parsed.experience : [];
+  const educations = Array.isArray(parsed.education) ? parsed.education : [];
+  const skills = Array.isArray(parsed.skills) ? parsed.skills : [];
+  const languages = Array.isArray(parsed.languages) ? parsed.languages : [];
+  const certifications = Array.isArray(parsed.certifications) ? parsed.certifications : [];
+  const portfolios = Array.isArray(parsed.portfolios) ? parsed.portfolios : [];
+  const roles = Array.isArray(parsed.roles) ? parsed.roles : [];
+  const expertises = Array.isArray(parsed.expertises) ? parsed.expertises : [];
+  const skippedExperiences = experiences.filter((item) => !item.company || !item.position || !item.startDate).length;
+  const payload = {
+    profile: {
+      fullName: parsed.fullName,
+      preferredName: parsed.preferredName,
+      phone: parsed.phone,
+      city: parsed.location,
+      headline: parsed.headline,
+      bio: parsed.bio,
+      nationality: parsed.nationality,
+      dateOfBirth: parsed.dateOfBirth,
+      gender: parsed.gender,
+      linkedIn: parsed.linkedIn,
+      website: parsed.website,
+      roles: Array.from(new Set(roles)),
+      expertises: Array.from(new Set(expertises)),
+    },
+    experiences: experiences
+      .filter((item) => item.company && item.position && item.startDate)
+      .map((item) => ({
+        organization: item.company,
+        position: item.position,
+        industry: item.industry,
+        description: item.description,
+        achievement: item.achievement,
+        startDate: item.startDate as string,
+        endDate: item.endDate,
+        isCurrent: Boolean(item.isCurrent),
+      })),
+    educations: educations.map((item) => ({
+      institution: item.institution,
+      degree: item.degree,
+      fieldOfStudy: item.fieldOfStudy,
+      startYear: item.startYear,
+      endYear: item.endYear,
+    })),
+    skills: skills.map((item) => ({
+      skillName: item.name,
+      category: item.category,
+      proficiency: item.proficiency,
+      yearsExperience: item.yearsExperience,
+    })),
+    languages: languages.map((item) => ({
+      language: item.language,
+      proficiency: item.proficiency,
+    })),
+    certifications: certifications.map((item) => ({
+      name: item.name,
+      issuer: item.issuer,
+      issueDate: item.issueDate,
+      expiryDate: item.expiryDate,
+      credentialId: item.credentialId,
+      credentialUrl: item.credentialUrl,
+    })),
+    portfolios: portfolios.map((item) => ({
+      title: item.title,
+      description: item.description,
+      category: item.category,
+      clientName: item.clientName,
+      projectUrl: item.projectUrl,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      skillsUsed: item.skillsUsed,
+    })),
+  };
+
+  return { payload, skippedExperiences };
 }
 
 admin.use('*', authMiddleware);
@@ -1263,6 +1343,76 @@ admin.get('/associates/:id/cv', async (c) => {
       availability: availability || [],
       social_links: socialLinks || [],
     },
+  });
+});
+
+admin.post('/associates/:id/cv/apply', async (c) => {
+  const associateId = c.req.param('id');
+  const actor = c.get('user');
+  const body = await c.req.json().catch(() => null) as { documentId?: unknown } | null;
+  const documentId = typeof body?.documentId === 'string' ? body.documentId : '';
+
+  if (!UUID_RE.test(associateId) || !UUID_RE.test(documentId)) {
+    return c.json({ success: false, error: 'Associate atau dokumen tidak valid' }, 400);
+  }
+
+  const db = getDb();
+  const { data: document, error: documentError } = await db
+    .from('associate_documents')
+    .select('id, associate_id, parsed_data')
+    .eq('id', documentId)
+    .eq('associate_id', associateId)
+    .eq('type', 'cv')
+    .is('deleted_at', null)
+    .single();
+
+  if (documentError || !document) {
+    return c.json({ success: false, error: 'Dokumen CV tidak ditemukan' }, 404);
+  }
+  if (!document.parsed_data || typeof document.parsed_data !== 'object') {
+    return c.json({ success: false, error: 'CV belum dianalisis oleh AI' }, 409);
+  }
+
+  const { payload, skippedExperiences } = parsedCVImportPayload(document.parsed_data as unknown as ParsedCV);
+  const validation = importCVSchema.safeParse(payload);
+  if (!validation.success) {
+    console.error('Admin CV apply validation failed:', validation.error.flatten());
+    return c.json({ success: false, error: 'Hasil analisis CV belum valid untuk diterapkan' }, 422);
+  }
+
+  const parsed = validation.data;
+  const { data: mergeResult, error: mergeError } = await db.rpc('merge_cv_data', {
+    p_associate_id: associateId,
+    p_profile: parsed.profile,
+    p_experiences: parsed.experiences,
+    p_educations: parsed.educations,
+    p_skills: parsed.skills,
+    p_languages: parsed.languages,
+    p_certifications: parsed.certifications,
+    p_portfolios: parsed.portfolios,
+  });
+
+  if (mergeError) {
+    console.error('Admin CV merge failed:', mergeError);
+    return c.json({ success: false, error: 'Data CV belum dapat diterapkan ke profil' }, 500);
+  }
+
+  console.info('Admin applied reviewed CV enrichment', {
+    actorId: actor.id,
+    associateId,
+    documentId,
+    skippedExperiences,
+  });
+
+  return c.json({
+    success: true,
+    data: {
+      ...(mergeResult && typeof mergeResult === 'object' ? mergeResult : {}),
+      skippedExperiences,
+    },
+    message: skippedExperiences > 0
+      ? `Profil dilengkapi. ${skippedExperiences} pengalaman tanpa tanggal mulai dilewati.`
+      : 'Profil berhasil dilengkapi dari CV.',
   });
 });
 

@@ -15,11 +15,14 @@ export interface ParsedCV {
   bio: string | null;
   linkedIn: string | null;
   website: string | null;
+  roles: string[];
+  expertises: string[];
   skills: ParsedSkill[];
   experience: ParsedExperience[];
   education: ParsedEducation[];
   certifications: ParsedCertification[];
   languages: ParsedLanguage[];
+  portfolios: ParsedPortfolio[];
 }
 
 export interface ParsedSkill {
@@ -37,6 +40,7 @@ export interface ParsedExperience {
   achievement: string | null;
   startDate: string | null;
   endDate: string | null;
+  isCurrent: boolean;
 }
 
 export interface ParsedEducation {
@@ -59,6 +63,17 @@ export interface ParsedCertification {
 export interface ParsedLanguage {
   language: string;
   proficiency: string | null;
+}
+
+export interface ParsedPortfolio {
+  title: string;
+  description: string | null;
+  category: string | null;
+  clientName: string | null;
+  projectUrl: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  skillsUsed: string[];
 }
 
 // ============================================

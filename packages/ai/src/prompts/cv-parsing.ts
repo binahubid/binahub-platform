@@ -14,6 +14,8 @@ Return a JSON object with the following structure:
   "bio": "A compelling 2-3 sentence professional summary about their expertise and value",
   "linkedIn": "Complete LinkedIn URL beginning with https:// or null",
   "website": "Complete personal website or portfolio URL beginning with https:// or null",
+  "roles": ["Professional roles explicitly supported by the CV, such as Trainer, Facilitator, Consultant, Coach, Assessor, Mentor, Speaker, Researcher, Writer, Game Master, or Other"],
+  "expertises": ["Distinct domains of expertise supported by work, projects, education, certification, or repeated skills"],
   "skills": [
     {
       "name": "Skill name",
@@ -30,7 +32,8 @@ Return a JSON object with the following structure:
       "description": "Job description and responsibilities",
       "achievement": "Distinct achievements or measurable results, otherwise null",
       "startDate": "YYYY-MM or YYYY",
-      "endDate": "YYYY-MM or YYYY or null if current"
+      "endDate": "YYYY-MM or YYYY or null if current",
+      "isCurrent": true
     }
   ],
   "education": [
@@ -57,16 +60,32 @@ Return a JSON object with the following structure:
       "language": "Language name",
       "proficiency": "basic|conversational|fluent|native"
     }
+  ],
+  "portfolios": [
+    {
+      "title": "Named project, program, workshop, publication, research, speaking engagement, or case study",
+      "description": "What was delivered, the person's contribution, scope, and result",
+      "category": "Case Study|Presentation|Workshop Module|Research Paper|Video|Publication|Proposal|Training Material|Other",
+      "clientName": "Client or beneficiary exactly as stated, otherwise null",
+      "projectUrl": "Complete public project URL beginning with https:// or null",
+      "startDate": "YYYY-MM or YYYY or null",
+      "endDate": "YYYY-MM or YYYY or null",
+      "skillsUsed": ["Relevant skills explicitly demonstrated by this project"]
+    }
   ]
 }
 
 Rules:
 1. Extract information exactly as written in the CV
 2. If information is not available, return null. Never infer sensitive personal attributes such as gender, nationality, or date of birth.
-3. For skills, categorize them appropriately — especially identify facilitation, training, coaching, and soft skills
-4. For proficiency levels, infer from context (years of experience, description, certifications)
-5. Keep dates in YYYY-MM format, or YYYY-MM-DD when full date is available
-6. For headline: create a professional, concise title that reflects their primary expertise
-7. For bio: write a compelling summary that highlights their unique value
-8. Do not add information not present in the CV
-9. Return only valid JSON, no additional text`;
+3. Extract every distinct employment, education, certification, language, skill, and named project. Do not collapse several entries into one summary.
+4. For skills, categorize them appropriately — especially identify facilitation, training, coaching, and soft skills.
+5. Derive roles and expertises only from evidence in the CV. Use concise labels and remove duplicates.
+6. Put formal degrees in education, professional credentials in certifications, and named delivery/projects/publications in portfolios. The same source item must not be duplicated across unrelated sections.
+7. For proficiency levels, infer from context (years of experience, description, certifications).
+8. Keep dates in YYYY-MM format, YYYY, or YYYY-MM-DD when a full date is available. Set isCurrent true only when the CV says present/current/sekarang.
+9. For headline: create a professional, concise title that reflects their primary expertise.
+10. For bio: write a compelling summary grounded only in CV evidence.
+11. Preserve useful responsibilities, achievements, metrics, project scope, client names, and credential details. Do not replace them with vague summaries.
+12. Do not add information not present in the CV.
+13. Return only valid JSON, no additional text.`;

@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [0.8.2] — 2026-09-23
+
+### Added
+
+- Menambahkan panel **AI Profile Enrichment** pada tab Documents detail associate. Admin dapat mengunggah CV PDF/DOCX atau menganalisis ulang CV tersimpan, melihat ringkasan data yang ditemukan, lalu mengonfirmasi penerapan ke profil.
+- Menambahkan migration `009_admin_cv_enrichment.sql` dengan RPC `merge_cv_data`. RPC mempertahankan koleksi yang sudah ada dan hanya menambahkan pengalaman, pendidikan, keahlian, bahasa, sertifikasi, serta portofolio yang belum memiliki natural key serupa.
+- Parser CV kini mengenali peran profesional, bidang keahlian, proyek/portofolio, status pekerjaan saat ini, client, capaian, dan skills per proyek.
+- Menambahkan runner opt-in `npm run test:cv-admin` untuk UAT upload, analisis ulang, penerapan, read-back, dan idempotensi enrichment pada satu akun associate UAT khusus.
+
+### Changed
+
+- Batas keluaran parser dinaikkan dari 4.096 menjadi 12.000 token dan temperatur ekstraksi diturunkan agar CV panjang menghasilkan data yang lebih lengkap serta konsisten.
+- Admin dapat meminta analisis ulang CV tanpa menggunakan cache lama. Associate biasa tetap hanya dapat membaca dan menganalisis dokumennya sendiri.
+- Scalar profil yang ditemukan di CV diterapkan setelah konfirmasi admin, sedangkan entri koleksi lama tidak dihapus.
+- Status pekerjaan aktif mengikuti penanda `current/present/sekarang` dari CV dan tidak lagi ditebak hanya karena tanggal akhir kosong.
+- Konfigurasi CORS membaca `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL`, dan `APP_URL`, serta menormalisasi trailing slash.
+
+### Fixed
+
+- Mengidentifikasi kegagalan dashboard user yang tampak sebagai CORS sebagai URL deployment API preview yang tidak tersedia. Allowlist API v0.8.2 telah diverifikasi menerima origin produksi `https://ams.binahub.id`; pemulihan produksi tetap memerlukan URL deployment API yang hidup pada `NEXT_PUBLIC_API_URL`.
+- Mengatasi hasil impor CV yang sebelumnya tidak pernah memasukkan peran, expertise, dan portofolio meskipun informasi tersebut tersedia di dokumen.
+- Membatasi analisis berbasis `document_id` hanya untuk dokumen CV aktif dan menyerialkan penerapan draft yang sama agar permintaan paralel tidak menggandakan koleksi profil.
+
+### Deployment Notes
+
+- Jalankan migration `008_harden_cv_import.sql`, kemudian `009_admin_cv_enrichment.sql` sebelum memakai tombol **Terapkan ke profil**.
+- Deploy API terlebih dahulu dan pastikan `/api/health` menampilkan `0.8.2`. Setelah itu ubah `NEXT_PUBLIC_API_URL` web ke URL production API yang hidup—jangan memakai URL preview deployment yang gagal—lalu deploy ulang web.
+- Jalankan smoke read-only, kemudian `npm run test:cv-admin` dengan satu akun associate UAT khusus sebelum memakai enrichment pada data nyata.
+
 ## [0.8.1] — 2026-09-22
 
 ### Security

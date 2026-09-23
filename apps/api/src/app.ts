@@ -12,9 +12,16 @@ import type { AppEnv } from "./types/env.js";
 
 const app = new Hono<AppEnv>();
 
-const configuredOrigins = (process.env.CORS_ALLOWED_ORIGINS || "")
-  .split(",")
-  .map((origin) => origin.trim())
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/$/, "");
+}
+
+const configuredOrigins = [
+  ...(process.env.CORS_ALLOWED_ORIGINS || "").split(","),
+  process.env.FRONTEND_URL || "",
+  process.env.APP_URL || "",
+]
+  .map(normalizeOrigin)
   .filter(Boolean);
 
 const allowedOrigins = new Set([
@@ -26,13 +33,14 @@ const allowedOrigins = new Set([
 ]);
 
 function resolveCorsOrigin(origin: string): string | undefined {
-  if (allowedOrigins.has(origin)) return origin;
+  const normalized = normalizeOrigin(origin);
+  if (allowedOrigins.has(normalized)) return normalized;
 
   if (
     process.env.NODE_ENV !== "production" &&
-    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized)
   ) {
-    return origin;
+    return normalized;
   }
 
   return undefined;
@@ -139,7 +147,7 @@ app.route("/workers", workerRoutes);
 
 app.get("/", (c) => c.json({ status: "ok", message: "BinaApps API is running" }));
 app.get("/api", (c) => c.json({ status: "ok", message: "BinaApps API is running" }));
-app.get("/api/health", (c) => c.json({ status: "ok", version: "0.8.1" }));
-app.get("/health", (c) => c.json({ status: "ok", version: "0.8.1" }));
+app.get("/api/health", (c) => c.json({ status: "ok", version: "0.8.2" }));
+app.get("/health", (c) => c.json({ status: "ok", version: "0.8.2" }));
 
 export default app;

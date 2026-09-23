@@ -30,6 +30,8 @@ const parsedCVSchema = z.object({
   bio: nullableText(5000),
   linkedIn: nullableUrl,
   website: nullableUrl,
+  roles: z.array(z.string().trim().min(1).max(100)).max(20).optional().default([]),
+  expertises: z.array(z.string().trim().min(1).max(100)).max(30).optional().default([]),
   skills: z.array(z.object({
     name: z.string().trim().min(1).max(100),
     category: z.enum(['technical', 'soft_skill', 'industry', 'other']).nullable().optional().default(null),
@@ -44,6 +46,7 @@ const parsedCVSchema = z.object({
     achievement: nullableText(5000),
     startDate: nullableDate,
     endDate: nullableDate,
+    isCurrent: z.boolean().optional().default(false),
   })).max(100).optional().default([]),
   education: z.array(z.object({
     institution: z.string().trim().min(1).max(255),
@@ -64,6 +67,16 @@ const parsedCVSchema = z.object({
     language: z.string().trim().min(1).max(100),
     proficiency: z.enum(['basic', 'conversational', 'fluent', 'native']).nullable().optional().default(null),
   })).max(50).optional().default([]),
+  portfolios: z.array(z.object({
+    title: z.string().trim().min(1).max(255),
+    description: nullableText(5000),
+    category: nullableText(100),
+    clientName: nullableText(255),
+    projectUrl: nullableUrl,
+    startDate: nullableDate,
+    endDate: nullableDate,
+    skillsUsed: z.array(z.string().trim().min(1).max(100)).max(50).optional().default([]),
+  })).max(100).optional().default([]),
 });
 
 export class OpenAIProvider implements AIProvider {
@@ -80,8 +93,8 @@ export class OpenAIProvider implements AIProvider {
       maxRetries: 1,
     });
     this.model = config.model || process.env.OPENAI_MODEL || 'gpt-4o';
-    this.temperature = config.temperature ?? 0.3;
-    this.maxTokens = config.maxTokens ?? 4096;
+    this.temperature = config.temperature ?? 0.1;
+    this.maxTokens = config.maxTokens ?? 12_000;
   }
 
   async parseCV(text: string): Promise<ParsedCV> {

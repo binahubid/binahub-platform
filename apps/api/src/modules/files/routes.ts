@@ -608,7 +608,7 @@ fileRoutes.post('/associate/:id/cv', authMiddleware, async (c) => {
   }
 });
 
-// Confirm CV Upload (soft-delete old ones, register to documents, and trigger parsing)
+// Confirm CV Upload (soft-delete old ones and register the replacement document)
 fileRoutes.post('/associate/:id/cv/confirm', authMiddleware, async (c) => {
   const associateId = c.req.param('id');
   const user = c.get('user') as AuthUser;
