@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import auth from "./modules/auth/index.js";
@@ -11,6 +11,16 @@ import { workerRoutes } from "./workers/routes.js";
 import type { AppEnv } from "./types/env.js";
 
 const app = new Hono<AppEnv>();
+const apiVersion = "0.8.3";
+const requiredConfiguration = [
+  "SUPABASE_URL",
+  "SUPABASE_ANON_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+] as const;
+
+function getMissingConfiguration(): string[] {
+  return requiredConfiguration.filter((name) => !process.env[name]);
+}
 
 function normalizeOrigin(origin: string): string {
   return origin.trim().replace(/\/$/, "");
@@ -82,7 +92,8 @@ app.use("*", async (c, next) => {
 
   await next();
 
-  if (c.res.status >= 500 && c.res.headers.get("content-type")?.includes("application/json")) {
+  const isHealthEndpoint = c.req.path === "/api/health" || c.req.path === "/health";
+  if (!isHealthEndpoint && c.res.status >= 500 && c.res.headers.get("content-type")?.includes("application/json")) {
     let internalError: unknown;
     try {
       internalError = await c.res.clone().json();
@@ -145,9 +156,24 @@ app.route("/reviews", reviewRoutes);
 app.route("/files", fileRoutes);
 app.route("/workers", workerRoutes);
 
-app.get("/", (c) => c.json({ status: "ok", message: "BinaApps API is running" }));
-app.get("/api", (c) => c.json({ status: "ok", message: "BinaApps API is running" }));
-app.get("/api/health", (c) => c.json({ status: "ok", version: "0.8.3" }));
-app.get("/health", (c) => c.json({ status: "ok", version: "0.8.3" }));
+app.get("/", (c) => c.json({ status: "ok", message: "BinaApps API is running", version: apiVersion }));
+app.get("/api", (c) => c.json({ status: "ok", message: "BinaApps API is running", version: apiVersion }));
+
+const healthHandler = (c: Context<AppEnv>) => {
+  const missingConfiguration = getMissingConfiguration();
+  if (missingConfiguration.length > 0) {
+    return c.json({
+      status: "degraded",
+      version: apiVersion,
+      error: "Konfigurasi layanan belum lengkap",
+      missingConfiguration,
+    }, 503);
+  }
+
+  return c.json({ status: "ok", version: apiVersion });
+};
+
+app.get("/api/health", healthHandler);
+app.get("/health", healthHandler);
 
 export default app;

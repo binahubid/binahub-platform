@@ -14,6 +14,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ve
 - Halaman daftar associate, dashboard associate, dan dashboard admin kini membedakan kegagalan API dari data kosong; pengguna mendapat pesan gangguan, tautan status, dan aksi coba ulang, bukan angka nol atau status "belum ada" yang menyesatkan.
 - Halaman status kini memvalidasi marker versi API `0.8.3`, bukan sekadar menerima respons HTTP 200.
 - Production smoke kini memeriksa preflight CORS dari `https://ams.binahub.id` agar konfigurasi browser diverifikasi sebelum login.
+- Inisialisasi Supabase API kini lazy sehingga konfigurasi deployment yang belum lengkap tidak lagi menjatuhkan seluruh Vercel Function saat cold start. Endpoint health tetap dapat dibaca dan mengembalikan HTTP 503 beserta **nama** environment yang belum tersedia, tanpa mengekspos nilainya.
 
 ### Deployment Notes
 
