@@ -97,6 +97,26 @@ auth.post('/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (
     return c.json({ success: false, error: 'Gagal membuat profil' }, 500);
   }
 
+  const { error: eventError } = await db.rpc('enqueue_transformation_event', {
+    p_type: 'AssociateCreated',
+    p_aggregate_type: 'associate',
+    p_aggregate_id: authData.user.id,
+    p_payload: { associate_id: authData.user.id },
+  });
+  if (eventError) console.error('Failed to enqueue APP identity sync:', eventError);
+
+  const { error: reminderError } = await db.from('event_queue').insert({
+    type: 'ProfileIncompleteReminder',
+    aggregate_type: 'associate',
+    aggregate_id: authData.user.id,
+    payload: { associate_id: authData.user.id },
+    status: 'pending',
+    attempts: 0,
+    max_attempts: 3,
+    available_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+  });
+  if (reminderError) console.error('Failed to schedule profile reminder:', reminderError);
+
   return c.json({ success: true, message: 'Registrasi berhasil. Cek email untuk konfirmasi.' }, 201);
 });
 

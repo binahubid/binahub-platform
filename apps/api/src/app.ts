@@ -9,6 +9,7 @@ import { reviewRoutes } from "./modules/reviews/routes.js";
 import { fileRoutes } from "./modules/files/routes.js";
 import { workerRoutes } from "./workers/routes.js";
 import type { AppEnv } from "./types/env.js";
+import appIntegration from "./modules/integrations/app.js";
 
 const app = new Hono<AppEnv>();
 const apiVersion = "0.8.8";
@@ -180,6 +181,7 @@ app.route("/api/ai", ai);
 app.route("/api/reviews", reviewRoutes);
 app.route("/api/files", fileRoutes);
 app.route("/api/workers", workerRoutes);
+app.route("/api/integrations/app", appIntegration);
 
 // Fallback routes for requests without /api prefix
 app.route("/auth", auth);
@@ -189,6 +191,7 @@ app.route("/ai", ai);
 app.route("/reviews", reviewRoutes);
 app.route("/files", fileRoutes);
 app.route("/workers", workerRoutes);
+app.route("/integrations/app", appIntegration);
 
 app.get("/", (c) => c.json({ status: "ok", message: "BinaApps API is running", version: apiVersion }));
 app.get("/api", (c) => c.json({ status: "ok", message: "BinaApps API is running", version: apiVersion }));

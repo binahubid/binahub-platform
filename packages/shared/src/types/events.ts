@@ -3,7 +3,7 @@
 // ============================================
 
 export type EventStatus = 'pending' | 'processing' | 'done' | 'failed';
-export type AggregateType = 'associate' | 'file' | 'review';
+export type AggregateType = 'associate' | 'file' | 'review' | 'assignment' | 'notification';
 
 export interface EventQueue {
   id: string;
@@ -34,6 +34,9 @@ export type EventType =
   | 'ProfileUpdated'
   | 'CVUploaded'
   | 'DocumentUploaded'
+  | 'AssignmentAssigneeChanged'
+  | 'ProfileIncompleteReminder'
+  | 'NotificationEmailRequested'
   | 'SearchSyncNeeded';
 
 // ============================================

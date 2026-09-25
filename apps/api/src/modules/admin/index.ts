@@ -5,6 +5,8 @@ import { rankCandidates } from '@ams/ai';
 import type { ParsedCV } from '@ams/ai';
 import { importCVSchema } from '@ams/shared/validators/associate';
 import type { AppEnv } from '../../types/env.js';
+import { queueNotificationEmail } from '../../lib/notification-email.js';
+import { syncAssignmentAssignee } from '../../lib/app-integration.js';
 
 const admin = new Hono<AppEnv>();
 
@@ -678,8 +680,13 @@ admin.patch('/assignments/:id', async (c) => {
   const body = await c.req.json();
   const db = getDb();
 
-  const { data: existingAssignment } = await db.from('assignments').select('status, start_date, end_date').eq('id', id).maybeSingle();
+  const { data: existingAssignment } = await db.from('assignments').select('status, start_date, end_date, source_system').eq('id', id).maybeSingle();
   if (!existingAssignment) return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
+
+  const editableFields = ['title', 'client_name', 'description', 'start_date', 'end_date', 'needed_roles', 'needed_count', 'mandays', 'compensation'];
+  if (existingAssignment.source_system === 'app-binahub' && editableFields.some((field) => body[field] !== undefined)) {
+    return c.json({ success: false, error: 'Detail assignment terintegrasi dikelola dari APP BinaHub' }, 409);
+  }
 
   if (body.status !== undefined) {
     if (!ASSIGNMENT_STATUSES.includes(body.status)) return c.json({ success: false, error: 'Status assignment tidak valid' }, 400);
@@ -746,6 +753,41 @@ admin.patch('/assignments/:id', async (c) => {
 
   if (error) {
     return c.json({ success: false, error: error.message }, 500);
+  }
+
+  if (
+    existingAssignment.source_system === 'app-binahub'
+    && body.status !== undefined
+    && ['completed', 'cancelled'].includes(body.status)
+  ) {
+    const { data: affectedAssignees, error: assigneesError } = await db
+      .from('assignment_assignees')
+      .select('id')
+      .eq('assignment_id', id)
+      .in('status', ['invited', 'applied', 'accepted', 'in_progress']);
+    if (assigneesError) return c.json({ success: false, error: 'Gagal membaca penerima assignment' }, 500);
+
+    for (const assignee of affectedAssignees || []) {
+      const { error: updateError } = await db.from('assignment_assignees').update({
+        status: body.status,
+        updated_at: new Date().toISOString(),
+      }).eq('id', assignee.id);
+      if (updateError) return c.json({ success: false, error: 'Gagal menyelaraskan status penerima assignment' }, 500);
+      await db.rpc('enqueue_transformation_event', {
+        p_type: 'AssignmentAssigneeChanged',
+        p_aggregate_type: 'assignment',
+        p_aggregate_id: id,
+        p_payload: { assignee_id: assignee.id },
+      });
+      try {
+        await syncAssignmentAssignee(assignee.id);
+      } catch (syncError) {
+        console.error('Immediate assignment reconciliation failed; queued for retry', {
+          assigneeId: assignee.id,
+          error: syncError instanceof Error ? syncError.message : 'unknown_error',
+        });
+      }
+    }
   }
 
   return c.json({ success: true, data });
@@ -906,7 +948,7 @@ admin.post('/assignments/:id/invite', async (c) => {
   // Insert notifications for each invited associate
   if (data && Array.isArray(data)) {
     for (const record of data) {
-      const { error: notifError } = await db.from('notifications').insert({
+      const { data: notification, error: notifError } = await db.from('notifications').insert({
         recipient_id: record.associate_id,
         recipient_role: 'associate',
         type: 'invitation',
@@ -914,10 +956,18 @@ admin.post('/assignments/:id/invite', async (c) => {
         message: `Anda telah diundang untuk bergabung di assignment "${assignmentTitle}". Silakan periksa detailnya.`,
         link: `/dashboard/assignments/${assignmentId}`,
         reference_id: assignmentId,
-      });
+      }).select('id').single();
       if (notifError) {
         console.error(`Failed to create invite notification for associate ${record.associate_id}:`, notifError);
+      } else {
+        await queueNotificationEmail(notification.id, 'assignment-invitation');
       }
+      await db.rpc('enqueue_transformation_event', {
+        p_type: 'AssignmentAssigneeChanged',
+        p_aggregate_type: 'assignment',
+        p_aggregate_id: assignmentId,
+        p_payload: { assignee_id: record.id },
+      });
     }
   }
 
@@ -1061,6 +1111,13 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
     return c.json({ success: false, error: 'Assignee tidak ditemukan' }, 404);
   }
 
+  await db.rpc('enqueue_transformation_event', {
+    p_type: 'AssignmentAssigneeChanged',
+    p_aggregate_type: 'assignment',
+    p_aggregate_id: assignmentId,
+    p_payload: { assignee_id: data.id },
+  });
+
   // Insert notification for the associate when assignment is reviewed or status changes
   const { data: assignment } = await db.from('assignments').select('title').eq('id', assignmentId).single();
   const assignmentTitle = assignment?.title || 'Assignment';
@@ -1080,7 +1137,7 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
   }
 
   if (notifTitle && notifMsg) {
-    const { error: notifError } = await db.from('notifications').insert({
+    const { data: notification, error: notifError } = await db.from('notifications').insert({
       recipient_id: data.associate_id,
       recipient_role: 'associate',
       type: notifType,
@@ -1088,9 +1145,11 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
       message: notifMsg,
       link: `/dashboard/assignments/${assignmentId}`,
       reference_id: assignmentId,
-    });
+    }).select('id').single();
     if (notifError) {
       console.error(`Failed to create review/revision notification for associate ${data.associate_id}:`, notifError);
+    } else {
+      await queueNotificationEmail(notification.id, notifType);
     }
   }
 

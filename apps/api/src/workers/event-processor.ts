@@ -1,6 +1,8 @@
 import { getDb } from '../lib/database.js';
 import { parseCVWithFallback } from '@ams/ai';
 import type { EventQueue } from '@ams/shared/types/events';
+import { syncAssociateIdentity, syncAssignmentAssignee } from '../lib/app-integration.js';
+import { queueNotificationEmail, sendQueuedNotificationEmail } from '../lib/notification-email.js';
 
 // ============================================
 // EVENT PROCESSOR
@@ -69,6 +71,9 @@ async function processEvent(event: EventQueue): Promise<{ id: string; type: stri
 
   try {
     switch (event.type) {
+      case 'AssociateCreated':
+        await processAssociateCreated(event);
+        break;
       case 'CVUploaded':
         await processCVUploaded(event);
         break;
@@ -80,6 +85,15 @@ async function processEvent(event: EventQueue): Promise<{ id: string; type: stri
         break;
       case 'AssociateRejected':
         await processAssociateRejected(event);
+        break;
+      case 'AssignmentAssigneeChanged':
+        await processAssignmentAssigneeChanged(event);
+        break;
+      case 'ProfileIncompleteReminder':
+        await processProfileIncompleteReminder(event);
+        break;
+      case 'NotificationEmailRequested':
+        await processNotificationEmailRequested(event);
         break;
       case 'SearchSyncNeeded':
         await processSearchSync(event);
@@ -114,6 +128,23 @@ async function processEvent(event: EventQueue): Promise<{ id: string; type: stri
       })
       .eq('id', event.id);
 
+    if (!shouldRetry && event.type === 'AssignmentAssigneeChanged') {
+      const assigneeId = (event.payload as { assignee_id?: string }).assignee_id;
+      if (assigneeId) {
+        const { data: assignee } = await db
+          .from('assignment_assignees')
+          .select('assignment_id')
+          .eq('id', assigneeId)
+          .maybeSingle();
+        if (assignee?.assignment_id) {
+          await db.from('assignments').update({
+            integration_status: 'failed',
+            updated_at: new Date().toISOString(),
+          }).eq('id', assignee.assignment_id);
+        }
+      }
+    }
+
     return {
       id: event.id,
       type: event.type,
@@ -121,6 +152,45 @@ async function processEvent(event: EventQueue): Promise<{ id: string; type: stri
       error: shouldRetry ? `Dijadwalkan ulang pada ${retryAt}` : 'Batas percobaan tercapai',
     };
   }
+}
+
+async function processAssociateCreated(event: EventQueue) {
+  const { associate_id } = event.payload as { associate_id: string };
+  await syncAssociateIdentity(associate_id, event.id);
+}
+
+async function processAssignmentAssigneeChanged(event: EventQueue) {
+  const { assignee_id } = event.payload as { assignee_id: string };
+  await syncAssignmentAssignee(assignee_id, event.id);
+}
+
+async function processNotificationEmailRequested(event: EventQueue) {
+  const { delivery_id } = event.payload as { delivery_id: string };
+  await sendQueuedNotificationEmail(delivery_id);
+}
+
+async function processProfileIncompleteReminder(event: EventQueue) {
+  const db = getDb();
+  const { associate_id } = event.payload as { associate_id: string };
+  const { data: associate, error } = await db
+    .from('associates')
+    .select('id, status')
+    .eq('id', associate_id)
+    .maybeSingle();
+  if (error) throw new Error('Failed to check associate profile state');
+  if (!associate || associate.status !== 'draft') return;
+
+  const { data: notification, error: notificationError } = await db.from('notifications').upsert({
+    recipient_id: associate_id,
+    recipient_role: 'associate',
+    type: 'reminder',
+    title: 'Profil Anda belum lengkap',
+    message: 'Lengkapi profil dan unggah CV agar BinaHub dapat mencocokkan Anda dengan penugasan yang relevan.',
+    link: '/dashboard/profile',
+    reference_id: associate_id,
+  }, { onConflict: 'recipient_id,type,reference_id' }).select('id').single();
+  if (notificationError) throw new Error('Failed to create profile reminder');
+  await queueNotificationEmail(notification.id, 'profile-incomplete');
 }
 
 // ============================================
@@ -246,7 +316,7 @@ async function processAssociateSubmitted(event: EventQueue) {
   const adminIds = await getAdminUserIds();
   if (adminIds.length === 0) throw new Error('No administrator available for submission notification');
 
-  const { error } = await db.from('notifications').upsert(
+  const { data: notifications, error } = await db.from('notifications').upsert(
     adminIds.map((adminId) => ({
       recipient_id: adminId,
       recipient_role: 'admin',
@@ -257,8 +327,9 @@ async function processAssociateSubmitted(event: EventQueue) {
       reference_id: associate_id,
     })),
     { onConflict: 'recipient_id,type,reference_id' },
-  );
+  ).select('id');
   if (error) throw new Error('Failed to create submission notification');
+  for (const notification of notifications || []) await queueNotificationEmail(notification.id, 'profile-submitted');
   
   console.log(`Associate submission processed for ${associate_id}`);
 }
@@ -273,7 +344,7 @@ async function processAssociateApproved(event: EventQueue) {
   
   console.log(`Processing associate approval for ${associate_id}`);
   
-  const { error: notificationError } = await db.from('notifications').upsert({
+  const { data: notification, error: notificationError } = await db.from('notifications').upsert({
     recipient_id: associate_id,
     recipient_role: 'associate',
     type: 'approved',
@@ -281,8 +352,10 @@ async function processAssociateApproved(event: EventQueue) {
     message: 'Profil associate Anda sudah aktif dan dapat digunakan untuk menerima penugasan.',
     link: '/dashboard/profile',
     reference_id: associate_id,
-  }, { onConflict: 'recipient_id,type,reference_id' });
+  }, { onConflict: 'recipient_id,type,reference_id' }).select('id').single();
   if (notificationError) throw new Error('Failed to create approval notification');
+  await queueNotificationEmail(notification.id, 'profile-approved');
+  await syncAssociateIdentity(associate_id, event.id);
   
   // Sync to search index
   await db.rpc('enqueue_transformation_event', {
@@ -309,7 +382,7 @@ async function processAssociateRejected(event: EventQueue) {
   
   console.log(`Processing associate rejection for ${associate_id}`);
   
-  const { error: notificationError } = await db.from('notifications').upsert({
+  const { data: notification, error: notificationError } = await db.from('notifications').upsert({
     recipient_id: associate_id,
     recipient_role: 'associate',
     type: 'rejected',
@@ -317,8 +390,9 @@ async function processAssociateRejected(event: EventQueue) {
     message: reason ? `Catatan reviewer: ${reason.slice(0, 1000)}` : 'Profil dikembalikan untuk diperbaiki sebelum diajukan kembali.',
     link: '/dashboard/profile',
     reference_id: associate_id,
-  }, { onConflict: 'recipient_id,type,reference_id' });
+  }, { onConflict: 'recipient_id,type,reference_id' }).select('id').single();
   if (notificationError) throw new Error('Failed to create rejection notification');
+  await queueNotificationEmail(notification.id, 'profile-rejected');
   
   console.log(`Associate rejection processed for ${associate_id}`);
 }

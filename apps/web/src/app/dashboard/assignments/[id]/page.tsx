@@ -18,6 +18,9 @@ type AssignmentDetail = {
   needed_count: number;
   mandays?: number;
   compensation?: string | null;
+  external_program_id?: string | null;
+  external_program_url?: string | null;
+  external_module_key?: string | null;
   created_at: string;
   my_assignment: {
     id: string;
@@ -83,6 +86,7 @@ export default function AssignmentDetailPage() {
   const [assignment, setAssignment] = useState<AssignmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [openingProgram, setOpeningProgram] = useState(false);
   const [applyRole, setApplyRole] = useState('');
 
   const [showAgreementModal, setShowAgreementModal] = useState(false);
@@ -236,6 +240,27 @@ export default function AssignmentDetailPage() {
     } finally {
       setActing(false);
       setShowAgreementModal(false);
+    }
+  };
+
+  const handleOpenProgram = async () => {
+    if (!assignment?.external_program_id || assignment.external_module_key !== 'tbos') return;
+    setOpeningProgram(true);
+    try {
+      const nextPath = '/fasilitator/tbos';
+      const response = await fetch(`${apiUrl}/api/associate/app-access`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ nextPath }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success || !result.data?.url) {
+        throw new Error(result.error || 'Program belum dapat dibuka');
+      }
+      window.location.assign(result.data.url);
+    } catch (error) {
+      toast('error', error instanceof Error ? error.message : 'Program belum dapat dibuka');
+      setOpeningProgram(false);
     }
   };
 
@@ -532,6 +557,25 @@ export default function AssignmentDetailPage() {
 
           {myStatus === 'in_progress' && (
             <div className="divide-y divide-slate-100">
+              {assignment.external_program_id && assignment.external_module_key === 'tbos' && (
+                <div className="bg-blue-50/70 p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Workspace program sudah siap</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-600">Masuk dengan akun yang sama. Akses hanya berlaku untuk program yang ditugaskan kepada Anda.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleOpenProgram}
+                      disabled={openingProgram}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#0B2C6B] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#092458] disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {openingProgram ? 'Menyiapkan akses...' : 'Buka workspace program'}
+                      {!openingProgram && <span aria-hidden="true">→</span>}
+                    </button>
+                  </div>
+                </div>
+              )}
               {my.evidence_reviewer_notes && (
                 <div className="p-4 bg-amber-50">
                   <div className="flex gap-3">

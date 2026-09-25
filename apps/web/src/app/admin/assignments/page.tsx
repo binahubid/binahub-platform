@@ -18,6 +18,9 @@ type Assignment = {
   mandays?: number;
   compensation?: string | null;
   created_at: string;
+  source_system?: 'ams' | 'app-binahub';
+  integration_status?: 'not_linked' | 'pending' | 'synced' | 'failed';
+  external_module_key?: string | null;
 };
 
 const EMPTY_FORM = {
@@ -287,9 +290,6 @@ export default function AdminAssignmentsPage() {
       buttons.push({ label: 'Selesai', status: 'completed', cls: 'bg-blue-50 text-blue-700 hover:bg-blue-100' });
       buttons.push({ label: 'Batalkan', status: 'cancelled', cls: 'bg-red-50 text-red-600 hover:bg-red-100' });
     }
-    if (a.status === 'completed' || a.status === 'cancelled') {
-      buttons.push({ label: 'Reaktivasi', status: 'draft', cls: 'bg-slate-100 text-slate-600 hover:bg-slate-200' });
-    }
     return buttons;
   };
 
@@ -372,6 +372,22 @@ export default function AdminAssignmentsPage() {
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusColor(a.status)}`}>
                           {statusLabel[a.status] || a.status}
                         </span>
+                        {a.source_system === 'app-binahub' && (
+                          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                            Dari APP · {a.external_module_key?.toUpperCase() || 'PROGRAM'}
+                          </span>
+                        )}
+                        {a.source_system === 'app-binahub' && (
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            a.integration_status === 'synced'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : a.integration_status === 'failed'
+                                ? 'bg-red-50 text-red-700'
+                                : 'bg-amber-50 text-amber-700'
+                          }`}>
+                            {a.integration_status === 'synced' ? 'Tersinkron' : a.integration_status === 'failed' ? 'Sinkronisasi gagal' : 'Menunggu sinkronisasi'}
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-slate-500 mt-1">{a.client_name}</p>
                       {a.description && <p className="text-xs text-slate-400 mt-1 line-clamp-1">{a.description}</p>}
@@ -394,12 +410,14 @@ export default function AdminAssignmentsPage() {
                           {btn.label}
                         </button>
                       ))}
-                      <button
-                        onClick={() => startEdit(a)}
-                        className="rounded-lg bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-                      >
-                        Edit
-                      </button>
+                      {a.source_system !== 'app-binahub' && (
+                        <button
+                          onClick={() => startEdit(a)}
+                          className="rounded-lg bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                        >
+                          Edit
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDelete(a.id)}
                         className="rounded-lg bg-red-50 px-3 py-1.5 text-[11px] font-medium text-red-600 hover:bg-red-100"

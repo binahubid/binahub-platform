@@ -1,0 +1,111 @@
+import { createHmac, randomUUID } from 'node:crypto';
+import { getDb } from './database.js';
+
+type AssociateIdentity = {
+  id: string;
+  email: string;
+  fullName: string;
+  status: string;
+};
+
+function integrationConfig() {
+  const baseUrl = (process.env.APP_INTEGRATION_API_URL || 'https://api.binahub.id').replace(/\/$/, '');
+  const secret = process.env.APP_INTEGRATION_SECRET;
+  if (!secret) throw new Error('APP_INTEGRATION_SECRET belum dikonfigurasi');
+  return { baseUrl, secret };
+}
+
+async function postSigned<T>(path: string, payload: unknown): Promise<T> {
+  const { baseUrl, secret } = integrationConfig();
+  const body = JSON.stringify(payload);
+  const timestamp = Date.now().toString();
+  const signature = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+
+  try {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-binahub-timestamp': timestamp,
+        'x-binahub-signature': signature,
+      },
+      body,
+      signal: controller.signal,
+    });
+    const result = await response.json().catch(() => null) as (T & { success?: boolean; error?: string }) | null;
+    if (!response.ok || !result?.success) throw new Error(result?.error || `APP integration HTTP ${response.status}`);
+    return result;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function getAssociateIdentity(associateId: string): Promise<AssociateIdentity> {
+  const db = getDb();
+  const [{ data: associate }, { data: profile }] = await Promise.all([
+    db.from('associates').select('id, email, status').eq('id', associateId).maybeSingle(),
+    db.from('associate_profiles').select('full_name').eq('associate_id', associateId).maybeSingle(),
+  ]);
+  if (!associate?.email || !profile?.full_name) throw new Error('Identitas associate tidak lengkap');
+  return { id: associate.id, email: associate.email, fullName: profile.full_name, status: associate.status };
+}
+
+export async function syncAssociateIdentity(associateId: string, eventId: string = randomUUID()) {
+  const associate = await getAssociateIdentity(associateId);
+  return postSigned('/api/integrations/ams/assignments', {
+    eventId,
+    eventType: 'identity.synced',
+    occurredAt: new Date().toISOString(),
+    associate,
+  });
+}
+
+export async function syncAssignmentAssignee(assigneeId: string, eventId: string = randomUUID()) {
+  const db = getDb();
+  const { data: assignee } = await db
+    .from('assignment_assignees')
+    .select('id, assignment_id, associate_id, status, role, updated_at')
+    .eq('id', assigneeId)
+    .maybeSingle();
+  if (!assignee) throw new Error('Assignee tidak ditemukan');
+
+  const { data: assignment } = await db
+    .from('assignments')
+    .select('id, external_program_id, external_module_key, external_scope')
+    .eq('id', assignee.assignment_id)
+    .maybeSingle();
+  if (!assignment) throw new Error('Assignment tidak ditemukan');
+  const associate = await getAssociateIdentity(assignee.associate_id);
+
+  const result = await postSigned('/api/integrations/ams/assignments', {
+    eventId,
+    eventType: 'assignment.changed',
+    occurredAt: assignee.updated_at || new Date().toISOString(),
+    associate,
+    assignment: {
+      id: assignment.id,
+      assigneeId: assignee.id,
+      status: assignee.status,
+      role: assignee.role || (assignment.external_module_key === 'lep' ? 'speaker' : 'facilitator'),
+      externalProgramId: assignment.external_program_id,
+      moduleKey: assignment.external_module_key,
+      scope: assignment.external_scope || {},
+    },
+  });
+
+  await db.from('assignments').update({
+    integration_status: 'synced',
+    updated_at: new Date().toISOString(),
+  }).eq('id', assignment.id);
+  return result;
+}
+
+export async function requestAppAccessLink(associateId: string, nextPath?: string) {
+  const associate = await getAssociateIdentity(associateId);
+  return postSigned<{ success: true; url: string; expiresAt: string }>('/api/integrations/ams/access-link', {
+    associate,
+    nextPath,
+  });
+}

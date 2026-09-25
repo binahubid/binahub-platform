@@ -23,6 +23,8 @@ import {
 import type { AuthUser } from '../../types';
 import type { AppEnv } from '../../types/env.js';
 import { rateLimit } from '../../middleware/rate-limit.js';
+import { requestAppAccessLink, syncAssignmentAssignee } from '../../lib/app-integration.js';
+import { getAdminRecipientIds, queueNotificationEmail } from '../../lib/notification-email.js';
 
 export const associateRoutes = new Hono<AppEnv>();
 
@@ -1485,6 +1487,7 @@ associateRoutes.get('/assignments', async (c) => {
     .from('assignments')
     .select('*')
     .eq('status', 'active')
+    .eq('source_system', 'ams')
     .limit(100)
     .order('created_at', { ascending: false });
 
@@ -1492,17 +1495,16 @@ associateRoutes.get('/assignments', async (c) => {
     return c.json({ success: false, error: 'Gagal memuat penugasan' }, 500);
   }
 
-  let historicalAssignments: Record<string, unknown>[] = [];
+  let invitedAssignments: Record<string, unknown>[] = [];
   if (invitedIds.length > 0) {
     const { data, error } = await db
       .from('assignments')
       .select('*')
       .in('id', invitedIds)
-      .in('status', ['completed', 'cancelled'])
       .limit(100)
       .order('created_at', { ascending: false });
     if (error) return c.json({ success: false, error: 'Gagal memuat riwayat penugasan' }, 500);
-    historicalAssignments = (data || []) as Record<string, unknown>[];
+    invitedAssignments = (data || []) as Record<string, unknown>[];
   }
 
   const assigneeMap: Record<string, { status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }> = {};
@@ -1511,12 +1513,12 @@ associateRoutes.get('/assignments', async (c) => {
   }
 
   const uniqueAssignments = new Map<string, Record<string, unknown>>();
-  for (const assignment of [...((activeAssignments || []) as Record<string, unknown>[]), ...historicalAssignments]) {
+  for (const assignment of [...((activeAssignments || []) as Record<string, unknown>[]), ...invitedAssignments]) {
     uniqueAssignments.set(assignment.id as string, assignment);
   }
 
   const result = Array.from(uniqueAssignments.values()).map((a: Record<string, unknown>) => ({
-    ...a,
+    ...withoutIntegrationInternals(a),
     my_status: assigneeMap[a.id as string]?.status || null,
     my_role: assigneeMap[a.id as string]?.role || null,
     my_notes: assigneeMap[a.id as string]?.notes || null,
@@ -1558,7 +1560,7 @@ associateRoutes.get('/assignments/:id', async (c) => {
     .eq('associate_id', associate.id)
     .single();
 
-  if (!myAssignment && assignment.status !== 'active') {
+  if (!myAssignment && (assignment.status !== 'active' || assignment.source_system === 'app-binahub')) {
     return c.json({ success: false, error: 'Anda tidak memiliki akses ke assignment ini' }, 403);
   }
 
@@ -1572,13 +1574,21 @@ associateRoutes.get('/assignments/:id', async (c) => {
   return c.json({
     success: true,
     data: {
-      ...assignment,
+      ...withoutIntegrationInternals(assignment as Record<string, unknown>),
       my_assignment: (myAssignment || null) as Record<string, unknown> | null,
       accepted_count: acceptedCount,
       total_assignees: (assignees || []).length,
     },
   });
 });
+
+function withoutIntegrationInternals(row: Record<string, unknown>) {
+  const safe = { ...row };
+  delete safe.external_scope;
+  delete safe.external_reference;
+  delete safe.integration_status;
+  return safe;
+}
 
 associateRoutes.post('/assignments/:id/apply', async (c) => {
   const user = c.get('user') as AuthUser;
@@ -1606,7 +1616,7 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
 
   const { data: assignment } = await db
     .from('assignments')
-    .select('id, title, created_by, status')
+    .select('id, title, created_by, status, source_system')
     .eq('id', assignmentId)
     .single();
 
@@ -1616,6 +1626,9 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
 
   if ((assignment as { status: string }).status !== 'active') {
     return c.json({ success: false, error: 'Assignment sudah tidak menerima pendaftar' }, 400);
+  }
+  if (assignment.source_system === 'app-binahub') {
+    return c.json({ success: false, error: 'Assignment program hanya tersedia untuk associate yang diundang' }, 403);
   }
 
   const { data: existing } = await db
@@ -1775,12 +1788,30 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     return c.json({ success: false, error: error.message }, 500);
   }
 
+  await db.rpc('enqueue_transformation_event', {
+    p_type: 'AssignmentAssigneeChanged',
+    p_aggregate_type: 'assignment',
+    p_aggregate_id: assignmentId,
+    p_payload: { assignee_id: data.id },
+  });
+
   // 2. Fetch assignment info and associate profile to construct notification
   const { data: assignment } = await db
     .from('assignments')
-    .select('title, created_by')
+    .select('title, created_by, source_system')
     .eq('id', assignmentId)
     .single();
+
+  if (assignment?.source_system === 'app-binahub') {
+    try {
+      await syncAssignmentAssignee(data.id);
+    } catch (syncError) {
+      console.error('Immediate assignment status sync failed; queued for retry', {
+        assigneeId: data.id,
+        error: syncError instanceof Error ? syncError.message : 'unknown_error',
+      });
+    }
+  }
 
   const { data: profile } = await db
     .from('associate_profiles')
@@ -1789,10 +1820,11 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     .single();
 
   const assocName = profile?.full_name || 'Seorang Associate';
-  const adminRecipient = currentAssignee.invited_by || (assignment ? (assignment as any).created_by : null);
+  const responsibleAdmin = currentAssignee.invited_by || (assignment ? (assignment as any).created_by : null);
+  const adminRecipients = responsibleAdmin ? [responsibleAdmin] : await getAdminRecipientIds().catch(() => []);
 
   // Trigger notification for the responsible admin
-  if (adminRecipient && assignment) {
+  if (adminRecipients.length > 0 && assignment) {
     let notifTitle = '';
     let notifMsg = '';
 
@@ -1811,22 +1843,43 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     }
 
     if (notifTitle && notifMsg) {
-      const { error: notifError } = await db.from('notifications').insert({
-        recipient_id: adminRecipient,
-        recipient_role: 'admin',
-        type: status,
-        title: notifTitle,
-        message: notifMsg,
-        link: `/admin/assignments/${assignmentId}`,
-        reference_id: assignmentId,
-      });
+      const { data: notifications, error: notifError } = await db.from('notifications').upsert(
+        adminRecipients.map((adminRecipient) => ({
+          recipient_id: adminRecipient,
+          recipient_role: 'admin',
+          type: status,
+          title: notifTitle,
+          message: notifMsg,
+          link: `/admin/assignments/${assignmentId}`,
+          reference_id: assignmentId,
+        })),
+        { onConflict: 'recipient_id,type,reference_id' },
+      ).select('id');
       if (notifError) {
         console.error('Failed to create admin notification for assignment status change:', notifError);
+      } else {
+        for (const notification of notifications || []) await queueNotificationEmail(notification.id, `assignment-${status}`);
       }
     }
   }
 
   return c.json({ success: true, data, message: `Status diubah ke ${status}` });
+});
+
+associateRoutes.post('/app-access', rateLimit({ windowMs: 60 * 1000, max: 10 }), async (c) => {
+  const user = c.get('user') as AuthUser;
+  const body = await c.req.json().catch(() => ({})) as { nextPath?: unknown };
+  const nextPath = typeof body.nextPath === 'string' && body.nextPath.startsWith('/') && !body.nextPath.startsWith('//')
+    ? body.nextPath.slice(0, 300)
+    : undefined;
+
+  try {
+    const access = await requestAppAccessLink(user.id, nextPath);
+    return c.json({ success: true, data: { url: access.url, expires_at: access.expiresAt } });
+  } catch (error) {
+    console.error('Create APP access link failed:', error);
+    return c.json({ success: false, error: 'APP belum dapat dibuka. Coba kembali beberapa saat lagi.' }, 503);
+  }
 });
 
 // NOTIFICATIONS (for associates - must be before admin routes)
