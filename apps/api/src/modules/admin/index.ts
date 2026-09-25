@@ -793,6 +793,52 @@ admin.patch('/assignments/:id', async (c) => {
   return c.json({ success: true, data });
 });
 
+admin.post('/assignments/:id/sync-app', async (c) => {
+  const id = c.req.param('id');
+  if (!UUID_RE.test(id)) return c.json({ success: false, error: 'ID assignment tidak valid' }, 400);
+
+  const db = getDb();
+  const { data: assignment, error: assignmentError } = await db
+    .from('assignments')
+    .select('id, source_system')
+    .eq('id', id)
+    .maybeSingle();
+  if (assignmentError || !assignment) return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
+  if (assignment.source_system !== 'app-binahub') {
+    return c.json({ success: false, error: 'Hanya assignment dari APP yang dapat disinkronkan ulang' }, 409);
+  }
+
+  const { data: assignees, error: assigneesError } = await db
+    .from('assignment_assignees')
+    .select('id')
+    .eq('assignment_id', id);
+  if (assigneesError) return c.json({ success: false, error: 'Penerima assignment tidak dapat dibaca' }, 500);
+  if (!assignees?.length) return c.json({ success: false, error: 'Assignment belum memiliki associate' }, 409);
+
+  await db.from('assignments').update({
+    integration_status: 'pending',
+    updated_at: new Date().toISOString(),
+  }).eq('id', id);
+
+  const outcomes = await Promise.allSettled(assignees.map((assignee) => syncAssignmentAssignee(assignee.id)));
+  const failed = outcomes.filter((outcome) => outcome.status === 'rejected').length;
+  const synced = outcomes.length - failed;
+  await db.from('assignments').update({
+    integration_status: failed === 0 ? 'synced' : 'failed',
+    updated_at: new Date().toISOString(),
+  }).eq('id', id);
+
+  if (failed > 0) {
+    return c.json({
+      success: false,
+      error: 'Sinkronisasi ke APP belum berhasil. Periksa migration APP dan environment kedua API.',
+      data: { synced, failed },
+    }, 502);
+  }
+
+  return c.json({ success: true, data: { synced, failed: 0 } });
+});
+
 admin.delete('/assignments/:id', async (c) => {
   const id = c.req.param('id');
   const db = getDb();

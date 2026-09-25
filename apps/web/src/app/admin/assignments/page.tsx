@@ -116,6 +116,7 @@ export default function AdminAssignmentsPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormType>({ ...EMPTY_FORM, needed_roles: [] });
   const [saving, setSaving] = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormType>({ ...EMPTY_FORM, needed_roles: [] });
 
@@ -211,6 +212,27 @@ export default function AdminAssignmentsPage() {
       }
     } catch {
       toast('error', 'Gagal terhubung ke server');
+    }
+  };
+
+  const retryAppSync = async (id: string) => {
+    setSyncingId(id);
+    try {
+      const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}/sync-app`, {
+        method: 'POST',
+        headers,
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data?.success) {
+        toast('error', data?.error || 'Sinkronisasi APP belum berhasil');
+      } else {
+        toast('success', 'Assignment berhasil disinkronkan ke APP');
+      }
+      await fetchAssignments();
+    } catch {
+      toast('error', 'Gagal terhubung ke layanan sinkronisasi');
+    } finally {
+      setSyncingId(null);
     }
   };
 
@@ -401,6 +423,15 @@ export default function AdminAssignmentsPage() {
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       <Link href={`/admin/assignments/${a.id}`} className="rounded-lg bg-[#0B2C6B] px-3 py-1.5 text-[11px] font-medium text-white hover:bg-[#0A255A]">Lihat Tim</Link>
+                      {a.source_system === 'app-binahub' && a.integration_status !== 'synced' && (
+                        <button
+                          onClick={() => void retryAppSync(a.id)}
+                          disabled={syncingId === a.id}
+                          className="rounded-lg bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          {syncingId === a.id ? 'Menyinkronkan...' : 'Sync ulang APP'}
+                        </button>
+                      )}
                       {renderStatusButtons(a).map((btn) => (
                         <button
                           key={btn.status}
