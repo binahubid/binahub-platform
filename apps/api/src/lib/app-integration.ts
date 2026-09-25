@@ -8,6 +8,36 @@ type AssociateIdentity = {
   status: string;
 };
 
+const SAFE_REMOTE_ERROR_PREFIXES = [
+  'Tanda tangan integrasi',
+  'Permintaan integrasi',
+  'Payload JSON',
+  'Event integrasi',
+  'Program atau modul APP',
+  'Admin pemberi assignment',
+  'Gagal menyiapkan akun associate',
+  'Gagal memeriksa profil APP',
+  'Gagal membuat profil associate',
+  'Gagal memperbarui profil associate',
+  'Gagal menghubungkan identitas AMS dan APP',
+  'Gagal menyinkronkan penugasan program',
+  'Gagal mengaktifkan akses fasilitator T-BOS',
+  'Gagal menghubungkan assignment fasilitator T-BOS',
+  'Gagal mencabut akses fasilitator T-BOS',
+  'Gagal menambahkan pembicara LEP',
+  'Gagal memperbarui pembicara LEP',
+  'Gagal menonaktifkan pembicara LEP',
+] as const;
+
+function safeRemoteError(message: string | undefined, status: number): string {
+  if (message && SAFE_REMOTE_ERROR_PREFIXES.some((prefix) => message.startsWith(prefix))) return message;
+  if (status === 401 || status === 403) return 'Secret integrasi AMS dan APP tidak sama atau request sudah kedaluwarsa.';
+  if (status === 404) return 'Endpoint integrasi APP belum tersedia pada deployment aktif.';
+  if (status === 409) return 'Event integrasi APP masih diproses. Tunggu sebentar lalu coba sinkronkan kembali.';
+  if (status >= 500) return 'APP belum dapat memproses assignment. Periksa migration dan log API APP.';
+  return `APP menolak sinkronisasi dengan HTTP ${status}.`;
+}
+
 function integrationConfig() {
   const baseUrl = (process.env.APP_INTEGRATION_API_URL || 'https://api.binahub.id').replace(/\/$/, '');
   const secret = process.env.APP_INTEGRATION_SECRET;
@@ -35,7 +65,7 @@ async function postSigned<T>(path: string, payload: unknown): Promise<T> {
       signal: controller.signal,
     });
     const result = await response.json().catch(() => null) as (T & { success?: boolean; error?: string }) | null;
-    if (!response.ok || !result?.success) throw new Error(result?.error || `APP integration HTTP ${response.status}`);
+    if (!response.ok || !result?.success) throw new Error(safeRemoteError(result?.error, response.status));
     return result;
   } finally {
     clearTimeout(timeout);

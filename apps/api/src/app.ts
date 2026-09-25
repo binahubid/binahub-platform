@@ -12,7 +12,7 @@ import type { AppEnv } from "./types/env.js";
 import appIntegration from "./modules/integrations/app.js";
 
 const app = new Hono<AppEnv>();
-const apiVersion = "0.8.8";
+const apiVersion = "0.9.0";
 const requiredConfiguration = [
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",

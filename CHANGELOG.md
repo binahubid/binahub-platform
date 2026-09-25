@@ -16,6 +16,7 @@ Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 - Menampilkan asal dan status sinkronisasi assignment pada dashboard admin, mengunci detail assignment yang dikelola APP, serta meneruskan status selesai/batal ke seluruh assignee agar akses APP ikut direkonsiliasi.
 - Mencoba sinkronisasi APP langsung saat invite dan perubahan status, dengan event queue tetap dipertahankan sebagai retry agar akses terasa instan tanpa mengurangi ketahanan sistem.
 - Menambahkan aksi admin **Sync ulang APP** untuk memperbaiki assignment terintegrasi yang tertahan tanpa menunggu scheduler cron.
+- Menampilkan penyebab sinkronisasi yang aman dan spesifik saat retry gagal, serta menyamakan versi health API dengan rilis AMS agar deployment aktif mudah diverifikasi.
 - Menambahkan field referensi program APP pada assignment AMS dan migrasi database `011_app_assignment_integration.sql`.
 
 ### Changed

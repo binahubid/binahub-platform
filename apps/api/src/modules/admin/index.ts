@@ -821,7 +821,8 @@ admin.post('/assignments/:id/sync-app', async (c) => {
   }).eq('id', id);
 
   const outcomes = await Promise.allSettled(assignees.map((assignee) => syncAssignmentAssignee(assignee.id)));
-  const failed = outcomes.filter((outcome) => outcome.status === 'rejected').length;
+  const rejected = outcomes.filter((outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected');
+  const failed = rejected.length;
   const synced = outcomes.length - failed;
   await db.from('assignments').update({
     integration_status: failed === 0 ? 'synced' : 'failed',
@@ -829,10 +830,13 @@ admin.post('/assignments/:id/sync-app', async (c) => {
   }).eq('id', id);
 
   if (failed > 0) {
+    const reasons = [...new Set(rejected.map((outcome) => (
+      outcome.reason instanceof Error ? outcome.reason.message : 'Penyebab sinkronisasi tidak diketahui.'
+    )))].slice(0, 3);
     return c.json({
       success: false,
-      error: 'Sinkronisasi ke APP belum berhasil. Periksa migration APP dan environment kedua API.',
-      data: { synced, failed },
+      error: `Sinkronisasi ke APP belum berhasil. ${reasons.join(' ')}`,
+      data: { synced, failed, reasons },
     }, 502);
   }
 
