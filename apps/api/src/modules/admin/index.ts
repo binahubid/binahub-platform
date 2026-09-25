@@ -837,7 +837,7 @@ admin.post('/assignments/:id/sync-app', async (c) => {
       success: false,
       error: `Sinkronisasi ke APP belum berhasil. ${reasons.join(' ')}`,
       data: { synced, failed, reasons },
-    }, 502);
+    }, 424);
   }
 
   return c.json({ success: true, data: { synced, failed: 0 } });

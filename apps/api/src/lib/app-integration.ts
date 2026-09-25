@@ -45,6 +45,14 @@ function integrationConfig() {
   return { baseUrl, secret };
 }
 
+export function normalizeIntegrationTimestamp(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) return new Date().toISOString();
+  const trimmed = value.trim();
+  const timezoneAware = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed);
+  const parsed = new Date(timezoneAware ? trimmed : `${trimmed}Z`);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+}
+
 async function postSigned<T>(path: string, payload: unknown): Promise<T> {
   const { baseUrl, secret } = integrationConfig();
   const body = JSON.stringify(payload);
@@ -112,7 +120,7 @@ export async function syncAssignmentAssignee(assigneeId: string, eventId: string
   const result = await postSigned('/api/integrations/ams/assignments', {
     eventId,
     eventType: 'assignment.changed',
-    occurredAt: assignee.updated_at || new Date().toISOString(),
+    occurredAt: normalizeIntegrationTimestamp(assignee.updated_at),
     associate,
     assignment: {
       id: assignment.id,

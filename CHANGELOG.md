@@ -17,6 +17,7 @@ Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 - Mencoba sinkronisasi APP langsung saat invite dan perubahan status, dengan event queue tetap dipertahankan sebagai retry agar akses terasa instan tanpa mengurangi ketahanan sistem.
 - Menambahkan aksi admin **Sync ulang APP** untuk memperbaiki assignment terintegrasi yang tertahan tanpa menunggu scheduler cron.
 - Menampilkan penyebab sinkronisasi yang aman dan spesifik saat retry gagal, serta menyamakan versi health API dengan rilis AMS agar deployment aktif mudah diverifikasi.
+- Menormalisasi timestamp database AMS yang tidak memiliki penanda zona waktu menjadi ISO UTC sebelum payload HMAC dikirim, sehingga event assignment tidak lagi ditolak oleh validasi APP.
 - Menambahkan field referensi program APP pada assignment AMS dan migrasi database `011_app_assignment_integration.sql`.
 
 ### Changed
