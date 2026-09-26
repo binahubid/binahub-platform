@@ -2,6 +2,19 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [0.10.0] - 2026-09-27
+
+### Added
+
+- Menambahkan pemilihan program T-BOS/LEP langsung saat membuat assignment di AMS, menggunakan katalog APP bertanda tangan HMAC dan metadata program yang divalidasi server.
+- Menghubungkan alur rekomendasi AI AMS dengan assignment program: admin memilih program, meninjau kandidat berperingkat, lalu mengundang associate dari satu pintu.
+
+### Changed
+
+- Assignment program yang dibuat dari AMS kini bersifat invite-only, langsung disinkronkan ke APP saat associate diundang, dan mengaktifkan akses program saat undangan diterima atau pekerjaan dimulai.
+- Aksi sinkronisasi ulang dan rekonsiliasi status kini berlaku untuk semua assignment yang terhubung ke program APP, tidak hanya assignment yang awalnya dibuat dari APP.
+- Mencegah assignment program ganda lintas sumber; jika kombinasi program dan modul sudah aktif, AMS membuka assignment yang sudah ada.
+
 ## [0.9.0] - 2026-09-25
 
 ### Added — Integrasi penugasan AMS dan APP

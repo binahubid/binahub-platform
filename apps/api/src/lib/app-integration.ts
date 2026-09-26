@@ -8,12 +8,43 @@ type AssociateIdentity = {
   status: string;
 };
 
+export type AppProgramModule = {
+  key: 'tbos' | 'lep';
+  label: string;
+  defaultRole: string;
+  workspaceUrl: string;
+};
+
+export type AppProgramCatalogItem = {
+  id: string;
+  title: string;
+  clientName: string;
+  status: string;
+  startDate: string | null;
+  endDate: string | null;
+  modules: AppProgramModule[];
+};
+
+type AppProgramCatalogResponse = {
+  success: true;
+  data: {
+    actorProfileId: string;
+    actorMode: 'matched_admin' | 'system_admin';
+    programs: AppProgramCatalogItem[];
+  };
+};
+
 const SAFE_REMOTE_ERROR_PREFIXES = [
   'Tanda tangan integrasi',
   'Permintaan integrasi',
   'Payload JSON',
   'Event integrasi',
   'Program atau modul APP',
+  'Permintaan katalog program',
+  'Gagal membaca program APP',
+  'Gagal membaca modul program APP',
+  'Gagal memeriksa admin APP',
+  'Admin APP pemberi assignment',
   'Admin pemberi assignment',
   'Gagal menyiapkan akun associate',
   'Gagal memeriksa profil APP',
@@ -115,29 +146,51 @@ export async function syncAssignmentAssignee(assigneeId: string, eventId: string
     .eq('id', assignee.assignment_id)
     .maybeSingle();
   if (!assignment) throw new Error('Assignment tidak ditemukan');
+  if (!assignment.external_program_id || !assignment.external_module_key) {
+    return { success: true, skipped: true, reason: 'assignment_not_linked' };
+  }
   const associate = await getAssociateIdentity(assignee.associate_id);
 
-  const result = await postSigned('/api/integrations/ams/assignments', {
-    eventId,
-    eventType: 'assignment.changed',
-    occurredAt: normalizeIntegrationTimestamp(assignee.updated_at),
-    associate,
-    assignment: {
-      id: assignment.id,
-      assigneeId: assignee.id,
-      status: assignee.status,
-      role: assignee.role || (assignment.external_module_key === 'lep' ? 'speaker' : 'facilitator'),
-      externalProgramId: assignment.external_program_id,
-      moduleKey: assignment.external_module_key,
-      scope: assignment.external_scope || {},
-    },
-  });
-
   await db.from('assignments').update({
-    integration_status: 'synced',
+    integration_status: 'pending',
     updated_at: new Date().toISOString(),
   }).eq('id', assignment.id);
-  return result;
+
+  try {
+    const result = await postSigned('/api/integrations/ams/assignments', {
+      eventId,
+      eventType: 'assignment.changed',
+      occurredAt: normalizeIntegrationTimestamp(assignee.updated_at),
+      associate,
+      assignment: {
+        id: assignment.id,
+        assigneeId: assignee.id,
+        status: assignee.status,
+        role: assignee.role || (assignment.external_module_key === 'lep' ? 'Pembicara LEP' : 'Fasilitator T-BOS'),
+        externalProgramId: assignment.external_program_id,
+        moduleKey: assignment.external_module_key,
+        scope: assignment.external_scope || {},
+      },
+    });
+
+    await db.from('assignments').update({
+      integration_status: 'synced',
+      updated_at: new Date().toISOString(),
+    }).eq('id', assignment.id);
+    return result;
+  } catch (error) {
+    await db.from('assignments').update({
+      integration_status: 'failed',
+      updated_at: new Date().toISOString(),
+    }).eq('id', assignment.id);
+    throw error;
+  }
+}
+
+export async function listAppPrograms(requesterEmail: string) {
+  return postSigned<AppProgramCatalogResponse>('/api/integrations/ams/programs', {
+    requesterEmail: requesterEmail.trim().toLowerCase(),
+  });
 }
 
 export async function requestAppAccessLink(associateId: string, nextPath?: string) {

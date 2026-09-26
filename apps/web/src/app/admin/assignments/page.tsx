@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../components/ui';
 
@@ -21,6 +22,24 @@ type Assignment = {
   source_system?: 'ams' | 'app-binahub';
   integration_status?: 'not_linked' | 'pending' | 'synced' | 'failed';
   external_module_key?: string | null;
+  external_program_id?: string | null;
+};
+
+type AppProgramModule = {
+  key: 'tbos' | 'lep';
+  label: string;
+  defaultRole: string;
+  workspaceUrl: string;
+};
+
+type AppProgram = {
+  id: string;
+  title: string;
+  clientName: string;
+  status: string;
+  startDate: string | null;
+  endDate: string | null;
+  modules: AppProgramModule[];
 };
 
 const EMPTY_FORM = {
@@ -38,21 +57,21 @@ const EMPTY_FORM = {
 type FormType = typeof EMPTY_FORM;
 
 const ROLE_OPTIONS = [
-  'Trainer', 'Facilitator', 'Coach', 'Mentor', 'Consultant', 'Assessor', 'Speaker', 
+  'Fasilitator T-BOS', 'Pembicara LEP', 'Trainer', 'Facilitator', 'Coach', 'Mentor', 'Consultant', 'Assessor', 'Speaker',
   'Game Master', 'Tour Leader', 'Project Manager', 'EO', 'MC', 
   'Photographer', 'Videographer', 'Affiliate Marketer', 'AI Consultant'
 ];
 
-function FormFields({ form, setForm }: { form: FormType; setForm: (f: FormType) => void }) {
+function FormFields({ form, setForm, lockIdentity = false }: { form: FormType; setForm: (f: FormType) => void; lockIdentity?: boolean }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
         <label className="block text-xs font-medium text-slate-600 mb-1">Nama Proyek *</label>
-        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
+        <input disabled={lockIdentity} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-600" />
       </div>
       <div>
         <label className="block text-xs font-medium text-slate-600 mb-1">Klien *</label>
-        <input value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
+        <input disabled={lockIdentity} value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-600" />
       </div>
       <div className="sm:col-span-2">
         <label className="block text-xs font-medium text-slate-600 mb-1">Deskripsi</label>
@@ -109,6 +128,7 @@ function FormFields({ form, setForm }: { form: FormType; setForm: (f: FormType) 
 }
 
 export default function AdminAssignmentsPage() {
+  const router = useRouter();
   const { user, accessToken } = useAuth();
   const { toast } = useToast();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -119,6 +139,11 @@ export default function AdminAssignmentsPage() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormType>({ ...EMPTY_FORM, needed_roles: [] });
+  const [assignmentMode, setAssignmentMode] = useState<'program' | 'standalone'>('program');
+  const [appPrograms, setAppPrograms] = useState<AppProgram[]>([]);
+  const [loadingPrograms, setLoadingPrograms] = useState(false);
+  const [selectedProgramId, setSelectedProgramId] = useState('');
+  const [selectedModuleKey, setSelectedModuleKey] = useState<'tbos' | 'lep' | ''>('');
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const headers = useMemo(() => ({
@@ -140,9 +165,65 @@ export default function AdminAssignmentsPage() {
     }
   }, [user, accessToken, apiUrl, headers, toast]);
 
+  const fetchAppPrograms = useCallback(async () => {
+    if (!user || !accessToken) return;
+    setLoadingPrograms(true);
+    try {
+      const response = await fetch(`${apiUrl}/api/admin/app-programs`, { headers });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.success) {
+        toast('error', payload?.error || 'Program APP belum dapat dimuat');
+        return;
+      }
+      setAppPrograms(payload.data || []);
+    } catch {
+      toast('error', 'Gagal terhubung ke katalog program APP');
+    } finally {
+      setLoadingPrograms(false);
+    }
+  }, [user, accessToken, apiUrl, headers, toast]);
+
   useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
 
+  useEffect(() => {
+    if (showForm && assignmentMode === 'program' && appPrograms.length === 0) void fetchAppPrograms();
+  }, [showForm, assignmentMode, appPrograms.length, fetchAppPrograms]);
+
+  const chooseModule = (program: AppProgram, programModule: AppProgramModule) => {
+    setSelectedModuleKey(programModule.key);
+    setForm((current) => ({
+      ...current,
+      title: program.title,
+      client_name: program.clientName,
+      start_date: program.startDate || '',
+      end_date: program.endDate || '',
+      needed_roles: [programModule.defaultRole],
+    }));
+  };
+
+  const chooseProgram = (programId: string) => {
+    setSelectedProgramId(programId);
+    const program = appPrograms.find((item) => item.id === programId);
+    if (!program) {
+      setSelectedModuleKey('');
+      return;
+    }
+    const firstModule = program.modules[0];
+    if (firstModule) chooseModule(program, firstModule);
+  };
+
+  const resetCreateForm = () => {
+    setForm({ ...EMPTY_FORM, needed_roles: [] });
+    setSelectedProgramId('');
+    setSelectedModuleKey('');
+    setAssignmentMode('program');
+  };
+
   const handleCreate = async () => {
+    if (assignmentMode === 'program' && (!selectedProgramId || !selectedModuleKey)) {
+      toast('warning', 'Pilih program dan modul yang akan ditugaskan');
+      return;
+    }
     if (!form.title || !form.client_name) {
       toast('warning', 'Nama Proyek dan Klien wajib diisi');
       return;
@@ -162,14 +243,19 @@ export default function AdminAssignmentsPage() {
           needed_count: Math.max(1, parseInt(form.needed_count, 10) || 1),
           mandays: parseInt(form.mandays) || 0,
           compensation: form.compensation || null,
+          app_program_id: assignmentMode === 'program' ? selectedProgramId : undefined,
+          app_module_key: assignmentMode === 'program' ? selectedModuleKey : undefined,
         }),
       });
       const d = await resp.json();
       if (d?.success) {
-        toast('success', 'Assignment berhasil dibuat');
+        toast(d.duplicate ? 'warning' : 'success', d.message || (assignmentMode === 'program'
+          ? 'Assignment program siap. Pilih kandidat terbaik dengan rekomendasi AI.'
+          : 'Assignment berhasil dibuat'));
         setShowForm(false);
-        setForm({ ...EMPTY_FORM, needed_roles: [] });
-        await fetchAssignments();
+        resetCreateForm();
+        if (d.data?.id) router.push(`/admin/assignments/${d.data.id}`);
+        else await fetchAssignments();
       } else {
         toast('error', d?.error || 'Gagal membuat assignment');
       }
@@ -315,6 +401,8 @@ export default function AdminAssignmentsPage() {
     return buttons;
   };
 
+  const selectedProgram = appPrograms.find((program) => program.id === selectedProgramId) || null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -333,13 +421,86 @@ export default function AdminAssignmentsPage() {
 
       {showForm && (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-900 mb-4">Assignment Baru</h3>
-          <FormFields form={form} setForm={setForm} />
+          <div className="mb-5">
+            <h3 className="text-sm font-semibold text-slate-900">Assignment Baru</h3>
+            <p className="mt-1 text-xs text-slate-500">Hubungkan associate ke program BinaHub, atau buat pekerjaan mandiri yang tidak memerlukan akses APP.</p>
+          </div>
+
+          <div className="mb-5 inline-flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Jenis assignment">
+            <button
+              type="button"
+              onClick={() => setAssignmentMode('program')}
+              className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${assignmentMode === 'program' ? 'bg-white text-[#0B2C6B] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Program BinaHub
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAssignmentMode('standalone');
+                setSelectedProgramId('');
+                setSelectedModuleKey('');
+                setForm({ ...EMPTY_FORM, needed_roles: [] });
+              }}
+              className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${assignmentMode === 'standalone' ? 'bg-white text-[#0B2C6B] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Assignment mandiri
+            </button>
+          </div>
+
+          {assignmentMode === 'program' && (
+            <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">Program APP *</label>
+                  <select
+                    value={selectedProgramId}
+                    onChange={(event) => chooseProgram(event.target.value)}
+                    disabled={loadingPrograms}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] disabled:cursor-wait disabled:text-slate-400"
+                  >
+                    <option value="">{loadingPrograms ? 'Memuat program...' : 'Pilih program aktif'}</option>
+                    {appPrograms.map((program) => (
+                      <option key={program.id} value={program.id}>{program.title} · {program.clientName}</option>
+                    ))}
+                  </select>
+                  {!loadingPrograms && appPrograms.length === 0 && (
+                    <p className="mt-1.5 text-xs text-amber-700">Belum ada program aktif dengan modul T-BOS atau LEP.</p>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">Modul dan peran *</label>
+                  <select
+                    value={selectedModuleKey}
+                    disabled={!selectedProgram}
+                    onChange={(event) => {
+                      const programModule = selectedProgram?.modules.find((item) => item.key === event.target.value);
+                      if (selectedProgram && programModule) chooseModule(selectedProgram, programModule);
+                    }}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] disabled:bg-slate-50 disabled:text-slate-400"
+                  >
+                    <option value="">Pilih modul</option>
+                    {selectedProgram?.modules.map((programModule) => (
+                      <option key={programModule.key} value={programModule.key}>{programModule.label} · {programModule.defaultRole}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {selectedProgram && selectedModuleKey && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-100 bg-white/80 px-3 py-2.5 text-xs text-slate-600">
+                  <span className="mt-0.5 text-emerald-600">✓</span>
+                  <p>Assignment akan langsung aktif. Setelah dibuat, AMS membuka daftar kandidat beserta peringkat AI; akses APP baru aktif setelah associate menerima undangan.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <FormFields form={form} setForm={setForm} lockIdentity={assignmentMode === 'program'} />
           <div className="mt-4 flex gap-2">
             <button onClick={handleCreate} disabled={saving} className="rounded-lg bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:from-[#0A255A] hover:to-[#071A33] disabled:opacity-50 disabled:shadow-none">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
-            <button onClick={() => setShowForm(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <button onClick={() => { setShowForm(false); resetCreateForm(); }} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
               Batal
             </button>
           </div>
@@ -394,12 +555,12 @@ export default function AdminAssignmentsPage() {
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusColor(a.status)}`}>
                           {statusLabel[a.status] || a.status}
                         </span>
-                        {a.source_system === 'app-binahub' && (
+                        {a.external_program_id && a.external_module_key && (
                           <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
-                            Dari APP · {a.external_module_key?.toUpperCase() || 'PROGRAM'}
+                            {a.source_system === 'app-binahub' ? 'Dari APP' : 'Terhubung APP'} · {a.external_module_key.toUpperCase()}
                           </span>
                         )}
-                        {a.source_system === 'app-binahub' && (
+                        {a.external_program_id && a.external_module_key && (
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                             a.integration_status === 'synced'
                               ? 'bg-emerald-50 text-emerald-700'
@@ -407,7 +568,13 @@ export default function AdminAssignmentsPage() {
                                 ? 'bg-red-50 text-red-700'
                                 : 'bg-amber-50 text-amber-700'
                           }`}>
-                            {a.integration_status === 'synced' ? 'Tersinkron' : a.integration_status === 'failed' ? 'Sinkronisasi gagal' : 'Menunggu sinkronisasi'}
+                            {a.integration_status === 'synced'
+                              ? 'Tersinkron'
+                              : a.integration_status === 'failed'
+                                ? 'Sinkronisasi gagal'
+                                : a.integration_status === 'not_linked'
+                                  ? 'Siap pilih associate'
+                                  : 'Menunggu sinkronisasi'}
                           </span>
                         )}
                       </div>
@@ -423,7 +590,7 @@ export default function AdminAssignmentsPage() {
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       <Link href={`/admin/assignments/${a.id}`} className="rounded-lg bg-[#0B2C6B] px-3 py-1.5 text-[11px] font-medium text-white hover:bg-[#0A255A]">Lihat Tim</Link>
-                      {a.source_system === 'app-binahub' && a.integration_status !== 'synced' && (
+                      {a.external_program_id && a.external_module_key && a.integration_status === 'failed' && (
                         <button
                           onClick={() => void retryAppSync(a.id)}
                           disabled={syncingId === a.id}
@@ -441,7 +608,7 @@ export default function AdminAssignmentsPage() {
                           {btn.label}
                         </button>
                       ))}
-                      {a.source_system !== 'app-binahub' && (
+                      {!a.external_program_id && (
                         <button
                           onClick={() => startEdit(a)}
                           className="rounded-lg bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"

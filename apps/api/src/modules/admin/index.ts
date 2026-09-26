@@ -6,7 +6,7 @@ import type { ParsedCV } from '@ams/ai';
 import { importCVSchema } from '@ams/shared/validators/associate';
 import type { AppEnv } from '../../types/env.js';
 import { queueNotificationEmail } from '../../lib/notification-email.js';
-import { syncAssignmentAssignee } from '../../lib/app-integration.js';
+import { listAppPrograms, syncAssignmentAssignee } from '../../lib/app-integration.js';
 
 const admin = new Hono<AppEnv>();
 
@@ -624,20 +624,71 @@ admin.get('/assignments', async (c) => {
   return c.json({ success: true, data: data || [], total: count || 0 });
 });
 
-admin.post('/assignments', async (c) => {
-  const user = c.get('user') as { id: string };
-  const body = await c.req.json();
-  const { title, client_name, description, start_date, end_date, needed_roles, needed_count, mandays, compensation } = body;
+admin.get('/app-programs', async (c) => {
+  const user = c.get('user') as { email?: string };
+  if (!user.email) return c.json({ success: false, error: 'Email admin tidak tersedia' }, 400);
+  try {
+    const result = await listAppPrograms(user.email);
+    return c.json({ success: true, data: result.data.programs });
+  } catch (error) {
+    console.error('Failed to load APP program catalog:', error);
+    return c.json({ success: false, error: 'Program APP belum dapat dimuat. Periksa konfigurasi integrasi lalu coba lagi.' }, 503);
+  }
+});
 
-  const safeTitle = textField(title, 200, true);
-  const safeClientName = textField(client_name, 200, true);
+admin.post('/assignments', async (c) => {
+  const user = c.get('user') as { id: string; email?: string };
+  const body = await c.req.json();
+  const {
+    title,
+    client_name,
+    description,
+    start_date,
+    end_date,
+    needed_roles,
+    needed_count,
+    mandays,
+    compensation,
+    app_program_id,
+    app_module_key,
+  } = body;
+
+  const appLinked = app_program_id !== undefined || app_module_key !== undefined;
+  if (appLinked && (!user.email || typeof app_program_id !== 'string' || !UUID_RE.test(app_program_id) || !['tbos', 'lep'].includes(app_module_key))) {
+    return c.json({ success: false, error: 'Program dan modul APP wajib dipilih' }, 400);
+  }
+
+  let linkedProgram: Awaited<ReturnType<typeof listAppPrograms>>['data']['programs'][number] | null = null;
+  let linkedModule: Awaited<ReturnType<typeof listAppPrograms>>['data']['programs'][number]['modules'][number] | null = null;
+  let actorProfileId: string | null = null;
+  let actorMode: 'matched_admin' | 'system_admin' | null = null;
+  if (appLinked) {
+    try {
+      const catalog = await listAppPrograms(user.email!);
+      linkedProgram = catalog.data.programs.find((program) => program.id === app_program_id) || null;
+      linkedModule = linkedProgram?.modules.find((module) => module.key === app_module_key) || null;
+      actorProfileId = catalog.data.actorProfileId;
+      actorMode = catalog.data.actorMode;
+    } catch (error) {
+      console.error('Failed to validate APP program assignment:', error);
+      return c.json({ success: false, error: 'Program APP belum dapat diverifikasi. Coba lagi setelah koneksi integrasi pulih.' }, 503);
+    }
+    if (!linkedProgram || !linkedModule || !actorProfileId) {
+      return c.json({ success: false, error: 'Program atau modul APP tidak tersedia untuk assignment' }, 409);
+    }
+  }
+
+  const safeTitle = textField(linkedProgram?.title ?? title, 200, true);
+  const safeClientName = textField(linkedProgram?.clientName ?? client_name, 200, true);
   const safeDescription = textField(description, 10000);
   const safeNeededCount = boundedInteger(needed_count ?? 1, 1, 10000);
   const safeMandays = boundedInteger(mandays ?? 0, 0, 10000);
   const safeCompensation = textField(compensation, 500);
-  const safeRoles = normalizedRoles(needed_roles);
-  const safeStartDate = optionalIsoDate(start_date);
-  const safeEndDate = optionalIsoDate(end_date);
+  const safeRoles = normalizedRoles(Array.isArray(needed_roles) && needed_roles.length > 0
+    ? needed_roles
+    : linkedModule ? [linkedModule.defaultRole] : []);
+  const safeStartDate = optionalIsoDate(start_date ?? linkedProgram?.startDate);
+  const safeEndDate = optionalIsoDate(end_date ?? linkedProgram?.endDate);
 
   if (!safeTitle || !safeClientName) {
     return c.json({ success: false, error: 'title dan client_name wajib diisi' }, 400);
@@ -650,6 +701,25 @@ admin.post('/assignments', async (c) => {
   }
 
   const db = getDb();
+
+  if (linkedProgram && linkedModule) {
+    const { data: duplicate } = await db
+      .from('assignments')
+      .select('id, source_system')
+      .eq('external_program_id', linkedProgram.id)
+      .eq('external_module_key', linkedModule.key)
+      .in('status', ['draft', 'active'])
+      .limit(1)
+      .maybeSingle();
+    if (duplicate) {
+      return c.json({
+        success: true,
+        duplicate: true,
+        data: { id: duplicate.id },
+        message: 'Assignment program sudah tersedia. Membuka assignment yang sudah ada.',
+      });
+    }
+  }
 
   const { data, error } = await db
     .from('assignments')
@@ -664,6 +734,19 @@ admin.post('/assignments', async (c) => {
       mandays: safeMandays,
       compensation: safeCompensation || null,
       created_by: user.id,
+      status: linkedProgram ? 'active' : 'draft',
+      source_system: 'ams',
+      external_program_id: linkedProgram?.id || null,
+      external_program_url: linkedModule?.workspaceUrl || null,
+      external_module_key: linkedModule?.key || null,
+      external_scope: linkedProgram ? {
+        assignedByProfileId: actorProfileId,
+        assignedByAmsAdminId: user.id,
+        assignedByAmsAdminEmail: user.email,
+        actorMode,
+        createdFrom: 'ams',
+      } : {},
+      integration_status: linkedProgram ? 'not_linked' : 'not_linked',
     })
     .select()
     .single();
@@ -680,12 +763,12 @@ admin.patch('/assignments/:id', async (c) => {
   const body = await c.req.json();
   const db = getDb();
 
-  const { data: existingAssignment } = await db.from('assignments').select('status, start_date, end_date, source_system').eq('id', id).maybeSingle();
+  const { data: existingAssignment } = await db.from('assignments').select('status, start_date, end_date, external_program_id, external_module_key').eq('id', id).maybeSingle();
   if (!existingAssignment) return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
 
   const editableFields = ['title', 'client_name', 'description', 'start_date', 'end_date', 'needed_roles', 'needed_count', 'mandays', 'compensation'];
-  if (existingAssignment.source_system === 'app-binahub' && editableFields.some((field) => body[field] !== undefined)) {
-    return c.json({ success: false, error: 'Detail assignment terintegrasi dikelola dari APP BinaHub' }, 409);
+  if (existingAssignment.external_program_id && existingAssignment.external_module_key && editableFields.some((field) => body[field] !== undefined)) {
+    return c.json({ success: false, error: 'Detail assignment program dikunci agar tetap sama dengan program APP' }, 409);
   }
 
   if (body.status !== undefined) {
@@ -756,7 +839,7 @@ admin.patch('/assignments/:id', async (c) => {
   }
 
   if (
-    existingAssignment.source_system === 'app-binahub'
+    Boolean(existingAssignment.external_program_id && existingAssignment.external_module_key)
     && body.status !== undefined
     && ['completed', 'cancelled'].includes(body.status)
   ) {
@@ -800,12 +883,12 @@ admin.post('/assignments/:id/sync-app', async (c) => {
   const db = getDb();
   const { data: assignment, error: assignmentError } = await db
     .from('assignments')
-    .select('id, source_system')
+    .select('id, external_program_id, external_module_key')
     .eq('id', id)
     .maybeSingle();
   if (assignmentError || !assignment) return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
-  if (assignment.source_system !== 'app-binahub') {
-    return c.json({ success: false, error: 'Hanya assignment dari APP yang dapat disinkronkan ulang' }, 409);
+  if (!assignment.external_program_id || !assignment.external_module_key) {
+    return c.json({ success: false, error: 'Assignment ini tidak terhubung ke program APP' }, 409);
   }
 
   const { data: assignees, error: assigneesError } = await db
@@ -949,7 +1032,7 @@ admin.post('/assignments/:id/invite', async (c) => {
 
   const { data: assignment } = await db
     .from('assignments')
-    .select('id, title, status')
+    .select('id, title, status, needed_roles, external_program_id, external_module_key')
     .eq('id', assignmentId)
     .single();
 
@@ -976,11 +1059,14 @@ admin.post('/assignments/:id/invite', async (c) => {
     return c.json({ success: false, error: 'Semua associate sudah diinvite ke assignment ini' }, 400);
   }
 
+  const effectiveRole = safeRole
+    || (Array.isArray(assignment.needed_roles) && typeof assignment.needed_roles[0] === 'string' ? assignment.needed_roles[0] : null)
+    || (assignment.external_module_key === 'lep' ? 'Pembicara LEP' : assignment.external_module_key === 'tbos' ? 'Fasilitator T-BOS' : null);
   const inserts = newIds.map((associateId: string) => ({
     assignment_id: assignmentId,
     associate_id: associateId,
     status: 'invited',
-    role: safeRole || null,
+    role: effectiveRole,
     invited_by: user.id,
   }));
 
@@ -994,6 +1080,15 @@ admin.post('/assignments/:id/invite', async (c) => {
   }
 
   const assignmentTitle = assignment?.title || 'Assignment Baru';
+  const isAppLinked = Boolean(assignment.external_program_id && assignment.external_module_key);
+  if (isAppLinked) {
+    await db.from('assignments').update({
+      integration_status: 'pending',
+      updated_at: new Date().toISOString(),
+    }).eq('id', assignmentId);
+  }
+  let synced = 0;
+  let syncFailed = 0;
 
   // Insert notifications for each invited associate
   if (data && Array.isArray(data)) {
@@ -1018,10 +1113,29 @@ admin.post('/assignments/:id/invite', async (c) => {
         p_aggregate_id: assignmentId,
         p_payload: { assignee_id: record.id },
       });
+      if (isAppLinked) {
+        try {
+          await syncAssignmentAssignee(record.id);
+          synced += 1;
+        } catch (syncError) {
+          syncFailed += 1;
+          console.error('Immediate AMS-origin assignment sync failed; queued for retry', {
+            assigneeId: record.id,
+            error: syncError instanceof Error ? syncError.message : 'unknown_error',
+          });
+        }
+      }
     }
   }
 
-  return c.json({ success: true, data, invited: newIds.length }, 201);
+  if (isAppLinked) {
+    await db.from('assignments').update({
+      integration_status: syncFailed === 0 ? 'synced' : 'failed',
+      updated_at: new Date().toISOString(),
+    }).eq('id', assignmentId);
+  }
+
+  return c.json({ success: true, data, invited: newIds.length, sync: { synced, failed: syncFailed } }, 201);
 });
 
 admin.get('/assignments/:id/assignees', async (c) => {
@@ -1169,7 +1283,11 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
   });
 
   // Insert notification for the associate when assignment is reviewed or status changes
-  const { data: assignment } = await db.from('assignments').select('title').eq('id', assignmentId).single();
+  const { data: assignment } = await db
+    .from('assignments')
+    .select('title, external_program_id, external_module_key')
+    .eq('id', assignmentId)
+    .single();
   const assignmentTitle = assignment?.title || 'Assignment';
   
   let notifTitle = '';
@@ -1203,6 +1321,19 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
     }
   }
 
+  if (assignment?.external_program_id && assignment.external_module_key) {
+    try {
+      await syncAssignmentAssignee(data.id);
+    } catch (syncError) {
+      console.error('Immediate admin assignment review sync failed; queued for retry', {
+        assigneeId: data.id,
+        error: syncError instanceof Error ? syncError.message : 'unknown_error',
+      });
+      await db.from('assignments').update({ integration_status: 'failed', updated_at: new Date().toISOString() }).eq('id', assignmentId);
+      return c.json({ success: true, data, syncPending: true, message: 'Perubahan tersimpan; sinkronisasi APP menunggu retry.' });
+    }
+  }
+
   return c.json({ success: true, data });
 });
 
@@ -1210,6 +1341,38 @@ admin.delete('/assignments/:id/assignees/:aid', async (c) => {
   const assignmentId = c.req.param('id');
   const assigneeId = c.req.param('aid');
   const db = getDb();
+
+  const [{ data: assignment }, { data: assignee }] = await Promise.all([
+    db.from('assignments').select('external_program_id, external_module_key').eq('id', assignmentId).maybeSingle(),
+    db.from('assignment_assignees').select('id').eq('id', assigneeId).eq('assignment_id', assignmentId).maybeSingle(),
+  ]);
+  if (!assignment || !assignee) return c.json({ success: false, error: 'Assignee tidak ditemukan' }, 404);
+
+  if (assignment.external_program_id && assignment.external_module_key) {
+    const { error: updateError } = await db
+      .from('assignment_assignees')
+      .update({ status: 'withdrawn', updated_at: new Date().toISOString() })
+      .eq('id', assigneeId)
+      .eq('assignment_id', assignmentId);
+    if (updateError) return c.json({ success: false, error: 'Akses associate tidak dapat dicabut' }, 500);
+    await db.rpc('enqueue_transformation_event', {
+      p_type: 'AssignmentAssigneeChanged',
+      p_aggregate_type: 'assignment',
+      p_aggregate_id: assignmentId,
+      p_payload: { assignee_id: assigneeId },
+    });
+    try {
+      await syncAssignmentAssignee(assigneeId);
+      return c.json({ success: true, message: 'Associate dicabut dari program dan akses APP dinonaktifkan' });
+    } catch (syncError) {
+      console.error('Immediate assignment access revocation failed; queued for retry', {
+        assigneeId,
+        error: syncError instanceof Error ? syncError.message : 'unknown_error',
+      });
+      await db.from('assignments').update({ integration_status: 'failed', updated_at: new Date().toISOString() }).eq('id', assignmentId);
+      return c.json({ success: true, syncPending: true, message: 'Associate dicabut; penonaktifan akses APP menunggu retry.' });
+    }
+  }
 
   const { error } = await db
     .from('assignment_assignees')

@@ -19,6 +19,9 @@ type Assignment = {
   mandays?: number;
   compensation?: string | null;
   created_at: string;
+  external_program_id?: string | null;
+  external_module_key?: string | null;
+  integration_status?: 'not_linked' | 'pending' | 'synced' | 'failed';
 };
 
 type Assignee = {
@@ -65,6 +68,7 @@ const statusConfig: Record<string, { label: string; bg: string; text: string }> 
   completed: { label: 'Laporan Dikirim', bg: 'bg-blue-500/10 text-blue-800 ring-1 ring-blue-500/20', text: '' },
   reviewed: { label: 'Disetujui', bg: 'bg-emerald-500/10 text-emerald-800 ring-1 ring-emerald-500/20', text: '' },
   withdrawn: { label: 'Mundur', bg: 'bg-slate-100 text-slate-400', text: '' },
+  cancelled: { label: 'Dibatalkan', bg: 'bg-slate-100 text-slate-500', text: '' },
 };
 
 const parseEvidence = (notes: string | null | undefined) => {
@@ -152,13 +156,15 @@ export default function AssignmentDetailPage() {
       const data = await resp.json();
       if (data.success) {
         setRecommendations(data.data || []);
+      } else {
+        toast('warning', data.error || 'Rekomendasi AI belum dapat dimuat; daftar associate tetap tersedia');
       }
-    } catch (e) {
-      console.error('Failed to fetch recommendations:', e);
+    } catch {
+      toast('warning', 'Rekomendasi AI belum dapat dimuat; daftar associate tetap tersedia');
     } finally {
       setLoadingRecs(false);
     }
-  }, [apiUrl, id, accessToken, getHeaders]);
+  }, [apiUrl, id, accessToken, getHeaders, toast]);
 
   const fetchAssignees = useCallback(async () => {
     if (!accessToken) return;
@@ -236,7 +242,11 @@ export default function AssignmentDetailPage() {
       });
       const data = await resp.json();
       if (data.success) {
-        toast('success', `${data.invited} associate berhasil diundang`);
+        if (data.sync?.failed > 0) {
+          toast('warning', `${data.invited} associate diundang, tetapi ${data.sync.failed} sinkronisasi APP menunggu retry`);
+        } else {
+          toast('success', `${data.invited} associate berhasil diundang`);
+        }
         setSelectedIds([]);
         setShowInvite(false);
         fetchAssignees();
@@ -267,7 +277,11 @@ export default function AssignmentDetailPage() {
       });
       const data = await resp.json();
       if (data.success) {
-        toast('success', targetStatus === 'reviewed' ? 'Tugas disetujui & selesai!' : 'Revisi tugas telah diminta ke associate');
+        if (data.syncPending) {
+          toast('warning', data.message || 'Perubahan tersimpan; sinkronisasi APP menunggu retry');
+        } else {
+          toast('success', targetStatus === 'reviewed' ? 'Tugas disetujui & selesai!' : 'Revisi tugas telah diminta ke associate');
+        }
         fetchAssignees();
       } else {
         toast('error', data.error || 'Gagal mereview');
@@ -286,7 +300,7 @@ export default function AssignmentDetailPage() {
       });
       const data = await resp.json();
       if (data.success) {
-        toast('success', 'Associate dihapus dari assignment');
+        toast('success', data.message || 'Associate dihapus dari assignment');
         fetchAssignees();
       } else {
         toast('error', data.error || 'Gagal menghapus');
@@ -359,6 +373,11 @@ export default function AssignmentDetailPage() {
               <span className={`rounded-full px-2.5 py-1 font-bold ${assignment.status === 'active' ? 'bg-emerald-50 text-emerald-700' : assignment.status === 'draft' ? 'bg-slate-100 text-slate-600' : 'bg-red-50 text-red-600'}`}>
                 {assignment.status}
               </span>
+              {assignment.external_program_id && assignment.external_module_key && (
+                <span className="rounded-full bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700">
+                  Terhubung APP · {assignment.external_module_key.toUpperCase()}
+                </span>
+              )}
               {assignment.start_date && <span>Mulai: {new Date(assignment.start_date).toLocaleDateString('id-ID')}</span>}
               {assignment.end_date && <span>Selesai: {new Date(assignment.end_date).toLocaleDateString('id-ID')}</span>}
               {assignment.needed_roles.length > 0 && <span>Role: {assignment.needed_roles.join(', ')}</span>}

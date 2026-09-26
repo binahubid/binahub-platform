@@ -1560,7 +1560,8 @@ associateRoutes.get('/assignments/:id', async (c) => {
     .eq('associate_id', associate.id)
     .single();
 
-  if (!myAssignment && (assignment.status !== 'active' || assignment.source_system === 'app-binahub')) {
+  const isProgramAssignment = Boolean(assignment.external_program_id && assignment.external_module_key);
+  if (!myAssignment && (assignment.status !== 'active' || isProgramAssignment)) {
     return c.json({ success: false, error: 'Anda tidak memiliki akses ke assignment ini' }, 403);
   }
 
@@ -1616,7 +1617,7 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
 
   const { data: assignment } = await db
     .from('assignments')
-    .select('id, title, created_by, status, source_system')
+    .select('id, title, created_by, status, source_system, external_program_id, external_module_key')
     .eq('id', assignmentId)
     .single();
 
@@ -1627,7 +1628,7 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
   if ((assignment as { status: string }).status !== 'active') {
     return c.json({ success: false, error: 'Assignment sudah tidak menerima pendaftar' }, 400);
   }
-  if (assignment.source_system === 'app-binahub') {
+  if (assignment.external_program_id && assignment.external_module_key) {
     return c.json({ success: false, error: 'Assignment program hanya tersedia untuk associate yang diundang' }, 403);
   }
 
@@ -1798,11 +1799,11 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
   // 2. Fetch assignment info and associate profile to construct notification
   const { data: assignment } = await db
     .from('assignments')
-    .select('title, created_by, source_system')
+    .select('title, created_by, source_system, external_program_id, external_module_key')
     .eq('id', assignmentId)
     .single();
 
-  if (assignment?.source_system === 'app-binahub') {
+  if (assignment?.external_program_id && assignment.external_module_key) {
     try {
       await syncAssignmentAssignee(data.id);
     } catch (syncError) {
