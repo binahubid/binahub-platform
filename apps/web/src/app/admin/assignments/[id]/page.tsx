@@ -38,9 +38,27 @@ type Assignee = {
   evidence_submitted_at: string | null;
   evidence_reviewed_at: string | null;
   evidence_reviewer_notes: string | null;
+  compensation_amount: number | string | null;
+  compensation_currency: string | null;
+  compensation_basis: CompensationBasis | null;
+  compensation_notes: string | null;
+  compensation_updated_at: string | null;
   associate: { id: string; email: string; status: string } | null;
   profile: { full_name: string; headline: string | null; photo_url: string | null; city: string | null } | null;
 };
+
+type CompensationBasis = 'fixed_project' | 'per_day' | 'per_session' | 'per_hour' | 'per_deliverable' | 'other';
+
+type CompensationEditor = {
+  assigneeId: string;
+  mode: 'inherit' | 'override';
+  amount: string;
+  currency: string;
+  basis: CompensationBasis;
+  notes: string;
+};
+
+type CompensationDraft = Omit<CompensationEditor, 'assigneeId'>;
 
 type AvailableAssociate = {
   id: string;
@@ -58,6 +76,34 @@ const availabilityOptions: Record<string, string> = {
   busy: 'Sibuk',
   unavailable: 'Tidak Tersedia',
 };
+
+const compensationBasisLabels: Record<CompensationBasis, string> = {
+  fixed_project: 'per proyek',
+  per_day: 'per hari',
+  per_session: 'per sesi',
+  per_hour: 'per jam',
+  per_deliverable: 'per deliverable',
+  other: 'sesuai catatan',
+};
+
+const defaultCompensationDraft = (): CompensationDraft => ({
+  mode: 'inherit',
+  amount: '',
+  currency: 'IDR',
+  basis: 'fixed_project',
+  notes: '',
+});
+
+function formatCompensationOverride(assignee: Assignee) {
+  if (assignee.compensation_amount === null || assignee.compensation_amount === undefined || !assignee.compensation_currency || !assignee.compensation_basis) return null;
+  const amount = Number(assignee.compensation_amount);
+  if (!Number.isFinite(amount)) return null;
+  return `${new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: assignee.compensation_currency,
+    maximumFractionDigits: 0,
+  }).format(amount)} ${compensationBasisLabels[assignee.compensation_basis]}`;
+}
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   invited: { label: 'Diundang', bg: 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20', text: '' },
@@ -111,9 +157,12 @@ export default function AssignmentDetailPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [availableAssociates, setAvailableAssociates] = useState<AvailableAssociate[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [inviteCompensations, setInviteCompensations] = useState<Record<string, CompensationDraft>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [inviting, setInviting] = useState(false);
   const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({});
+  const [compensationEditor, setCompensationEditor] = useState<CompensationEditor | null>(null);
+  const [savingCompensation, setSavingCompensation] = useState(false);
   
   // AI Recommendations State
   const [recommendations, setRecommendations] = useState<Array<{ associate_id: string; score: number; reasoning: string }>>([]);
@@ -233,12 +282,37 @@ export default function AssignmentDetailPage() {
       toast('error', 'Pilih minimal satu associate');
       return;
     }
+    const compensationByAssociate: Record<string, { mode: 'inherit' } | { mode: 'override'; amount: number; currency: string; basis: CompensationBasis; notes: string | null }> = {};
+    for (const associateId of selectedIds) {
+      const draft = inviteCompensations[associateId] || defaultCompensationDraft();
+      if (draft.mode === 'inherit') {
+        compensationByAssociate[associateId] = { mode: 'inherit' };
+        continue;
+      }
+      const amount = Number(draft.amount);
+      if (!Number.isFinite(amount) || amount < 0) {
+        toast('error', 'Periksa kembali nominal kompensasi khusus yang dipilih');
+        return;
+      }
+      if (!/^[A-Za-z]{3}$/.test(draft.currency.trim())) {
+        toast('error', 'Kode mata uang harus tiga huruf, misalnya IDR');
+        return;
+      }
+      compensationByAssociate[associateId] = {
+        mode: 'override',
+        amount,
+        currency: draft.currency.trim().toUpperCase(),
+        basis: draft.basis,
+        notes: draft.notes.trim() || null,
+      };
+    }
+
     setInviting(true);
     try {
       const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}/invite`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ associate_ids: selectedIds }),
+        body: JSON.stringify({ associate_ids: selectedIds, compensation_by_associate: compensationByAssociate }),
       });
       const data = await resp.json();
       if (data.success) {
@@ -248,6 +322,7 @@ export default function AssignmentDetailPage() {
           toast('success', `${data.invited} associate berhasil diundang`);
         }
         setSelectedIds([]);
+        setInviteCompensations({});
         setShowInvite(false);
         fetchAssignees();
       } else {
@@ -257,6 +332,61 @@ export default function AssignmentDetailPage() {
       toast('error', 'Gagal terhubung ke server');
     } finally {
       setInviting(false);
+    }
+  };
+
+  const openCompensationEditor = (assignee: Assignee) => {
+    const hasOverride = assignee.compensation_amount !== null
+      && assignee.compensation_currency !== null
+      && assignee.compensation_basis !== null;
+    setCompensationEditor({
+      assigneeId: assignee.id,
+      mode: hasOverride ? 'override' : 'inherit',
+      amount: hasOverride ? String(assignee.compensation_amount) : '',
+      currency: assignee.compensation_currency || 'IDR',
+      basis: assignee.compensation_basis || 'fixed_project',
+      notes: assignee.compensation_notes || '',
+    });
+  };
+
+  const saveCompensation = async () => {
+    if (!compensationEditor) return;
+    const amount = Number(compensationEditor.amount);
+    if (compensationEditor.mode === 'override' && (!Number.isFinite(amount) || amount < 0)) {
+      toast('error', 'Masukkan nominal kompensasi yang valid');
+      return;
+    }
+    if (compensationEditor.mode === 'override' && !/^[A-Za-z]{3}$/.test(compensationEditor.currency.trim())) {
+      toast('error', 'Kode mata uang harus tiga huruf, misalnya IDR');
+      return;
+    }
+
+    setSavingCompensation(true);
+    try {
+      const response = await fetch(`${apiUrl}/api/admin/assignments/${id}/assignees/${compensationEditor.assigneeId}`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          compensation: compensationEditor.mode === 'inherit'
+            ? { mode: 'inherit' }
+            : {
+                mode: 'override',
+                amount,
+                currency: compensationEditor.currency.trim().toUpperCase(),
+                basis: compensationEditor.basis,
+                notes: compensationEditor.notes.trim() || null,
+              },
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.success) throw new Error(payload.error || 'Kompensasi belum dapat disimpan');
+      setAssignees((current) => current.map((item) => item.id === payload.data.id ? { ...item, ...payload.data } : item));
+      setCompensationEditor(null);
+      toast('success', compensationEditor.mode === 'inherit' ? 'Associate kembali mengikuti kompensasi default' : 'Kompensasi khusus associate disimpan');
+    } catch (error) {
+      toast('error', error instanceof Error ? error.message : 'Kompensasi belum dapat disimpan');
+    } finally {
+      setSavingCompensation(false);
     }
   };
 
@@ -396,6 +526,7 @@ export default function AssignmentDetailPage() {
               }
               setShowInvite(!showInvite);
               setSelectedIds([]);
+              setInviteCompensations({});
             }}
             disabled={assignment.status !== 'active'}
             className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors ${
@@ -427,7 +558,10 @@ export default function AssignmentDetailPage() {
       {showInvite && (
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-900">Pilih Associate untuk Diundang</h3>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Pilih Associate untuk Diundang</h3>
+              <p className="mt-0.5 text-xs text-slate-500">Setiap orang dapat mengikuti kompensasi default atau menerima nilai khusus sebelum undangan dikirim.</p>
+            </div>
             <input
               type="text"
               value={searchTerm}
@@ -459,8 +593,20 @@ export default function AssignmentDetailPage() {
                       type="checkbox"
                       checked={selectedIds.includes(a.id)}
                       onChange={(e) => {
-                        if (e.target.checked) setSelectedIds([...selectedIds, a.id]);
-                        else setSelectedIds(selectedIds.filter((x) => x !== a.id));
+                        if (e.target.checked) {
+                          setSelectedIds([...selectedIds, a.id]);
+                          setInviteCompensations((current) => ({
+                            ...current,
+                            [a.id]: current[a.id] || defaultCompensationDraft(),
+                          }));
+                        } else {
+                          setSelectedIds(selectedIds.filter((x) => x !== a.id));
+                          setInviteCompensations((current) => {
+                            const next = { ...current };
+                            delete next[a.id];
+                            return next;
+                          });
+                        }
                       }}
                       className="mt-1 h-4 w-4 rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B]"
                     />
@@ -528,6 +674,47 @@ export default function AssignmentDetailPage() {
                           </p>
                         </div>
                       )}
+                      {selectedIds.includes(a.id) && (() => {
+                        const draft = inviteCompensations[a.id] || defaultCompensationDraft();
+                        const updateDraft = (changes: Partial<CompensationDraft>) => setInviteCompensations((current) => ({
+                          ...current,
+                          [a.id]: { ...(current[a.id] || defaultCompensationDraft()), ...changes },
+                        }));
+                        return (
+                          <div className="mt-3 rounded-xl border border-blue-200 bg-white p-3">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-xs font-bold text-slate-900">Kompensasi untuk {a.full_name || a.email}</p>
+                                <p className="mt-0.5 text-[11px] text-slate-500">Nilai ini tampil sebelum associate menerima undangan.</p>
+                              </div>
+                              <div className="inline-flex rounded-lg bg-slate-100 p-1 text-[11px] font-semibold">
+                                <button type="button" onClick={() => updateDraft({ mode: 'inherit' })} className={`rounded-md px-2.5 py-1.5 ${draft.mode === 'inherit' ? 'bg-white text-[#0B2C6B] shadow-sm' : 'text-slate-500'}`}>Ikuti default</button>
+                                <button type="button" onClick={() => updateDraft({ mode: 'override' })} className={`rounded-md px-2.5 py-1.5 ${draft.mode === 'override' ? 'bg-white text-[#0B2C6B] shadow-sm' : 'text-slate-500'}`}>Nilai khusus</button>
+                              </div>
+                            </div>
+                            {draft.mode === 'inherit' ? (
+                              <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">{assignment.compensation || 'Kompensasi default belum ditetapkan'}</p>
+                            ) : (
+                              <div className="mt-3 grid gap-2 sm:grid-cols-[1.2fr_0.55fr_0.8fr]">
+                                <label className="text-[11px] font-semibold text-slate-600">Nominal
+                                  <input type="number" min="0" step="1000" value={draft.amount} onChange={(event) => updateDraft({ amount: event.target.value })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal outline-none focus:border-[#0B2C6B]" placeholder="5000000" />
+                                </label>
+                                <label className="text-[11px] font-semibold text-slate-600">Mata uang
+                                  <input maxLength={3} value={draft.currency} onChange={(event) => updateDraft({ currency: event.target.value.toUpperCase() })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal uppercase outline-none focus:border-[#0B2C6B]" />
+                                </label>
+                                <label className="text-[11px] font-semibold text-slate-600">Satuan
+                                  <select value={draft.basis} onChange={(event) => updateDraft({ basis: event.target.value as CompensationBasis })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal outline-none focus:border-[#0B2C6B]">
+                                    {Object.entries(compensationBasisLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                  </select>
+                                </label>
+                                <label className="text-[11px] font-semibold text-slate-600 sm:col-span-3">Catatan kesepakatan <span className="font-normal text-slate-400">(opsional)</span>
+                                  <textarea rows={2} maxLength={2000} value={draft.notes} onChange={(event) => updateDraft({ notes: event.target.value })} className="mt-1 w-full resize-y rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-normal leading-5 outline-none focus:border-[#0B2C6B]" placeholder="Contoh: termasuk transport lokal, dibayarkan setelah laporan disetujui." />
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -535,7 +722,7 @@ export default function AssignmentDetailPage() {
             )}
           </div>
           <div className="mt-4 flex justify-end gap-2">
-            <button onClick={() => setShowInvite(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
+            <button onClick={() => { setShowInvite(false); setSelectedIds([]); setInviteCompensations({}); }} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
             <button onClick={handleInvite} disabled={inviting || selectedIds.length === 0} className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white hover:bg-[#0A255A] disabled:opacity-50">
               {inviting ? 'Mengundang...' : `Undang ${selectedIds.length} Associate`}
             </button>
@@ -557,6 +744,8 @@ export default function AssignmentDetailPage() {
             {assignees.map((a) => {
               const config = statusConfig[a.status] || statusConfig.invited;
               const { photos, report } = parseEvidence(a.evidence_notes);
+              const compensationOverride = formatCompensationOverride(a);
+              const compensationLocked = !['invited', 'applied'].includes(a.status);
               const avatarSrc = a.profile?.photo_url 
                 ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(a.profile.photo_url)}` 
                 : undefined;
@@ -603,6 +792,77 @@ export default function AssignmentDetailPage() {
                         </svg>
                       </button>
                     </div>
+                  </div>
+
+                  <div className="ml-0 rounded-xl border border-slate-200 bg-white p-4 sm:ml-13">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Kompensasi associate</p>
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${compensationOverride ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                            {compensationOverride ? 'Nilai khusus' : 'Mengikuti default'}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm font-bold text-slate-900">{compensationOverride || assignment.compensation || 'Belum ditetapkan'}</p>
+                        {a.compensation_notes && <p className="mt-1 text-xs leading-5 text-slate-500">{a.compensation_notes}</p>}
+                        {compensationLocked && <p className="mt-1 text-[10px] font-medium text-amber-700">Terkunci karena undangan sudah diterima atau pekerjaan telah dimulai.</p>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openCompensationEditor(a)}
+                        disabled={compensationLocked}
+                        className="min-h-9 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        Atur kompensasi
+                      </button>
+                    </div>
+
+                    {compensationEditor?.assigneeId === a.id && (
+                      <div className="mt-4 space-y-4 border-t border-slate-100 pt-4">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => setCompensationEditor({ ...compensationEditor, mode: 'inherit' })}
+                            className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold ${compensationEditor.mode === 'inherit' ? 'border-[#0B2C6B] bg-blue-50 text-[#0B2C6B]' : 'border-slate-200 text-slate-600'}`}
+                          >
+                            Ikuti default assignment
+                            <span className="mt-1 block font-normal text-slate-500">{assignment.compensation || 'Default belum ditetapkan'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCompensationEditor({ ...compensationEditor, mode: 'override' })}
+                            className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold ${compensationEditor.mode === 'override' ? 'border-[#0B2C6B] bg-blue-50 text-[#0B2C6B]' : 'border-slate-200 text-slate-600'}`}
+                          >
+                            Gunakan nilai khusus
+                            <span className="mt-1 block font-normal text-slate-500">Hanya berlaku untuk associate ini</span>
+                          </button>
+                        </div>
+
+                        {compensationEditor.mode === 'override' && (
+                          <div className="grid gap-3 sm:grid-cols-[1.2fr_0.55fr_0.8fr]">
+                            <label className="text-xs font-semibold text-slate-600">Nominal
+                              <input type="number" min="0" step="1000" value={compensationEditor.amount} onChange={(event) => setCompensationEditor({ ...compensationEditor, amount: event.target.value })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none focus:border-[#0B2C6B]" placeholder="5000000" />
+                            </label>
+                            <label className="text-xs font-semibold text-slate-600">Mata uang
+                              <input maxLength={3} value={compensationEditor.currency} onChange={(event) => setCompensationEditor({ ...compensationEditor, currency: event.target.value.toUpperCase() })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-normal uppercase outline-none focus:border-[#0B2C6B]" />
+                            </label>
+                            <label className="text-xs font-semibold text-slate-600">Satuan
+                              <select value={compensationEditor.basis} onChange={(event) => setCompensationEditor({ ...compensationEditor, basis: event.target.value as CompensationBasis })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none focus:border-[#0B2C6B]">
+                                {Object.entries(compensationBasisLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                              </select>
+                            </label>
+                            <label className="text-xs font-semibold text-slate-600 sm:col-span-3">Catatan kesepakatan <span className="font-normal text-slate-400">(opsional)</span>
+                              <textarea rows={2} maxLength={2000} value={compensationEditor.notes} onChange={(event) => setCompensationEditor({ ...compensationEditor, notes: event.target.value })} className="mt-1 w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal leading-5 outline-none focus:border-[#0B2C6B]" placeholder="Contoh: termasuk transport lokal, dibayarkan setelah laporan disetujui." />
+                            </label>
+                          </div>
+                        )}
+
+                        <div className="flex justify-end gap-2">
+                          <button type="button" onClick={() => setCompensationEditor(null)} className="min-h-9 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600">Batal</button>
+                          <button type="button" onClick={() => void saveCompensation()} disabled={savingCompensation} className="min-h-9 rounded-lg bg-[#0B2C6B] px-4 text-xs font-semibold text-white disabled:opacity-50">{savingCompensation ? 'Menyimpan…' : 'Simpan kompensasi'}</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Progress Stepper & Milestone Timestamps */}

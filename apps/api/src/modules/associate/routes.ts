@@ -1555,7 +1555,7 @@ associateRoutes.get('/assignments/:id', async (c) => {
 
   const { data: myAssignment } = await db
     .from('assignment_assignees')
-    .select('*')
+    .select('id, assignment_id, associate_id, status, role, notes, invited_at, accepted_at, completed_at, evidence_url, evidence_notes, evidence_submitted_at, evidence_reviewed_at, evidence_reviewer_notes, compensation_amount, compensation_currency, compensation_basis, compensation_notes, compensation_updated_at')
     .eq('assignment_id', assignmentId)
     .eq('associate_id', associate.id)
     .single();

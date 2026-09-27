@@ -34,6 +34,10 @@ type AssignmentDetail = {
     evidence_submitted_at: string | null;
     evidence_reviewed_at: string | null;
     evidence_reviewer_notes: string | null;
+    compensation_amount: number | string | null;
+    compensation_currency: string | null;
+    compensation_basis: 'fixed_project' | 'per_day' | 'per_session' | 'per_hour' | 'per_deliverable' | 'other' | null;
+    compensation_notes: string | null;
   } | null;
   accepted_count: number;
   total_assignees: number;
@@ -76,6 +80,39 @@ function fmtCurrency(val: string | null | undefined) {
   if (!isNaN(num) && num > 0)
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   return val;
+}
+
+const compensationBasisLabels: Record<NonNullable<AssignmentDetail['my_assignment']>['compensation_basis'] & string, string> = {
+  fixed_project: 'per proyek',
+  per_day: 'per hari',
+  per_session: 'per sesi',
+  per_hour: 'per jam',
+  per_deliverable: 'per deliverable',
+  other: 'sesuai catatan',
+};
+
+function effectiveCompensation(assignment: AssignmentDetail) {
+  const individual = assignment.my_assignment;
+  if (individual?.compensation_amount !== null
+    && individual?.compensation_amount !== undefined
+    && individual.compensation_currency
+    && individual.compensation_basis) {
+    const amount = Number(individual.compensation_amount);
+    if (Number.isFinite(amount)) {
+      return {
+        label: `${new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: individual.compensation_currency,
+          maximumFractionDigits: 0,
+        }).format(amount)} ${compensationBasisLabels[individual.compensation_basis]}`,
+        notes: individual.compensation_notes,
+        individual: true,
+      };
+    }
+  }
+  return assignment.compensation
+    ? { label: fmtCurrency(assignment.compensation), notes: null, individual: false }
+    : null;
 }
 
 
@@ -345,6 +382,7 @@ export default function AssignmentDetailPage() {
   const stepIndex = getStepIndex(myStatus);
   const myRole = my?.role || assignment.needed_roles?.[0] || null;
   const isDeclined = myStatus === 'declined';
+  const compensation = effectiveCompensation(assignment);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const startDate = assignment.start_date
@@ -407,10 +445,10 @@ export default function AssignmentDetailPage() {
                 <span>Durasi: <strong className="text-white/90">{assignment.mandays} Manday{assignment.mandays > 1 ? 's' : ''}</strong></span>
               </div>
             )}
-            {assignment.compensation && (
+            {compensation && (
               <div className="flex items-center gap-1.5">
                 <svg className="h-4 w-4 text-white/40 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>Kompensasi: <strong className="text-white/90">{fmtCurrency(assignment.compensation)}</strong></span>
+                <span>Kompensasi{compensation.individual ? ' Anda' : ''}: <strong className="text-white/90">{compensation.label}</strong></span>
               </div>
             )}
           </div>
@@ -858,7 +896,7 @@ export default function AssignmentDetailPage() {
               {[
                 { title: 'Pasal 1: Ruang Lingkup', items: [`Nama Proyek: ${assignment.title}`, `Klien: ${assignment.client_name}`, `Peran/Role: ${myRole || 'Associate'}`] },
                 { title: 'Pasal 2: Jangka Waktu', items: ([assignment.start_date && `Tanggal Mulai: ${fmtDate(assignment.start_date)}`, assignment.end_date && `Tanggal Selesai: ${fmtDate(assignment.end_date)}`, assignment.mandays ? `Durasi: ${assignment.mandays} Manday(s)` : null] as (string | null | false)[]).filter((x): x is string => !!x) },
-                { title: 'Pasal 3: Kompensasi', items: [`Nilai: ${fmtCurrency(assignment.compensation)}`, 'Pembayaran diproses setelah bukti tugas disetujui admin.'] },
+                { title: 'Pasal 3: Kompensasi', items: [`Nilai: ${compensation?.label || 'Belum ditetapkan'}`, compensation?.notes || 'Pembayaran diproses setelah bukti tugas disetujui admin.'] },
                 { title: 'Pasal 4: Kerahasiaan (NDA)', items: ['Mitra wajib menjaga kerahasiaan seluruh informasi proyek. Dilarang menyebarluaskan tanpa izin tertulis BinaHub.'] },
               ].map((s) => (
                 <div key={s.title} className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2">

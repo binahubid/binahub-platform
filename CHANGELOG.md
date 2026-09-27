@@ -2,6 +2,25 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [0.10.1] - 2026-09-27
+
+### Added
+
+- Menambahkan kompensasi khusus per associate di dalam assignment yang sama, meliputi nominal, mata uang, satuan pembayaran, dan catatan kesepakatan yang dapat ditetapkan sebelum undangan dikirim.
+- Menampilkan nilai kompensasi efektif pada dashboard admin, detail assignment associate, dan SPK sebelum associate menerima undangan.
+- Mengirim notifikasi aplikasi dan email ketika admin menetapkan atau mengubah kompensasi khusus associate.
+- Menambahkan migrasi `012_assignee_compensation.sql` dengan constraint konsistensi nominal, mata uang, satuan, serta panjang catatan.
+- Menambahkan riwayat audit kompensasi otomatis yang menyimpan nilai sebelum dan sesudah perubahan, admin pengubah, serta waktu perubahan.
+
+### Security
+
+- Membatasi rincian kompensasi khusus hanya kepada admin dan associate pemilik assignment; identitas admin yang memperbarui nilai tidak diekspos melalui API associate.
+- Mengunci perubahan kompensasi setelah associate menerima assignment agar kesepakatan tidak dapat diubah sepihak saat pekerjaan berjalan.
+
+### Changed
+
+- Menyelaraskan versi aplikasi, health API, halaman status, dan production smoke ke `0.10.1` agar hasil deployment dapat diverifikasi tanpa mismatch versi lama.
+
 ## [0.10.0] - 2026-09-27
 
 ### Added

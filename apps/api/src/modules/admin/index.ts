@@ -4,6 +4,7 @@ import { getDb } from '../../lib/database.js';
 import { rankCandidates } from '@ams/ai';
 import type { ParsedCV } from '@ams/ai';
 import { importCVSchema } from '@ams/shared/validators/associate';
+import { assigneeCompensationUpdateSchema } from '@ams/shared/validators/assignments';
 import type { AppEnv } from '../../types/env.js';
 import { queueNotificationEmail } from '../../lib/notification-email.js';
 import { listAppPrograms, syncAssignmentAssignee } from '../../lib/app-integration.js';
@@ -1020,13 +1021,34 @@ admin.post('/assignments/:id/invite', async (c) => {
   const user = c.get('user') as { id: string };
   const assignmentId = c.req.param('id');
   const body = await c.req.json();
-  const { associate_ids, role } = body;
+  const { associate_ids, role, compensation_by_associate } = body;
 
   if (!associate_ids || !Array.isArray(associate_ids) || associate_ids.length === 0 || associate_ids.length > 100 || !associate_ids.every((id) => typeof id === 'string' && UUID_RE.test(id))) {
     return c.json({ success: false, error: 'associate_ids wajib diisi (array)' }, 400);
   }
+  const requestedIds = Array.from(new Set(associate_ids as string[]));
   const safeRole = textField(role, 100);
   if (role !== undefined && safeRole === null) return c.json({ success: false, error: 'Role tidak valid' }, 400);
+  const compensationByAssociate = new Map<string, ReturnType<typeof assigneeCompensationUpdateSchema.parse>>();
+  if (compensation_by_associate !== undefined) {
+    if (!compensation_by_associate || typeof compensation_by_associate !== 'object' || Array.isArray(compensation_by_associate)) {
+      return c.json({ success: false, error: 'Data kompensasi associate tidak valid' }, 400);
+    }
+    const compensationEntries = Object.entries(compensation_by_associate);
+    if (compensationEntries.length > requestedIds.length) {
+      return c.json({ success: false, error: 'Data kompensasi melebihi jumlah associate yang dipilih' }, 400);
+    }
+    for (const [associateId, value] of compensationEntries) {
+      if (!UUID_RE.test(associateId) || !requestedIds.includes(associateId)) {
+        return c.json({ success: false, error: 'Data kompensasi tidak sesuai dengan associate yang dipilih' }, 400);
+      }
+      const parsed = assigneeCompensationUpdateSchema.safeParse(value);
+      if (!parsed.success) {
+        return c.json({ success: false, error: 'Data kompensasi khusus tidak valid' }, 400);
+      }
+      compensationByAssociate.set(associateId, parsed.data);
+    }
+  }
 
   const db = getDb();
 
@@ -1050,7 +1072,6 @@ admin.post('/assignments/:id/invite', async (c) => {
     .eq('assignment_id', assignmentId);
 
   const existingIds = (existing || []).map((e: { associate_id: string }) => e.associate_id);
-  const requestedIds = Array.from(new Set(associate_ids as string[]));
   const { data: activeAssociates } = await db.from('associates').select('id').in('id', requestedIds).eq('status', 'active');
   const activeIds = new Set((activeAssociates || []).map((associate: { id: string }) => associate.id));
   const newIds = requestedIds.filter((id) => activeIds.has(id) && !existingIds.includes(id));
@@ -1062,13 +1083,24 @@ admin.post('/assignments/:id/invite', async (c) => {
   const effectiveRole = safeRole
     || (Array.isArray(assignment.needed_roles) && typeof assignment.needed_roles[0] === 'string' ? assignment.needed_roles[0] : null)
     || (assignment.external_module_key === 'lep' ? 'Pembicara LEP' : assignment.external_module_key === 'tbos' ? 'Fasilitator T-BOS' : null);
-  const inserts = newIds.map((associateId: string) => ({
-    assignment_id: assignmentId,
-    associate_id: associateId,
-    status: 'invited',
-    role: effectiveRole,
-    invited_by: user.id,
-  }));
+  const inserts = newIds.map((associateId: string) => {
+    const compensation = compensationByAssociate.get(associateId);
+    return {
+      assignment_id: assignmentId,
+      associate_id: associateId,
+      status: 'invited',
+      role: effectiveRole,
+      invited_by: user.id,
+      ...(compensation?.mode === 'override' ? {
+        compensation_amount: compensation.amount,
+        compensation_currency: compensation.currency,
+        compensation_basis: compensation.basis,
+        compensation_notes: compensation.notes || null,
+        compensation_updated_at: new Date().toISOString(),
+        compensation_updated_by: user.id,
+      } : {}),
+    };
+  });
 
   const { data, error } = await db
     .from('assignment_assignees')
@@ -1076,7 +1108,8 @@ admin.post('/assignments/:id/invite', async (c) => {
     .select();
 
   if (error) {
-    return c.json({ success: false, error: error.message }, 500);
+    console.error('Failed to invite assignment associates', { assignmentId, error: error.message });
+    return c.json({ success: false, error: 'Undangan associate gagal disimpan' }, 500);
   }
 
   const assignmentTitle = assignment?.title || 'Assignment Baru';
@@ -1208,7 +1241,7 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
   const assignmentId = c.req.param('id');
   const assigneeId = c.req.param('aid');
   const body = await c.req.json();
-  const { status, role, notes, evidence_reviewer_notes } = body;
+  const { status, role, notes, evidence_reviewer_notes, compensation } = body;
 
   const db = getDb();
 
@@ -1221,6 +1254,12 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
   if ((role !== undefined && safeRole === null) || (notes !== undefined && safeNotes === null) || (evidence_reviewer_notes !== undefined && safeReviewerNotes === null)) {
     return c.json({ success: false, error: 'Data assignee tidak valid atau terlalu panjang' }, 400);
   }
+  const parsedCompensation = compensation === undefined
+    ? null
+    : assigneeCompensationUpdateSchema.safeParse(compensation);
+  if (parsedCompensation && !parsedCompensation.success) {
+    return c.json({ success: false, error: 'Data kompensasi khusus tidak valid' }, 400);
+  }
 
   const { data: currentAssignee } = await db
     .from('assignment_assignees')
@@ -1229,6 +1268,13 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
     .eq('assignment_id', assignmentId)
     .maybeSingle();
   if (!currentAssignee) return c.json({ success: false, error: 'Assignee tidak ditemukan' }, 404);
+
+  if (parsedCompensation?.success && !['invited', 'applied'].includes(currentAssignee.status)) {
+    return c.json({
+      success: false,
+      error: 'Kompensasi terkunci setelah associate menerima assignment. Gunakan proses amendemen untuk perubahan berikutnya.',
+    }, 409);
+  }
 
   if (status !== undefined && status !== currentAssignee.status) {
     const transitions: Record<string, string[]> = {
@@ -1258,29 +1304,53 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
     updateData.evidence_reviewer_notes = safeReviewerNotes;
     updateData.evidence_reviewed_at = new Date().toISOString();
   }
+  if (parsedCompensation?.success) {
+    const compensationUpdate = parsedCompensation.data;
+    updateData.compensation_amount = compensationUpdate.mode === 'override' ? compensationUpdate.amount : null;
+    updateData.compensation_currency = compensationUpdate.mode === 'override' ? compensationUpdate.currency : null;
+    updateData.compensation_basis = compensationUpdate.mode === 'override' ? compensationUpdate.basis : null;
+    updateData.compensation_notes = compensationUpdate.mode === 'override' ? compensationUpdate.notes || null : null;
+    updateData.compensation_updated_at = new Date().toISOString();
+    updateData.compensation_updated_by = (c.get('user') as { id: string }).id;
+  }
 
-  const { data, error } = await db
+  const updateAssigneeQuery = db
     .from('assignment_assignees')
     .update(updateData)
     .eq('id', assigneeId)
-    .eq('assignment_id', assignmentId)
-    .select()
-    .single();
+    .eq('assignment_id', assignmentId);
+  const { data, error } = parsedCompensation?.success
+    ? await updateAssigneeQuery.in('status', ['invited', 'applied']).select().maybeSingle()
+    : await updateAssigneeQuery.select().maybeSingle();
 
   if (error) {
-    return c.json({ success: false, error: error.message }, 500);
+    console.error('Failed to update assignment assignee', {
+      assignmentId,
+      assigneeId,
+      error: error.message,
+    });
+    return c.json({ success: false, error: 'Perubahan assignee gagal disimpan' }, 500);
   }
 
   if (!data) {
+    if (parsedCompensation?.success) {
+      return c.json({
+        success: false,
+        error: 'Kompensasi terkunci karena status assignment telah berubah. Muat ulang halaman untuk melihat status terbaru.',
+      }, 409);
+    }
     return c.json({ success: false, error: 'Assignee tidak ditemukan' }, 404);
   }
 
-  await db.rpc('enqueue_transformation_event', {
-    p_type: 'AssignmentAssigneeChanged',
-    p_aggregate_type: 'assignment',
-    p_aggregate_id: assignmentId,
-    p_payload: { assignee_id: data.id },
-  });
+  const integrationRelevantChange = status !== undefined || role !== undefined;
+  if (integrationRelevantChange) {
+    await db.rpc('enqueue_transformation_event', {
+      p_type: 'AssignmentAssigneeChanged',
+      p_aggregate_type: 'assignment',
+      p_aggregate_id: assignmentId,
+      p_payload: { assignee_id: data.id },
+    });
+  }
 
   // Insert notification for the associate when assignment is reviewed or status changes
   const { data: assignment } = await db
@@ -1294,7 +1364,11 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
   let notifMsg = '';
   let notifType = '';
 
-  if (status === 'reviewed') {
+  if (parsedCompensation?.success) {
+    notifTitle = 'Kompensasi assignment diperbarui';
+    notifMsg = `Rincian kompensasi untuk assignment "${assignmentTitle}" telah diperbarui. Periksa detail assignment sebelum menerima undangan.`;
+    notifType = 'assignment_compensation_updated';
+  } else if (status === 'reviewed') {
     notifTitle = `Laporan Disetujui! 🎉`;
     notifMsg = `Laporan Anda untuk assignment "${assignmentTitle}" telah disetujui oleh admin.`;
     notifType = 'reviewed';
@@ -1321,7 +1395,7 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
     }
   }
 
-  if (assignment?.external_program_id && assignment.external_module_key) {
+  if (integrationRelevantChange && assignment?.external_program_id && assignment.external_module_key) {
     try {
       await syncAssignmentAssignee(data.id);
     } catch (syncError) {

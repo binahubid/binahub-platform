@@ -54,6 +54,12 @@ CREATE TABLE IF NOT EXISTS assignment_assignees (
   status text DEFAULT 'invited' NOT NULL,
   role text,
   notes text,
+  compensation_amount numeric(18, 2),
+  compensation_currency text,
+  compensation_basis text,
+  compensation_notes text,
+  compensation_updated_at timestamp with time zone,
+  compensation_updated_by uuid,
   invited_by uuid,
   invited_at timestamp DEFAULT now() NOT NULL,
   accepted_at timestamp,
@@ -61,6 +67,156 @@ CREATE TABLE IF NOT EXISTS assignment_assignees (
   created_at timestamp DEFAULT now() NOT NULL,
   updated_at timestamp DEFAULT now() NOT NULL
 );
+
+ALTER TABLE assignment_assignees DROP CONSTRAINT IF EXISTS assignment_assignees_compensation_amount_check;
+ALTER TABLE assignment_assignees ADD CONSTRAINT assignment_assignees_compensation_amount_check CHECK (compensation_amount IS NULL OR compensation_amount >= 0);
+ALTER TABLE assignment_assignees DROP CONSTRAINT IF EXISTS assignment_assignees_compensation_currency_check;
+ALTER TABLE assignment_assignees ADD CONSTRAINT assignment_assignees_compensation_currency_check CHECK (compensation_currency IS NULL OR compensation_currency ~ '^[A-Z]{3}$');
+ALTER TABLE assignment_assignees DROP CONSTRAINT IF EXISTS assignment_assignees_compensation_basis_check;
+ALTER TABLE assignment_assignees ADD CONSTRAINT assignment_assignees_compensation_basis_check CHECK (compensation_basis IS NULL OR compensation_basis IN ('fixed_project', 'per_day', 'per_session', 'per_hour', 'per_deliverable', 'other'));
+ALTER TABLE assignment_assignees DROP CONSTRAINT IF EXISTS assignment_assignees_compensation_override_check;
+ALTER TABLE assignment_assignees ADD CONSTRAINT assignment_assignees_compensation_override_check CHECK ((compensation_amount IS NULL AND compensation_currency IS NULL AND compensation_basis IS NULL) OR (compensation_amount IS NOT NULL AND compensation_currency IS NOT NULL AND compensation_basis IS NOT NULL));
+ALTER TABLE assignment_assignees DROP CONSTRAINT IF EXISTS assignment_assignees_compensation_notes_check;
+ALTER TABLE assignment_assignees ADD CONSTRAINT assignment_assignees_compensation_notes_check CHECK (compensation_notes IS NULL OR char_length(compensation_notes) <= 2000);
+
+CREATE TABLE IF NOT EXISTS assignment_compensation_history (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  assignment_assignee_id uuid REFERENCES assignment_assignees(id) ON DELETE SET NULL,
+  assignment_id uuid NOT NULL,
+  associate_id uuid NOT NULL,
+  previous_amount numeric(18, 2),
+  previous_currency text,
+  previous_basis text,
+  previous_notes text,
+  new_amount numeric(18, 2),
+  new_currency text,
+  new_basis text,
+  new_notes text,
+  change_type text NOT NULL CHECK (change_type IN ('override_set', 'override_updated', 'inherit_default')),
+  changed_by uuid,
+  changed_at timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_assignment_compensation_history_assignee ON assignment_compensation_history(assignment_assignee_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_assignment_compensation_history_assignment ON assignment_compensation_history(assignment_id, changed_at DESC);
+ALTER TABLE assignment_compensation_history ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE assignment_compensation_history FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE assignment_compensation_history TO service_role;
+
+CREATE OR REPLACE FUNCTION record_assignment_compensation_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO assignment_compensation_history (
+    assignment_assignee_id,
+    assignment_id,
+    associate_id,
+    previous_amount,
+    previous_currency,
+    previous_basis,
+    previous_notes,
+    new_amount,
+    new_currency,
+    new_basis,
+    new_notes,
+    change_type,
+    changed_by,
+    changed_at
+  ) VALUES (
+    NEW.id,
+    NEW.assignment_id,
+    NEW.associate_id,
+    OLD.compensation_amount,
+    OLD.compensation_currency,
+    OLD.compensation_basis,
+    OLD.compensation_notes,
+    NEW.compensation_amount,
+    NEW.compensation_currency,
+    NEW.compensation_basis,
+    NEW.compensation_notes,
+    CASE
+      WHEN NEW.compensation_amount IS NULL THEN 'inherit_default'
+      WHEN OLD.compensation_amount IS NULL THEN 'override_set'
+      ELSE 'override_updated'
+    END,
+    NEW.compensation_updated_by,
+    COALESCE(NEW.compensation_updated_at, now())
+  );
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION record_assignment_compensation_change() FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS assignment_assignees_compensation_audit ON assignment_assignees;
+CREATE TRIGGER assignment_assignees_compensation_audit
+AFTER UPDATE OF compensation_amount, compensation_currency, compensation_basis, compensation_notes
+ON assignment_assignees
+FOR EACH ROW
+WHEN (
+  OLD.compensation_amount IS DISTINCT FROM NEW.compensation_amount
+  OR OLD.compensation_currency IS DISTINCT FROM NEW.compensation_currency
+  OR OLD.compensation_basis IS DISTINCT FROM NEW.compensation_basis
+  OR OLD.compensation_notes IS DISTINCT FROM NEW.compensation_notes
+)
+EXECUTE FUNCTION record_assignment_compensation_change();
+
+CREATE OR REPLACE FUNCTION record_initial_assignment_compensation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.compensation_amount IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  INSERT INTO assignment_compensation_history (
+    assignment_assignee_id,
+    assignment_id,
+    associate_id,
+    previous_amount,
+    previous_currency,
+    previous_basis,
+    previous_notes,
+    new_amount,
+    new_currency,
+    new_basis,
+    new_notes,
+    change_type,
+    changed_by,
+    changed_at
+  ) VALUES (
+    NEW.id,
+    NEW.assignment_id,
+    NEW.associate_id,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NEW.compensation_amount,
+    NEW.compensation_currency,
+    NEW.compensation_basis,
+    NEW.compensation_notes,
+    'override_set',
+    NEW.compensation_updated_by,
+    COALESCE(NEW.compensation_updated_at, now())
+  );
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION record_initial_assignment_compensation() FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS assignment_assignees_initial_compensation_audit ON assignment_assignees;
+CREATE TRIGGER assignment_assignees_initial_compensation_audit
+AFTER INSERT ON assignment_assignees
+FOR EACH ROW
+WHEN (NEW.compensation_amount IS NOT NULL)
+EXECUTE FUNCTION record_initial_assignment_compensation();
 
 -- 4. UNIQUE CONSTRAINT: satu associate hanya satu assignment role
 CREATE UNIQUE INDEX IF NOT EXISTS idx_assignment_assignees_unique ON assignment_assignees(assignment_id, associate_id);
