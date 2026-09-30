@@ -227,6 +227,16 @@ export default function OnboardingPage() {
       });
       const json = await res.json();
       if (json.success && json.data?.id) {
+        const existingProfile = json.data.profile;
+        const hasUsableProfile = Boolean(existingProfile?.full_name && Array.isArray(existingProfile?.roles) && existingProfile.roles.length > 0);
+        if (json.data.status === 'active' || json.data.status === 'pending_review') {
+          router.replace('/dashboard');
+          return;
+        }
+        if (hasUsableProfile) {
+          router.replace('/dashboard/profile');
+          return;
+        }
         setAssociateId(json.data.id);
         
         // Detect existing CV document
@@ -252,7 +262,7 @@ export default function OnboardingPage() {
     } catch {
       // ignore
     }
-  }, [accessToken, apiUrl, user]);
+  }, [accessToken, apiUrl, user, router]);
 
   useEffect(() => {
     fetchAssociateId();

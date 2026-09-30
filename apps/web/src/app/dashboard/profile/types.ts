@@ -121,4 +121,5 @@ export type AssociateData = {
   availability: Availability | null;
   socialLinks: SocialLink[];
   emergencyContact: EmergencyContact | null;
+  reviews?: Array<{ status: string; notes?: string | null; decision_at?: string | null }>;
 };

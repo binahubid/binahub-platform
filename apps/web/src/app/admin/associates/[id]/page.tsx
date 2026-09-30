@@ -143,6 +143,10 @@ export default function AssociateDetailPage() {
 
   const handleReview = async (status: 'approved' | 'rejected') => {
     if (!user || !accessToken) return;
+    if (status === 'rejected' && !reviewNotes.trim()) {
+      toast('error', 'Tulis bagian profil yang perlu diperbaiki sebelum meminta revisi.');
+      return;
+    }
     setReviewing(true);
     try {
       const resp = await fetch(`${apiUrl}/api/reviews/associate/${params.id}/decision`, {
@@ -296,7 +300,7 @@ export default function AssociateDetailPage() {
           <textarea
             value={reviewNotes}
             onChange={(e) => setReviewNotes(e.target.value)}
-            placeholder="Catatan review..."
+            placeholder="Catatan untuk associate (wajib jika meminta revisi)..."
             rows={3}
             className="mt-3 block w-full rounded-lg border border-amber-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
           />
@@ -310,7 +314,7 @@ export default function AssociateDetailPage() {
             </button>
             <button
               onClick={() => handleReview('rejected')}
-              disabled={reviewing}
+              disabled={reviewing || !reviewNotes.trim()}
               className="rounded-lg border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
             >
               Tolak

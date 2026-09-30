@@ -4,10 +4,10 @@ import { getDb } from '../../lib/database.js';
 import { rankCandidates } from '@ams/ai';
 import type { ParsedCV } from '@ams/ai';
 import { importCVSchema } from '@ams/shared/validators/associate';
-import { assigneeCompensationUpdateSchema } from '@ams/shared/validators/assignments';
+import { assigneeCompensationUpdateSchema, assignmentOfferFeeSchema, invitationDeadlineSchema } from '@ams/shared/validators/assignments';
 import type { AppEnv } from '../../types/env.js';
 import { queueNotificationEmail } from '../../lib/notification-email.js';
-import { listAppPrograms, syncAssignmentAssignee } from '../../lib/app-integration.js';
+import { createAppProject, enableAppProjectModule, listAppPrograms, syncAssignmentAssignee } from '../../lib/app-integration.js';
 
 const admin = new Hono<AppEnv>();
 
@@ -401,6 +401,10 @@ admin.patch('/associates/:id/review', async (c) => {
   if (notes !== undefined && safeNotes === null) {
     return c.json({ success: false, error: 'Catatan review tidak valid atau terlalu panjang' }, 400);
   }
+  if (status === 'rejected' && !safeNotes?.trim()) return c.json({ success: false, error: 'Tuliskan bagian profil yang perlu diperbaiki' }, 400);
+
+  const { data: currentAssociate } = await db.from('associates').select('status').eq('id', id).maybeSingle();
+  if (currentAssociate?.status !== 'pending_review') return c.json({ success: false, error: 'Profil tidak sedang menunggu review' }, 409);
 
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
@@ -416,12 +420,14 @@ admin.patch('/associates/:id/review', async (c) => {
     .from('associates')
     .update(updateData)
     .eq('id', id)
+    .eq('status', 'pending_review')
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    return c.json({ success: false, error: error.message }, 500);
+    return c.json({ success: false, error: 'Keputusan review belum dapat disimpan' }, 500);
   }
+  if (!data) return c.json({ success: false, error: 'Status profil telah berubah. Muat ulang halaman.' }, 409);
 
   // Check if review already exists
   const { data: existingReview } = await db
@@ -479,6 +485,51 @@ admin.patch('/associates/:id/review', async (c) => {
   }
 
   return c.json({ success: true, data, message: `Associate ${status}` });
+});
+
+admin.post('/associates/:id/remind-profile', async (c) => {
+  const associateId = c.req.param('id');
+  if (!UUID_RE.test(associateId)) return c.json({ success: false, error: 'Associate tidak valid' }, 400);
+  const db = getDb();
+  const { data: associate } = await db.from('associates').select('id, status').eq('id', associateId).maybeSingle();
+  if (!associate) return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
+  if (associate.status !== 'draft') return c.json({ success: false, error: 'Pengingat hanya untuk profil yang belum dikirim atau perlu diperbaiki' }, 409);
+
+  const { data: latest } = await db.from('notifications').select('created_at')
+    .eq('recipient_id', associateId).eq('type', 'profile_completion_reminder')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (latest?.created_at && Date.now() - new Date(latest.created_at).getTime() < 24 * 60 * 60_000) {
+    return c.json({ success: false, error: 'Pengingat sudah dikirim dalam 24 jam terakhir' }, 409);
+  }
+
+  const { data: notification, error } = await db.from('notifications').insert({
+    recipient_id: associateId,
+    recipient_role: 'associate',
+    type: 'profile_completion_reminder',
+    title: 'Lengkapi dan kirim profil Anda',
+    message: 'Halo, profil AMS Anda belum diajukan untuk ditinjau. Periksa data diri, peran, kontak, dan pengalaman Anda; lalu tekan “Kirim profil untuk ditinjau” di halaman profil. CV tidak perlu diunggah ulang jika data sudah tersedia. Setelah dikirim, admin akan meninjau dan memberi kabar hasilnya.',
+    link: '/dashboard/profile',
+    reference_id: null,
+  }).select('id').single();
+  if (error || !notification) {
+    console.error('Profile reminder creation failed', { associateId, code: error?.code });
+    return c.json({ success: false, error: 'Pengingat belum dapat dibuat' }, 500);
+  }
+  try {
+    await queueNotificationEmail(notification.id, 'profile-completion-reminder');
+  } catch (queueError) {
+    console.error('Profile reminder email queue failed', { associateId, error: queueError instanceof Error ? queueError.message : 'unknown_error' });
+    return c.json({ success: true, notificationQueued: false, message: 'Pengingat dalam aplikasi terkirim; email belum dapat diantrikan' }, 202);
+  }
+  const { data: delivery } = await db.from('email_notification_deliveries').select('status').eq('notification_id', notification.id).maybeSingle();
+  return c.json({
+    success: true,
+    notificationQueued: true,
+    emailStatus: delivery?.status || 'pending',
+    message: delivery?.status === 'sent'
+      ? 'Pengingat terkirim ke aplikasi dan email'
+      : 'Pengingat masuk ke aplikasi; email sedang diantrikan atau perlu retry',
+  });
 });
 
 admin.get('/capabilities', async (c) => {
@@ -633,7 +684,7 @@ admin.get('/app-programs', async (c) => {
     return c.json({ success: true, data: result.data.programs });
   } catch (error) {
     console.error('Failed to load APP program catalog:', error);
-    return c.json({ success: false, error: 'Program APP belum dapat dimuat. Periksa konfigurasi integrasi lalu coba lagi.' }, 503);
+    return c.json({ success: false, error: 'Project APP belum dapat dimuat. Periksa konfigurasi integrasi lalu coba lagi.' }, 503);
   }
 });
 
@@ -652,11 +703,32 @@ admin.post('/assignments', async (c) => {
     compensation,
     app_program_id,
     app_module_key,
+    new_app_project,
   } = body;
 
-  const appLinked = app_program_id !== undefined || app_module_key !== undefined;
-  if (appLinked && (!user.email || typeof app_program_id !== 'string' || !UUID_RE.test(app_program_id) || !['tbos', 'lep'].includes(app_module_key))) {
-    return c.json({ success: false, error: 'Program dan modul APP wajib dipilih' }, 400);
+  const appLinked = app_program_id !== undefined || app_module_key !== undefined || new_app_project !== undefined;
+  const creatingProject = new_app_project !== undefined;
+  if (appLinked && (!user.email || !['tbos', 'lep'].includes(app_module_key) || (!creatingProject && (typeof app_program_id !== 'string' || !UUID_RE.test(app_program_id))))) {
+    return c.json({ success: false, error: 'Project dan modul APP wajib ditentukan' }, 400);
+  }
+  if (creatingProject && (app_program_id !== undefined || !new_app_project || !UUID_RE.test(new_app_project.requestId))) {
+    return c.json({ success: false, error: 'Permintaan project baru tidak valid' }, 400);
+  }
+  if (creatingProject && (!textField(title, 200, true) || !textField(client_name, 160, true) ||
+    (start_date && !optionalIsoDate(start_date)) || (end_date && !optionalIsoDate(end_date)) ||
+    (start_date && end_date && end_date < start_date))) {
+    return c.json({ success: false, error: 'Nama project, klien, atau tanggal tidak valid' }, 400);
+  }
+  // Reject invalid AMS fields before a cross-service project/module is changed in APP.
+  if (appLinked && (
+    textField(description, 10000) === null ||
+    boundedInteger(needed_count ?? 1, 1, 10000) === null ||
+    boundedInteger(mandays ?? 0, 0, 10000) === null ||
+    textField(compensation, 500) === null ||
+    normalizedRoles(Array.isArray(needed_roles) && needed_roles.length > 0
+      ? needed_roles : [app_module_key === 'lep' ? 'Pembicara' : 'Observer']) === null
+  )) {
+    return c.json({ success: false, error: 'Data assignment tidak valid' }, 400);
   }
 
   let linkedProgram: Awaited<ReturnType<typeof listAppPrograms>>['data']['programs'][number] | null = null;
@@ -665,17 +737,31 @@ admin.post('/assignments', async (c) => {
   let actorMode: 'matched_admin' | 'system_admin' | null = null;
   if (appLinked) {
     try {
+      const linkedProgramId = creatingProject
+        ? (await createAppProject({
+            requestId: new_app_project.requestId,
+            requesterEmail: user.email!,
+            title: textField(title, 200, true) || '',
+            clientName: textField(client_name, 160, true) || '',
+            moduleKey: app_module_key,
+            startDate: optionalIsoDate(start_date) || null,
+            endDate: optionalIsoDate(end_date) || null,
+          })).data.id
+        : app_program_id;
+      if (!creatingProject) {
+        await enableAppProjectModule({ requesterEmail: user.email!, projectId: linkedProgramId, moduleKey: app_module_key });
+      }
       const catalog = await listAppPrograms(user.email!);
-      linkedProgram = catalog.data.programs.find((program) => program.id === app_program_id) || null;
+      linkedProgram = catalog.data.programs.find((program) => program.id === linkedProgramId) || null;
       linkedModule = linkedProgram?.modules.find((module) => module.key === app_module_key) || null;
       actorProfileId = catalog.data.actorProfileId;
       actorMode = catalog.data.actorMode;
     } catch (error) {
       console.error('Failed to validate APP program assignment:', error);
-      return c.json({ success: false, error: 'Program APP belum dapat diverifikasi. Coba lagi setelah koneksi integrasi pulih.' }, 503);
+      return c.json({ success: false, error: 'Project APP belum dapat diverifikasi. Coba lagi setelah koneksi integrasi pulih.' }, 503);
     }
     if (!linkedProgram || !linkedModule || !actorProfileId) {
-      return c.json({ success: false, error: 'Program atau modul APP tidak tersedia untuk assignment' }, 409);
+      return c.json({ success: false, error: 'Project atau modul APP tidak tersedia untuk assignment' }, 409);
     }
   }
 
@@ -717,7 +803,7 @@ admin.post('/assignments', async (c) => {
         success: true,
         duplicate: true,
         data: { id: duplicate.id },
-        message: 'Assignment program sudah tersedia. Membuka assignment yang sudah ada.',
+        message: 'Assignment project sudah tersedia. Membuka assignment yang sudah ada.',
       });
     }
   }
@@ -769,7 +855,7 @@ admin.patch('/assignments/:id', async (c) => {
 
   const editableFields = ['title', 'client_name', 'description', 'start_date', 'end_date', 'needed_roles', 'needed_count', 'mandays', 'compensation'];
   if (existingAssignment.external_program_id && existingAssignment.external_module_key && editableFields.some((field) => body[field] !== undefined)) {
-    return c.json({ success: false, error: 'Detail assignment program dikunci agar tetap sama dengan program APP' }, 409);
+    return c.json({ success: false, error: 'Detail assignment project dikunci agar tetap sama dengan project APP' }, 409);
   }
 
   if (body.status !== undefined) {
@@ -836,6 +922,9 @@ admin.patch('/assignments/:id', async (c) => {
     .single();
 
   if (error) {
+    if (error.message.includes('Jumlah kebutuhan tidak boleh lebih kecil')) {
+      return c.json({ success: false, error: 'Jumlah associate yang dibutuhkan tidak boleh lebih kecil dari posisi yang sudah terisi.' }, 409);
+    }
     return c.json({ success: false, error: error.message }, 500);
   }
 
@@ -1021,7 +1110,7 @@ admin.post('/assignments/:id/invite', async (c) => {
   const user = c.get('user') as { id: string };
   const assignmentId = c.req.param('id');
   const body = await c.req.json();
-  const { associate_ids, role, compensation_by_associate } = body;
+  const { associate_ids, role, fee_by_associate, invitation_expires_at } = body;
 
   if (!associate_ids || !Array.isArray(associate_ids) || associate_ids.length === 0 || associate_ids.length > 100 || !associate_ids.every((id) => typeof id === 'string' && UUID_RE.test(id))) {
     return c.json({ success: false, error: 'associate_ids wajib diisi (array)' }, 400);
@@ -1029,32 +1118,27 @@ admin.post('/assignments/:id/invite', async (c) => {
   const requestedIds = Array.from(new Set(associate_ids as string[]));
   const safeRole = textField(role, 100);
   if (role !== undefined && safeRole === null) return c.json({ success: false, error: 'Role tidak valid' }, 400);
-  const compensationByAssociate = new Map<string, ReturnType<typeof assigneeCompensationUpdateSchema.parse>>();
-  if (compensation_by_associate !== undefined) {
-    if (!compensation_by_associate || typeof compensation_by_associate !== 'object' || Array.isArray(compensation_by_associate)) {
-      return c.json({ success: false, error: 'Data kompensasi associate tidak valid' }, 400);
-    }
-    const compensationEntries = Object.entries(compensation_by_associate);
-    if (compensationEntries.length > requestedIds.length) {
-      return c.json({ success: false, error: 'Data kompensasi melebihi jumlah associate yang dipilih' }, 400);
-    }
-    for (const [associateId, value] of compensationEntries) {
-      if (!UUID_RE.test(associateId) || !requestedIds.includes(associateId)) {
-        return c.json({ success: false, error: 'Data kompensasi tidak sesuai dengan associate yang dipilih' }, 400);
-      }
-      const parsed = assigneeCompensationUpdateSchema.safeParse(value);
-      if (!parsed.success) {
-        return c.json({ success: false, error: 'Data kompensasi khusus tidak valid' }, 400);
-      }
-      compensationByAssociate.set(associateId, parsed.data);
-    }
+  const deadline = invitationDeadlineSchema.safeParse(invitation_expires_at);
+  if (!deadline.success) return c.json({ success: false, error: 'Tentukan batas jawaban undangan antara 5 menit dan 30 hari.' }, 400);
+  if (!fee_by_associate || typeof fee_by_associate !== 'object' || Array.isArray(fee_by_associate)) {
+    return c.json({ success: false, error: 'Tentukan rincian fee sebelum mengirim undangan.' }, 400);
+  }
+  const feeEntries = Object.entries(fee_by_associate);
+  if (feeEntries.length !== requestedIds.length || feeEntries.some(([id]) => !requestedIds.includes(id))) {
+    return c.json({ success: false, error: 'Rincian fee harus tersedia untuk setiap associate yang dipilih.' }, 400);
+  }
+  const feeByAssociate = new Map<string, ReturnType<typeof assignmentOfferFeeSchema.parse>>();
+  for (const [associateId, value] of feeEntries) {
+    const parsed = assignmentOfferFeeSchema.safeParse(value);
+    if (!parsed.success) return c.json({ success: false, error: 'Nominal fee tidak valid; kompensasi wajib lebih dari nol.' }, 400);
+    feeByAssociate.set(associateId, parsed.data);
   }
 
   const db = getDb();
 
   const { data: assignment } = await db
     .from('assignments')
-    .select('id, title, status, needed_roles, external_program_id, external_module_key')
+    .select('id, title, status, needed_roles, needed_count, external_program_id, external_module_key')
     .eq('id', assignmentId)
     .single();
 
@@ -1074,31 +1158,33 @@ admin.post('/assignments/:id/invite', async (c) => {
   const existingIds = (existing || []).map((e: { associate_id: string }) => e.associate_id);
   const { data: activeAssociates } = await db.from('associates').select('id').in('id', requestedIds).eq('status', 'active');
   const activeIds = new Set((activeAssociates || []).map((associate: { id: string }) => associate.id));
-  const newIds = requestedIds.filter((id) => activeIds.has(id) && !existingIds.includes(id));
-
-  if (newIds.length === 0) {
-    return c.json({ success: false, error: 'Semua associate sudah diinvite ke assignment ini' }, 400);
+  if (activeIds.size !== requestedIds.length) {
+    return c.json({ success: false, error: 'Satu atau lebih associate belum aktif; undangan belum dikirim ke siapa pun.' }, 409);
   }
+  if (requestedIds.some((id) => existingIds.includes(id))) {
+    return c.json({ success: false, error: 'Satu atau lebih associate sudah ada dalam assignment ini; undangan belum dikirim ulang.' }, 409);
+  }
+  const newIds = requestedIds;
 
   const effectiveRole = safeRole
     || (Array.isArray(assignment.needed_roles) && typeof assignment.needed_roles[0] === 'string' ? assignment.needed_roles[0] : null)
-    || (assignment.external_module_key === 'lep' ? 'Pembicara LEP' : assignment.external_module_key === 'tbos' ? 'Fasilitator T-BOS' : null);
+    || (assignment.external_module_key === 'lep' ? 'Pembicara' : assignment.external_module_key === 'tbos' ? 'Observer' : null);
   const inserts = newIds.map((associateId: string) => {
-    const compensation = compensationByAssociate.get(associateId);
+    const fee = feeByAssociate.get(associateId)!;
     return {
       assignment_id: assignmentId,
       associate_id: associateId,
       status: 'invited',
       role: effectiveRole,
       invited_by: user.id,
-      ...(compensation?.mode === 'override' ? {
-        compensation_amount: compensation.amount,
-        compensation_currency: compensation.currency,
-        compensation_basis: compensation.basis,
-        compensation_notes: compensation.notes || null,
-        compensation_updated_at: new Date().toISOString(),
-        compensation_updated_by: user.id,
-      } : {}),
+      compensation_amount: fee.compensation,
+      compensation_currency: 'IDR',
+      compensation_basis: 'fixed_project',
+      transport_amount: fee.transport ?? null,
+      preparation_amount: fee.preparation ?? null,
+      invitation_expires_at: deadline.data,
+      compensation_updated_at: new Date().toISOString(),
+      compensation_updated_by: user.id,
     };
   });
 
@@ -1126,12 +1212,18 @@ admin.post('/assignments/:id/invite', async (c) => {
   // Insert notifications for each invited associate
   if (data && Array.isArray(data)) {
     for (const record of data) {
+      const fee = feeByAssociate.get(record.associate_id)!;
+      const money = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+      const feeLines = [`Kompensasi: ${money(fee.compensation)}`];
+      if (fee.transport !== null && fee.transport !== undefined) feeLines.push(`Transportasi: ${money(fee.transport)}`);
+      if (fee.preparation !== null && fee.preparation !== undefined) feeLines.push(`Persiapan: ${money(fee.preparation)}`);
+      feeLines.push(`Total fee: ${money(fee.compensation + (fee.transport || 0) + (fee.preparation || 0))}`);
       const { data: notification, error: notifError } = await db.from('notifications').insert({
         recipient_id: record.associate_id,
         recipient_role: 'associate',
         type: 'invitation',
         title: `Undangan Baru: ${assignmentTitle}`,
-        message: `Anda telah diundang untuk bergabung di assignment "${assignmentTitle}". Silakan periksa detailnya.`,
+        message: `Anda diundang untuk assignment "${assignmentTitle}" sebagai ${effectiveRole || 'associate'}.\n\n${feeLines.join('\n')}\n\nJawab sebelum ${new Date(deadline.data).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short' })} WIB. Rincian tugas dan fee tersedia di AMS.`,
         link: `/dashboard/assignments/${assignmentId}`,
         reference_id: assignmentId,
       }).select('id').single();
@@ -1263,7 +1355,7 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
 
   const { data: currentAssignee } = await db
     .from('assignment_assignees')
-    .select('status')
+    .select('status, invitation_expires_at')
     .eq('id', assigneeId)
     .eq('assignment_id', assignmentId)
     .maybeSingle();
@@ -1274,6 +1366,9 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
       success: false,
       error: 'Kompensasi terkunci setelah associate menerima assignment. Gunakan proses amendemen untuk perubahan berikutnya.',
     }, 409);
+  }
+  if (parsedCompensation?.success && currentAssignee.invitation_expires_at) {
+    return c.json({ success: false, error: 'Fee pada undangan yang telah dikirim tidak dapat diubah diam-diam. Batalkan lalu buat penawaran baru.' }, 409);
   }
 
   if (status !== undefined && status !== currentAssignee.status) {
@@ -1329,6 +1424,12 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
       assigneeId,
       error: error.message,
     });
+    if (error.message.includes('Batas waktu undangan telah lewat')) {
+      return c.json({ success: false, error: 'Batas waktu undangan telah lewat. Kirim penawaran baru jika masih diperlukan.' }, 409);
+    }
+    if (error.message.includes('Seluruh posisi assignment sudah terisi')) {
+      return c.json({ success: false, error: 'Seluruh posisi project sudah terisi.' }, 409);
+    }
     return c.json({ success: false, error: 'Perubahan assignee gagal disimpan' }, 500);
   }
 

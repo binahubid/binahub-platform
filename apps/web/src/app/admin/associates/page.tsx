@@ -17,7 +17,7 @@ type Associate = {
   created_at: string;
 };
 
-function ActionMenu({ associate, onInvite }: { associate: Associate; onInvite: (a: Associate) => void }) {
+function ActionMenu({ associate, onInvite, onRemind }: { associate: Associate; onInvite: (a: Associate) => void; onRemind: (a: Associate) => void }) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -65,6 +65,11 @@ function ActionMenu({ associate, onInvite }: { associate: Associate; onInvite: (
               Undang ke Project
             </button>
             <div className="border-t border-slate-100 my-1" />
+            {associate.status === 'draft' && (
+              <button onClick={() => { onRemind(associate); setOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-[#0B2C6B] hover:bg-slate-50">
+                Ingatkan lengkapi & kirim profil
+              </button>
+            )}
             <button
               onClick={() => copyToClipboard(associate.email)}
               className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
@@ -146,6 +151,8 @@ export default function AdminAssociatesPage() {
   const [assignments, setAssignments] = useState<Array<{ id: string; title: string; client_name: string; status: string }>>([]);
   const [selectedAssignment, setSelectedAssignment] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [inviteFee, setInviteFee] = useState({ compensation: '', transport: '', preparation: '' });
+  const [inviteDeadline, setInviteDeadline] = useState('');
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -224,6 +231,9 @@ export default function AdminAssociatesPage() {
   const handleOpenInvite = async (associate: Associate) => {
     setInviteAssociate(associate);
     setSelectedAssignment('');
+    setInviteFee({ compensation: '', transport: '', preparation: '' });
+    const deadline = new Date(Date.now() + 72 * 60 * 60_000);
+    setInviteDeadline(new Date(deadline.getTime() - deadline.getTimezoneOffset() * 60_000).toISOString().slice(0, 16));
     try {
       const resp = await fetch(`${apiUrl}/api/admin/assignments`, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -240,12 +250,22 @@ export default function AdminAssociatesPage() {
       toast('error', 'Pilih assignment terlebih dahulu');
       return;
     }
+    const compensation = Number(inviteFee.compensation);
+    const deadline = new Date(inviteDeadline);
+    if (!inviteFee.compensation || !Number.isFinite(compensation) || compensation <= 0) return toast('error', 'Kompensasi wajib lebih dari nol');
+    if (!Number.isFinite(deadline.getTime()) || deadline.getTime() <= Date.now() + 5 * 60_000) return toast('error', 'Pilih batas respons yang masih berlaku');
+    const fee: { compensation: number; transport?: number; preparation?: number } = { compensation };
+    for (const [field, value] of [['transport', inviteFee.transport], ['preparation', inviteFee.preparation]] as const) {
+      if (value === '') continue;
+      if (!Number.isFinite(Number(value)) || Number(value) < 0) return toast('error', 'Transportasi/persiapan tidak valid');
+      fee[field] = Number(value);
+    }
     setInviting(true);
     try {
       const resp = await fetch(`${apiUrl}/api/admin/assignments/${selectedAssignment}/invite`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ associate_ids: [inviteAssociate.id] }),
+        body: JSON.stringify({ associate_ids: [inviteAssociate.id], fee_by_associate: { [inviteAssociate.id]: fee }, invitation_expires_at: deadline.toISOString() }),
       });
       const data = await resp.json();
       if (data?.success) {
@@ -258,6 +278,19 @@ export default function AdminAssociatesPage() {
       toast('error', 'Gagal terhubung ke server');
     } finally {
       setInviting(false);
+    }
+  };
+
+  const handleRemindProfile = async (associate: Associate) => {
+    if (!window.confirm(`Kirim pengingat melalui aplikasi dan email kepada ${associate.profile?.full_name || associate.email}?`)) return;
+    try {
+      const response = await fetch(`${apiUrl}/api/admin/associates/${associate.id}/remind-profile`, {
+        method: 'POST', headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const result = await response.json();
+      toast(result.success ? 'success' : 'error', result.message || result.error || 'Pengingat gagal dikirim');
+    } catch {
+      toast('error', 'Pengingat gagal dikirim');
     }
   };
 
@@ -428,7 +461,7 @@ export default function AdminAssociatesPage() {
                       >
                         Detail
                       </button>
-                      <ActionMenu associate={associate} onInvite={handleOpenInvite} />
+                      <ActionMenu associate={associate} onInvite={handleOpenInvite} onRemind={handleRemindProfile} />
                     </div>
                   </td>
                 </tr>
@@ -496,11 +529,22 @@ export default function AdminAssociatesPage() {
                 <p className="mt-2 text-xs text-amber-600">Belum ada assignment. Buat assignment dulu di halaman Assignments.</p>
               )}
             </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {([['compensation', 'Kompensasi *'], ['transport', 'Transportasi'], ['preparation', 'Persiapan']] as const).map(([field, label]) => (
+                <label key={field} className="text-xs font-medium text-slate-600">{label}
+                  <input type="number" min={field === 'compensation' ? '1' : '0'} step="1000" value={inviteFee[field]} onChange={(event) => setInviteFee((current) => ({ ...current, [field]: event.target.value }))} placeholder={field === 'compensation' ? '1000000' : 'Opsional'} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-xs font-semibold text-[#0B2C6B]">Total: {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(inviteFee.compensation || 0) + Number(inviteFee.transport || 0) + Number(inviteFee.preparation || 0))}</p>
+            <label className="mt-4 block text-xs font-medium text-slate-600">Batas respons
+              <input type="datetime-local" value={inviteDeadline} onChange={(event) => setInviteDeadline(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </label>
             <div className="mt-6 flex justify-end gap-2">
               <button onClick={() => setInviteAssociate(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
               <button
                 onClick={handleSendInvite}
-                disabled={inviting || !selectedAssignment}
+                disabled={inviting || !selectedAssignment || !inviteFee.compensation || !inviteDeadline}
                 className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white hover:bg-[#0A255A] disabled:opacity-50"
               >
                 {inviting ? 'Mengirim...' : 'Kirim Undangan'}

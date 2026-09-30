@@ -166,7 +166,7 @@ export async function syncAssignmentAssignee(assigneeId: string, eventId: string
         id: assignment.id,
         assigneeId: assignee.id,
         status: assignee.status,
-        role: assignee.role || (assignment.external_module_key === 'lep' ? 'Pembicara LEP' : 'Fasilitator T-BOS'),
+        role: assignee.role || (assignment.external_module_key === 'lep' ? 'Pembicara' : 'Observer'),
         externalProgramId: assignment.external_program_id,
         moduleKey: assignment.external_module_key,
         scope: assignment.external_scope || {},
@@ -190,6 +190,30 @@ export async function syncAssignmentAssignee(assigneeId: string, eventId: string
 export async function listAppPrograms(requesterEmail: string) {
   return postSigned<AppProgramCatalogResponse>('/api/integrations/ams/programs', {
     requesterEmail: requesterEmail.trim().toLowerCase(),
+  });
+}
+
+export async function createAppProject(input: {
+  requestId: string;
+  requesterEmail: string;
+  title: string;
+  clientName: string;
+  moduleKey: 'tbos' | 'lep';
+  startDate: string | null;
+  endDate: string | null;
+}) {
+  return postSigned<{ success: true; data: { id: string }; duplicate?: boolean }>('/api/integrations/ams/programs', {
+    action: 'create',
+    ...input,
+    requesterEmail: input.requesterEmail.trim().toLowerCase(),
+  });
+}
+
+export async function enableAppProjectModule(input: { requesterEmail: string; projectId: string; moduleKey: 'tbos' | 'lep' }) {
+  return postSigned<{ success: true; data: { id: string; moduleKey: string } }>('/api/integrations/ams/programs', {
+    action: 'enable_module',
+    ...input,
+    requesterEmail: input.requesterEmail.trim().toLowerCase(),
   });
 }
 

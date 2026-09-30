@@ -208,7 +208,8 @@ associateRoutes.get('/me', async (c) => {
   const { data: reviews } = await db
     .from('associate_reviews')
     .select('*')
-    .eq('associate_id', user.id);
+    .eq('associate_id', user.id)
+    .order('created_at', { ascending: false });
 
   // Fetch assignments with my participation status
   const { data: allAssignments } = await db
@@ -1419,13 +1420,20 @@ associateRoutes.post('/submit', async (c) => {
   // Check if profile is complete
   const { data: profile } = await db
     .from('associate_profiles')
-    .select('full_name, bio, phone')
+    .select('full_name, bio, phone, city, roles')
     .eq('associate_id', user.id)
     .single();
 
-  if (!profile?.full_name) {
-    return c.json({ success: false, error: 'Profil belum lengkap' }, 400);
-  }
+  const missing = [
+    !profile?.full_name?.trim() && 'nama lengkap',
+    !profile?.phone?.trim() && 'nomor telepon',
+    !profile?.city?.trim() && 'kota domisili',
+    (!Array.isArray(profile?.roles) || profile.roles.length === 0) && 'peran',
+  ].filter(Boolean);
+  if (missing.length) return c.json({ success: false, error: `Lengkapi ${missing.join(', ')} sebelum mengirim profil.` }, 400);
+
+  const { data: current } = await db.from('associates').select('status').eq('id', user.id).maybeSingle();
+  if (current?.status !== 'draft') return c.json({ success: false, error: 'Profil ini tidak dalam status draft' }, 409);
 
   // Update status to pending_review
   const { data, error } = await db
@@ -1436,12 +1444,14 @@ associateRoutes.post('/submit', async (c) => {
       updated_at: new Date().toISOString()
     })
     .eq('id', user.id)
+    .eq('status', 'draft')
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    return c.json({ success: false, error: error.message }, 500);
+    return c.json({ success: false, error: 'Profil belum dapat dikirim untuk ditinjau' }, 500);
   }
+  if (!data) return c.json({ success: false, error: 'Status profil telah berubah. Muat ulang halaman.' }, 409);
 
   // Enqueue event
   await db.rpc('enqueue_transformation_event', {
@@ -1555,7 +1565,7 @@ associateRoutes.get('/assignments/:id', async (c) => {
 
   const { data: myAssignment } = await db
     .from('assignment_assignees')
-    .select('id, assignment_id, associate_id, status, role, notes, invited_at, accepted_at, completed_at, evidence_url, evidence_notes, evidence_submitted_at, evidence_reviewed_at, evidence_reviewer_notes, compensation_amount, compensation_currency, compensation_basis, compensation_notes, compensation_updated_at')
+    .select('id, assignment_id, associate_id, status, role, notes, invited_at, accepted_at, completed_at, evidence_url, evidence_notes, evidence_submitted_at, evidence_reviewed_at, evidence_reviewer_notes, compensation_amount, compensation_currency, compensation_basis, compensation_notes, compensation_updated_at, transport_amount, preparation_amount, invitation_expires_at')
     .eq('assignment_id', assignmentId)
     .eq('associate_id', associate.id)
     .single();
@@ -1719,7 +1729,7 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
   // 1. Fetch current assignee state to validate state machine transition and get metadata
   const { data: currentAssignee, error: fetchError } = await db
     .from('assignment_assignees')
-    .select('status, invited_by')
+    .select('status, invited_by, invitation_expires_at')
     .eq('assignment_id', assignmentId)
     .eq('associate_id', associate.id)
     .maybeSingle();
@@ -1746,6 +1756,10 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
       success: false, 
       error: `Transisi status tidak valid dari '${currentStatus}' ke '${status}'` 
     }, 400);
+  }
+
+  if (status === 'accepted' && currentAssignee.invitation_expires_at && new Date(currentAssignee.invitation_expires_at).getTime() <= Date.now()) {
+    return c.json({ success: false, error: 'Batas respons undangan telah lewat. Hubungi admin jika masih berminat.' }, 409);
   }
 
   // Extra guard: associate cannot start working (in_progress) if the assignment is not yet active
@@ -1782,12 +1796,18 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     .update(updateData)
     .eq('assignment_id', assignmentId)
     .eq('associate_id', associate.id)
+    .eq('status', currentStatus)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    return c.json({ success: false, error: error.message }, 500);
+    if (status === 'accepted' && /batas waktu|posisi assignment sudah terisi|tidak lagi dapat diterima/i.test(error.message)) {
+      return c.json({ success: false, error: error.message }, 409);
+    }
+    console.error('Assignment response failed', { assignmentId, code: error.code });
+    return c.json({ success: false, error: 'Respons undangan belum dapat disimpan' }, 500);
   }
+  if (!data) return c.json({ success: false, error: 'Status undangan telah berubah. Muat ulang halaman.' }, 409);
 
   await db.rpc('enqueue_transformation_event', {
     p_type: 'AssignmentAssigneeChanged',

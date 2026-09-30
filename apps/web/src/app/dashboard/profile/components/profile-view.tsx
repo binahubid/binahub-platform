@@ -24,6 +24,13 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
   const p = data.profile;
   const cvDoc = data.documents.find((d) => d.type === 'cv');
   const av = (Array.isArray(data.availability) ? data.availability[0] : data.availability) || { status: 'open' };
+  const missingForReview = [
+    !p?.full_name?.trim() && 'Nama lengkap',
+    !p?.phone?.trim() && 'Nomor telepon',
+    !p?.city?.trim() && 'Kota domisili',
+    (!Array.isArray(p?.roles) || p.roles.length === 0) && 'Peran',
+  ].filter(Boolean) as string[];
+  const rejectedReview = data.status === 'draft' ? data.reviews?.find((review) => review.status === 'rejected') : null;
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const getPhotoUrl = (path: string | null | undefined) => {
@@ -176,18 +183,17 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
         </div>
       </div>
 
-      {/* Submit for Review Action (only visible in Draft status) */}
+      {/* Review is an explicit final step; a CV upload alone does not submit a profile. */}
       {data.status === 'draft' && (
-        <button
-          onClick={onSubmit}
-          disabled={submitting}
-          className="w-full rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 py-3.5 text-xs font-bold text-white hover:from-amber-600 hover:to-amber-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 disabled:opacity-50"
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-          </svg>
-          {submitting ? 'Mengirim Profil...' : 'Kirim Profil untuk Direview oleh Admin'}
-        </button>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h2 className="text-sm font-bold text-amber-950">Langkah terakhir: kirim profil untuk ditinjau</h2>
+          <p className="mt-1 text-xs leading-5 text-amber-900">Menyimpan data atau mengunggah CV belum otomatis mengirim profil. Setelah dikirim, admin akan menyetujui atau memberi catatan perbaikan.</p>
+          {rejectedReview && <p className="mt-3 rounded-lg border border-rose-200 bg-white p-3 text-xs text-rose-800"><strong>Perlu perbaikan dari admin:</strong> {rejectedReview.notes || 'Periksa kembali informasi profil Anda.'}</p>}
+          {missingForReview.length > 0 && <p className="mt-3 text-xs font-medium text-amber-950">Sebelum mengirim, lengkapi: {missingForReview.join(', ')}.</p>}
+          <button onClick={missingForReview.length ? onEdit : onSubmit} disabled={submitting} className="mt-3 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#123b80] disabled:opacity-50">
+            {submitting ? 'Mengirim profil...' : missingForReview.length ? 'Lengkapi data wajib' : 'Kirim profil untuk ditinjau'}
+          </button>
+        </div>
       )}
 
       {/* Quick Edit Action Button */}

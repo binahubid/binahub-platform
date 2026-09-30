@@ -141,16 +141,31 @@ integration.post('/assignments', async (c) => {
     associate_id: associateId,
     status: 'invited',
     role: input.role,
+    compensation_amount: input.fee.compensation,
+    compensation_currency: 'IDR',
+    compensation_basis: 'fixed_project',
+    transport_amount: input.fee.transport ?? null,
+    preparation_amount: input.fee.preparation ?? null,
+    invitation_expires_at: input.invitationExpiresAt,
   }))).select('id, associate_id, status');
-  if (assigneeError || !assignees) return c.json({ success: false, error: 'Gagal mengundang associate' }, 500);
+  if (assigneeError || !assignees) {
+    const { error: cleanupError } = await db.from('assignments').delete().eq('id', assignment.id);
+    console.error('APP assignment invitation failed', { assignmentId: assignment.id, code: assigneeError?.code, cleanupCode: cleanupError?.code });
+    return c.json({ success: false, error: 'Gagal mengundang associate; assignment sementara dibatalkan.' }, 500);
+  }
 
   for (const assignee of assignees) {
+    const money = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+    const feeLines = [`Kompensasi: ${money(input.fee.compensation)}`];
+    if (input.fee.transport !== undefined && input.fee.transport !== null) feeLines.push(`Transportasi: ${money(input.fee.transport)}`);
+    if (input.fee.preparation !== undefined && input.fee.preparation !== null) feeLines.push(`Persiapan: ${money(input.fee.preparation)}`);
+    feeLines.push(`Total fee: ${money(input.fee.compensation + (input.fee.transport || 0) + (input.fee.preparation || 0))}`);
     const { data: notification } = await db.from('notifications').upsert({
       recipient_id: assignee.associate_id,
       recipient_role: 'associate',
       type: 'invitation',
       title: `Penawaran penugasan: ${input.program.title}`,
-      message: `BinaHub menawarkan peran ${input.role} untuk ${input.program.title}. Periksa jadwal dan lingkup tugas sebelum menjawab.`,
+      message: `BinaHub menawarkan peran ${input.role} untuk project ${input.program.title}.\n\n${feeLines.join('\n')}\n\nJawab sebelum ${new Date(input.invitationExpiresAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short' })} WIB. Periksa lingkup tugas di AMS sebelum menjawab.`,
       link: `/dashboard/assignments/${assignment.id}`,
       reference_id: assignment.id,
     }, { onConflict: 'recipient_id,type,reference_id' }).select('id').single();

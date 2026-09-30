@@ -22,5 +22,20 @@ export const assigneeCompensationUpdateSchema = z.discriminatedUnion('mode', [
   }).strict(),
 ]);
 
+const feeAmountSchema = z.number().finite().min(0).max(1_000_000_000_000_000);
+
+export const assignmentOfferFeeSchema = z.object({
+  compensation: feeAmountSchema.positive(),
+  transport: feeAmountSchema.nullable().optional(),
+  preparation: feeAmountSchema.nullable().optional(),
+}).strict();
+
+export const invitationDeadlineSchema = z.string().datetime({ offset: true }).refine((value) => {
+  const remaining = new Date(value).getTime() - Date.now();
+  return remaining >= 5 * 60_000 && remaining <= 30 * 24 * 60 * 60_000;
+}, 'Batas jawaban harus antara 5 menit dan 30 hari dari sekarang.');
+
+export type AssignmentOfferFee = z.infer<typeof assignmentOfferFeeSchema>;
+
 export type AssigneeCompensationUpdate = z.infer<typeof assigneeCompensationUpdateSchema>;
 export type CompensationBasis = z.infer<typeof compensationBasisSchema>;

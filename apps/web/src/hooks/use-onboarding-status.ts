@@ -28,7 +28,7 @@ export function useOnboardingStatus(): OnboardingStatus {
         if (res.ok) {
           const data = await res.json();
           // Check if profile has essential data
-          const hasProfile = !!(data?.profile?.full_name || data?.full_name);
+          const hasProfile = !!(data?.data?.profile?.full_name || data?.data?.full_name);
           setStatus({ hasProfile, loading: false });
         } else {
           setStatus({ hasProfile: false, loading: false });

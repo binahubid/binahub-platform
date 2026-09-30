@@ -2,6 +2,26 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [0.10.2] - 2026-09-30
+
+### Added
+
+- Pengingat manual melalui notifikasi aplikasi dan antrean email untuk associate yang belum mengirim profil, dengan jeda minimum 24 jam antar-pengingat.
+- Tenggat respons undangan dan rincian fee per penerima (kompensasi wajib, transportasi serta persiapan opsional); email hanya memuat komponen yang diisi dan totalnya.
+- Pembuatan project APP beserta modul T-BOS/LEP, atau pengaktifan modul yang belum ada pada project APP yang sudah aktif, dari satu alur assignment AMS tanpa bolak-balik ke APP.
+- Migrasi `013_assignment_offer_terms.sql` untuk menyimpan komponen fee dan tenggat, memperbarui nama peran lama, serta menjaga batas posisi yang dapat diterima secara atomik di database.
+
+### Changed
+
+- Alur profil memperjelas langkah "Kirim profil untuk ditinjau", data wajib, dan catatan penolakan; onboarding akun lama yang sudah memiliki profil melewati permintaan unggah CV.
+- Kebutuhan associate dihitung sebagai posisi diterima, bukan batas undangan; undangan tambahan dapat menjadi cadangan tetapi tidak dapat diterima setelah posisi penuh.
+- Nama peran yang terlihat pengguna disederhanakan menjadi Observer dan Pembicara; istilah project digunakan pada alur penugasan.
+
+### Security
+
+- Undangan baru tidak dapat dikirim tanpa fee dan tenggat; fee penawaran terkunci setelah undangan dikirim agar email dan data kesepakatan tetap sama.
+- Penurunan jumlah kebutuhan di bawah posisi yang sudah terisi ditolak oleh database.
+
 ## [0.10.1] - 2026-09-27
 
 ### Added

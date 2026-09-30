@@ -123,7 +123,7 @@ export async function sendQueuedNotificationEmail(deliveryId: string) {
         to: [claimed.recipient_email],
         subject: notification.title,
         text: `${notification.title}\n\n${notification.message}\n\nBuka BinaHub AMS: ${link}`,
-        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#10213d"><p style="font-size:12px;color:#8a5b00;letter-spacing:.08em;text-transform:uppercase">BinaHub AMS</p><h1 style="font-size:22px;line-height:1.3">${title}</h1><p style="font-size:15px;line-height:1.7;color:#44536a">${message}</p><p style="margin:28px 0"><a href="${escapeHtml(link)}" style="background:#0b2c6b;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700">Buka BinaHub AMS</a></p><p style="font-size:13px;color:#718096">Salam hangat,<br><strong>BinaHub</strong></p></div>`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#10213d"><p style="font-size:12px;color:#8a5b00;letter-spacing:.08em;text-transform:uppercase">BinaHub AMS</p><h1 style="font-size:22px;line-height:1.3">${title}</h1><p style="font-size:15px;line-height:1.7;color:#44536a;white-space:pre-line">${message}</p><p style="margin:28px 0"><a href="${escapeHtml(link)}" style="background:#0b2c6b;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700">Buka BinaHub AMS</a></p><p style="font-size:13px;color:#718096">Salam hangat,<br><strong>BinaHub</strong></p></div>`,
       }),
     });
     const result = await response.json().catch(() => null) as { id?: string; message?: string } | null;

@@ -57,12 +57,12 @@ const EMPTY_FORM = {
 type FormType = typeof EMPTY_FORM;
 
 const ROLE_OPTIONS = [
-  'Fasilitator T-BOS', 'Pembicara LEP', 'Trainer', 'Facilitator', 'Coach', 'Mentor', 'Consultant', 'Assessor', 'Speaker',
+  'Observer', 'Pembicara', 'Trainer', 'Facilitator', 'Coach', 'Mentor', 'Consultant', 'Assessor', 'Speaker',
   'Game Master', 'Tour Leader', 'Project Manager', 'EO', 'MC', 
   'Photographer', 'Videographer', 'Affiliate Marketer', 'AI Consultant'
 ];
 
-function FormFields({ form, setForm, lockIdentity = false }: { form: FormType; setForm: (f: FormType) => void; lockIdentity?: boolean }) {
+function FormFields({ form, setForm, lockIdentity = false, lockRoles = false }: { form: FormType; setForm: (f: FormType) => void; lockIdentity?: boolean; lockRoles?: boolean }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
@@ -87,8 +87,8 @@ function FormFields({ form, setForm, lockIdentity = false }: { form: FormType; s
       </div>
       
       <div className="sm:col-span-2">
-        <label className="block text-xs font-medium text-slate-600 mb-2">Role yang Dibutuhkan *</label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 max-h-48 overflow-y-auto p-2 border border-slate-100 rounded-lg bg-slate-50/50">
+        <label className="block text-xs font-medium text-slate-600 mb-2">Peran yang Dibutuhkan</label>
+        {lockRoles ? <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">{form.needed_roles.join(', ') || 'Pilih modul terlebih dahulu'}</p> : <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 max-h-48 overflow-y-auto p-2 border border-slate-100 rounded-lg bg-slate-50/50">
           {ROLE_OPTIONS.map((role) => {
             const isChecked = form.needed_roles.includes(role);
             return (
@@ -108,20 +108,22 @@ function FormFields({ form, setForm, lockIdentity = false }: { form: FormType; s
               </label>
             );
           })}
-        </div>
+        </div>}
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">Jumlah Associate Dibutuhkan *</label>
+        <label className="block text-xs font-medium text-slate-600 mb-1">Jumlah Posisi yang Dibutuhkan *</label>
         <input type="number" min="1" max="10000" value={form.needed_count} onChange={(e) => setForm({ ...form, needed_count: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
+        <p className="mt-1 text-xs text-slate-500">Batas associate yang dapat menerima. Admin boleh mengundang kandidat cadangan; ketika kuota terisi, undangan lain tidak bisa diterima.</p>
       </div>
       <div>
         <label className="block text-xs font-medium text-slate-600 mb-1">Durasi (Mandays) *</label>
         <input type="number" min="0" value={form.mandays} onChange={(e) => setForm({ ...form, mandays: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
       </div>
       <div className="sm:col-span-2">
-        <label className="block text-xs font-medium text-slate-600 mb-1">Kompensasi *</label>
+        <label className="block text-xs font-medium text-slate-600 mb-1">Catatan anggaran project (opsional)</label>
         <input value={form.compensation} onChange={(e) => setForm({ ...form, compensation: e.target.value })} placeholder="Contoh: Rp 5.000.000 / Proyek" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none" />
+        <p className="mt-1 text-xs text-slate-500">Ini hanya catatan internal. Fee yang mengikat ditentukan per associate sebelum undangan dikirim.</p>
       </div>
     </div>
   );
@@ -139,11 +141,11 @@ export default function AdminAssignmentsPage() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormType>({ ...EMPTY_FORM, needed_roles: [] });
-  const [assignmentMode, setAssignmentMode] = useState<'program' | 'standalone'>('program');
   const [appPrograms, setAppPrograms] = useState<AppProgram[]>([]);
   const [loadingPrograms, setLoadingPrograms] = useState(false);
   const [selectedProgramId, setSelectedProgramId] = useState('');
   const [selectedModuleKey, setSelectedModuleKey] = useState<'tbos' | 'lep' | ''>('');
+  const [createRequestId, setCreateRequestId] = useState(() => crypto.randomUUID());
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const headers = useMemo(() => ({
@@ -172,12 +174,12 @@ export default function AdminAssignmentsPage() {
       const response = await fetch(`${apiUrl}/api/admin/app-programs`, { headers });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload?.success) {
-        toast('error', payload?.error || 'Program APP belum dapat dimuat');
+        toast('error', payload?.error || 'Project APP belum dapat dimuat');
         return;
       }
       setAppPrograms(payload.data || []);
     } catch {
-      toast('error', 'Gagal terhubung ke katalog program APP');
+      toast('error', 'Gagal terhubung ke katalog project APP');
     } finally {
       setLoadingPrograms(false);
     }
@@ -186,8 +188,8 @@ export default function AdminAssignmentsPage() {
   useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
 
   useEffect(() => {
-    if (showForm && assignmentMode === 'program' && appPrograms.length === 0) void fetchAppPrograms();
-  }, [showForm, assignmentMode, appPrograms.length, fetchAppPrograms]);
+    if (showForm && appPrograms.length === 0) void fetchAppPrograms();
+  }, [showForm, appPrograms.length, fetchAppPrograms]);
 
   const chooseModule = (program: AppProgram, programModule: AppProgramModule) => {
     setSelectedModuleKey(programModule.key);
@@ -203,6 +205,11 @@ export default function AdminAssignmentsPage() {
 
   const chooseProgram = (programId: string) => {
     setSelectedProgramId(programId);
+    if (programId === '__new__') {
+      setSelectedModuleKey('');
+      setForm({ ...EMPTY_FORM, needed_roles: [] });
+      return;
+    }
     const program = appPrograms.find((item) => item.id === programId);
     if (!program) {
       setSelectedModuleKey('');
@@ -216,12 +223,12 @@ export default function AdminAssignmentsPage() {
     setForm({ ...EMPTY_FORM, needed_roles: [] });
     setSelectedProgramId('');
     setSelectedModuleKey('');
-    setAssignmentMode('program');
+    setCreateRequestId(crypto.randomUUID());
   };
 
   const handleCreate = async () => {
-    if (assignmentMode === 'program' && (!selectedProgramId || !selectedModuleKey)) {
-      toast('warning', 'Pilih program dan modul yang akan ditugaskan');
+    if (!selectedProgramId || !selectedModuleKey) {
+      toast('warning', 'Pilih project dan modul yang akan ditugaskan');
       return;
     }
     if (!form.title || !form.client_name) {
@@ -243,15 +250,14 @@ export default function AdminAssignmentsPage() {
           needed_count: Math.max(1, parseInt(form.needed_count, 10) || 1),
           mandays: parseInt(form.mandays) || 0,
           compensation: form.compensation || null,
-          app_program_id: assignmentMode === 'program' ? selectedProgramId : undefined,
-          app_module_key: assignmentMode === 'program' ? selectedModuleKey : undefined,
+          app_program_id: selectedProgramId === '__new__' ? undefined : selectedProgramId,
+          app_module_key: selectedModuleKey,
+          new_app_project: selectedProgramId === '__new__' ? { requestId: createRequestId } : undefined,
         }),
       });
       const d = await resp.json();
       if (d?.success) {
-        toast(d.duplicate ? 'warning' : 'success', d.message || (assignmentMode === 'program'
-          ? 'Assignment program siap. Pilih kandidat terbaik dengan rekomendasi AI.'
-          : 'Assignment berhasil dibuat'));
+        toast(d.duplicate ? 'warning' : 'success', d.message || 'Assignment project siap. Pilih kandidat terbaik dengan rekomendasi AI.');
         setShowForm(false);
         resetCreateForm();
         if (d.data?.id) router.push(`/admin/assignments/${d.data.id}`);
@@ -423,79 +429,65 @@ export default function AdminAssignmentsPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5">
             <h3 className="text-sm font-semibold text-slate-900">Assignment Baru</h3>
-            <p className="mt-1 text-xs text-slate-500">Hubungkan associate ke program BinaHub, atau buat pekerjaan mandiri yang tidak memerlukan akses APP.</p>
+            <p className="mt-1 text-xs text-slate-500">Pilih project yang ada atau buat project baru di sini. Penawaran associate dikirim setelah fee tiap orang ditetapkan.</p>
           </div>
 
-          <div className="mb-5 inline-flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Jenis assignment">
-            <button
-              type="button"
-              onClick={() => setAssignmentMode('program')}
-              className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${assignmentMode === 'program' ? 'bg-white text-[#0B2C6B] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Program BinaHub
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAssignmentMode('standalone');
-                setSelectedProgramId('');
-                setSelectedModuleKey('');
-                setForm({ ...EMPTY_FORM, needed_roles: [] });
-              }}
-              className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${assignmentMode === 'standalone' ? 'bg-white text-[#0B2C6B] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Assignment mandiri
-            </button>
-          </div>
-
-          {assignmentMode === 'program' && (
             <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-700">Program APP *</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">Project *</label>
                   <select
                     value={selectedProgramId}
                     onChange={(event) => chooseProgram(event.target.value)}
                     disabled={loadingPrograms}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] disabled:cursor-wait disabled:text-slate-400"
                   >
-                    <option value="">{loadingPrograms ? 'Memuat program...' : 'Pilih program aktif'}</option>
+                    <option value="">{loadingPrograms ? 'Memuat project...' : 'Pilih project aktif'}</option>
                     {appPrograms.map((program) => (
                       <option key={program.id} value={program.id}>{program.title} · {program.clientName}</option>
                     ))}
+                    <option value="__new__">+ Buat project baru</option>
                   </select>
                   {!loadingPrograms && appPrograms.length === 0 && (
-                    <p className="mt-1.5 text-xs text-amber-700">Belum ada program aktif dengan modul T-BOS atau LEP.</p>
+                    <p className="mt-1.5 text-xs text-slate-600">Belum ada project aktif? Pilih “Buat project baru” dan isi nama project serta klien di bawah.</p>
                   )}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">Modul dan peran *</label>
                   <select
                     value={selectedModuleKey}
-                    disabled={!selectedProgram}
+                    disabled={!selectedProgramId}
                     onChange={(event) => {
-                      const programModule = selectedProgram?.modules.find((item) => item.key === event.target.value);
-                      if (selectedProgram && programModule) chooseModule(selectedProgram, programModule);
+                      if (selectedProgramId === '__new__') {
+                        const key = event.target.value as 'tbos' | 'lep';
+                        setSelectedModuleKey(key);
+                        setForm((current) => ({ ...current, needed_roles: key === 'tbos' ? ['Observer'] : key === 'lep' ? ['Pembicara'] : [] }));
+                        return;
+                      }
+                      const key = event.target.value as 'tbos' | 'lep';
+                      const programModule = selectedProgram?.modules.find((item) => item.key === key)
+                        || (key === 'tbos' ? { key, label: 'T-BOS', defaultRole: 'Observer', workspaceUrl: '' } : { key, label: 'LEP', defaultRole: 'Pembicara', workspaceUrl: '' });
+                      if (selectedProgram && key) chooseModule(selectedProgram, programModule);
                     }}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] disabled:bg-slate-50 disabled:text-slate-400"
                   >
                     <option value="">Pilih modul</option>
-                    {selectedProgram?.modules.map((programModule) => (
-                      <option key={programModule.key} value={programModule.key}>{programModule.label} · {programModule.defaultRole}</option>
-                    ))}
+                    {selectedProgram && <>
+                      <option value="tbos">T-BOS · Observer{selectedProgram.modules.some((module) => module.key === 'tbos') ? '' : ' · aktifkan saat disimpan'}</option>
+                      <option value="lep">LEP · Pembicara{selectedProgram.modules.some((module) => module.key === 'lep') ? '' : ' · aktifkan saat disimpan'}</option>
+                    </>}
+                    {selectedProgramId === '__new__' && <><option value="tbos">Observasi · Observer</option><option value="lep">LEP · Pembicara</option></>}
                   </select>
                 </div>
               </div>
-              {selectedProgram && selectedModuleKey && (
+              {selectedProgramId && selectedModuleKey && (
                 <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-100 bg-white/80 px-3 py-2.5 text-xs text-slate-600">
                   <span className="mt-0.5 text-emerald-600">✓</span>
-                  <p>Assignment akan langsung aktif. Setelah dibuat, AMS membuka daftar kandidat beserta peringkat AI; akses APP baru aktif setelah associate menerima undangan.</p>
+                  <p>{selectedProgramId === '__new__' ? 'Project baru dan modul ini dibuat otomatis di APP.' : 'Assignment ditautkan ke project terpilih; modul akan diaktifkan bila belum ada.'} Setelah disimpan, pilih kandidat dan tetapkan fee sebelum mengundang.</p>
                 </div>
               )}
             </div>
-          )}
-
-          <FormFields form={form} setForm={setForm} lockIdentity={assignmentMode === 'program'} />
+          <FormFields form={form} setForm={setForm} lockIdentity={selectedProgramId !== '__new__'} lockRoles />
           <div className="mt-4 flex gap-2">
             <button onClick={handleCreate} disabled={saving} className="rounded-lg bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:from-[#0A255A] hover:to-[#071A33] disabled:opacity-50 disabled:shadow-none">
               {saving ? 'Menyimpan...' : 'Simpan'}

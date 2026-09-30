@@ -133,6 +133,7 @@ reviewRoutes.patch('/associate/:associateId/decision', requireRole(['admin', 're
 
   const status = body.status as 'approved' | 'rejected';
   const notes = typeof body.notes === 'string' ? body.notes.trim() : '';
+  if (status === 'rejected' && !notes) return c.json({ success: false, error: 'Tuliskan bagian profil yang perlu diperbaiki sebelum meminta revisi' }, 400);
   const now = new Date().toISOString();
   const db = getDb();
   const { data: associate, error: associateError } = await db

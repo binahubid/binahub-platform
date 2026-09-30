@@ -38,6 +38,9 @@ type AssignmentDetail = {
     compensation_currency: string | null;
     compensation_basis: 'fixed_project' | 'per_day' | 'per_session' | 'per_hour' | 'per_deliverable' | 'other' | null;
     compensation_notes: string | null;
+    transport_amount: number | string | null;
+    preparation_amount: number | string | null;
+    invitation_expires_at: string | null;
   } | null;
   accepted_count: number;
   total_assignees: number;
@@ -82,15 +85,6 @@ function fmtCurrency(val: string | null | undefined) {
   return val;
 }
 
-const compensationBasisLabels: Record<NonNullable<AssignmentDetail['my_assignment']>['compensation_basis'] & string, string> = {
-  fixed_project: 'per proyek',
-  per_day: 'per hari',
-  per_session: 'per sesi',
-  per_hour: 'per jam',
-  per_deliverable: 'per deliverable',
-  other: 'sesuai catatan',
-};
-
 function effectiveCompensation(assignment: AssignmentDetail) {
   const individual = assignment.my_assignment;
   if (individual?.compensation_amount !== null
@@ -99,19 +93,19 @@ function effectiveCompensation(assignment: AssignmentDetail) {
     && individual.compensation_basis) {
     const amount = Number(individual.compensation_amount);
     if (Number.isFinite(amount)) {
+      const transport = individual.transport_amount === null ? null : Number(individual.transport_amount);
+      const preparation = individual.preparation_amount === null ? null : Number(individual.preparation_amount);
+      const money = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: individual.compensation_currency!, maximumFractionDigits: 0 }).format(value);
       return {
-        label: `${new Intl.NumberFormat('id-ID', {
-          style: 'currency',
-          currency: individual.compensation_currency,
-          maximumFractionDigits: 0,
-        }).format(amount)} ${compensationBasisLabels[individual.compensation_basis]}`,
+        label: `${money(amount + (transport || 0) + (preparation || 0))} total`,
+        breakdown: [`Kompensasi: ${money(amount)}`, ...(transport !== null ? [`Transportasi: ${money(transport)}`] : []), ...(preparation !== null ? [`Persiapan: ${money(preparation)}`] : [])],
         notes: individual.compensation_notes,
         individual: true,
       };
     }
   }
   return assignment.compensation
-    ? { label: fmtCurrency(assignment.compensation), notes: null, individual: false }
+    ? { label: fmtCurrency(assignment.compensation), breakdown: [], notes: null, individual: false }
     : null;
 }
 
@@ -548,8 +542,10 @@ export default function AssignmentDetailPage() {
                   <p className="text-sm text-amber-800">{my.notes}</p>
                 </div>
               )}
+              {my.invitation_expires_at && <p className="text-sm font-semibold text-slate-700">Jawab paling lambat {new Date(my.invitation_expires_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short' })} WIB.</p>}
+              {compensation && <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{compensation.breakdown.map((line) => <p key={line}>{line}</p>)}<p className="mt-2 border-t border-slate-200 pt-2 font-bold">Total: {compensation.label}</p></div>}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button onClick={() => setShowAgreementModal(true)} disabled={acting} className="w-full sm:flex-1 rounded-xl bg-[#0B2C6B] py-3 text-sm font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-sm text-center">Terima Undangan</button>
+                <button onClick={() => setShowAgreementModal(true)} disabled={acting || Boolean(my.invitation_expires_at && new Date(my.invitation_expires_at).getTime() <= Date.now()) || assignment.accepted_count >= assignment.needed_count} className="w-full sm:flex-1 rounded-xl bg-[#0B2C6B] py-3 text-sm font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-sm text-center">{my.invitation_expires_at && new Date(my.invitation_expires_at).getTime() <= Date.now() ? 'Batas Respons Terlewat' : assignment.accepted_count >= assignment.needed_count ? 'Posisi Sudah Terisi' : 'Terima Undangan'}</button>
                 <button onClick={() => handleStatusUpdate('declined')} disabled={acting} className="w-full sm:w-32 rounded-xl border border-red-200 bg-red-50/50 py-3 text-sm font-semibold text-red-600 hover:bg-red-100/70 disabled:opacity-50 transition-colors text-center">Tolak</button>
               </div>
             </div>
@@ -896,7 +892,7 @@ export default function AssignmentDetailPage() {
               {[
                 { title: 'Pasal 1: Ruang Lingkup', items: [`Nama Proyek: ${assignment.title}`, `Klien: ${assignment.client_name}`, `Peran/Role: ${myRole || 'Associate'}`] },
                 { title: 'Pasal 2: Jangka Waktu', items: ([assignment.start_date && `Tanggal Mulai: ${fmtDate(assignment.start_date)}`, assignment.end_date && `Tanggal Selesai: ${fmtDate(assignment.end_date)}`, assignment.mandays ? `Durasi: ${assignment.mandays} Manday(s)` : null] as (string | null | false)[]).filter((x): x is string => !!x) },
-                { title: 'Pasal 3: Kompensasi', items: [`Nilai: ${compensation?.label || 'Belum ditetapkan'}`, compensation?.notes || 'Pembayaran diproses setelah bukti tugas disetujui admin.'] },
+                { title: 'Pasal 3: Fee', items: [...(compensation?.breakdown || []), `Total: ${compensation?.label || 'Belum ditetapkan'}`, compensation?.notes || 'Pembayaran diproses sesuai kesepakatan penugasan.'] },
                 { title: 'Pasal 4: Kerahasiaan (NDA)', items: ['Mitra wajib menjaga kerahasiaan seluruh informasi proyek. Dilarang menyebarluaskan tanpa izin tertulis BinaHub.'] },
               ].map((s) => (
                 <div key={s.title} className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2">

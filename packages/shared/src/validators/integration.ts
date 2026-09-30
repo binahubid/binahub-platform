@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assignmentOfferFeeSchema, invitationDeadlineSchema } from './assignments.js';
 
 export const appAssignmentRequestSchema = z.object({
   requestId: z.string().uuid(),
@@ -12,6 +13,8 @@ export const appAssignmentRequestSchema = z.object({
   role: z.string().trim().min(1).max(100),
   scope: z.record(z.string(), z.unknown()).default({}),
   associateIds: z.array(z.string().uuid()).min(1).max(100),
+  fee: assignmentOfferFeeSchema,
+  invitationExpiresAt: invitationDeadlineSchema,
   startDate: z.string().date().nullable().optional(),
   endDate: z.string().date().nullable().optional(),
   description: z.string().trim().max(10_000).nullable().optional(),

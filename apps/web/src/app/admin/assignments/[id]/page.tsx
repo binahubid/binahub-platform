@@ -43,6 +43,9 @@ type Assignee = {
   compensation_basis: CompensationBasis | null;
   compensation_notes: string | null;
   compensation_updated_at: string | null;
+  transport_amount: number | string | null;
+  preparation_amount: number | string | null;
+  invitation_expires_at: string | null;
   associate: { id: string; email: string; status: string } | null;
   profile: { full_name: string; headline: string | null; photo_url: string | null; city: string | null } | null;
 };
@@ -58,7 +61,7 @@ type CompensationEditor = {
   notes: string;
 };
 
-type CompensationDraft = Omit<CompensationEditor, 'assigneeId'>;
+type CompensationDraft = { amount: string; transport: string; preparation: string };
 
 type AvailableAssociate = {
   id: string;
@@ -87,12 +90,16 @@ const compensationBasisLabels: Record<CompensationBasis, string> = {
 };
 
 const defaultCompensationDraft = (): CompensationDraft => ({
-  mode: 'inherit',
   amount: '',
-  currency: 'IDR',
-  basis: 'fixed_project',
-  notes: '',
+  transport: '',
+  preparation: '',
 });
+
+function defaultInviteDeadline() {
+  const date = new Date(Date.now() + 72 * 60 * 60_000);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
 
 function formatCompensationOverride(assignee: Assignee) {
   if (assignee.compensation_amount === null || assignee.compensation_amount === undefined || !assignee.compensation_currency || !assignee.compensation_basis) return null;
@@ -158,6 +165,7 @@ export default function AssignmentDetailPage() {
   const [availableAssociates, setAvailableAssociates] = useState<AvailableAssociate[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [inviteCompensations, setInviteCompensations] = useState<Record<string, CompensationDraft>>({});
+  const [inviteDeadline, setInviteDeadline] = useState(defaultInviteDeadline);
   const [searchTerm, setSearchTerm] = useState('');
   const [inviting, setInviting] = useState(false);
   const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({});
@@ -282,29 +290,30 @@ export default function AssignmentDetailPage() {
       toast('error', 'Pilih minimal satu associate');
       return;
     }
-    const compensationByAssociate: Record<string, { mode: 'inherit' } | { mode: 'override'; amount: number; currency: string; basis: CompensationBasis; notes: string | null }> = {};
+    const feeByAssociate: Record<string, { compensation: number; transport?: number; preparation?: number }> = {};
     for (const associateId of selectedIds) {
       const draft = inviteCompensations[associateId] || defaultCompensationDraft();
-      if (draft.mode === 'inherit') {
-        compensationByAssociate[associateId] = { mode: 'inherit' };
-        continue;
-      }
       const amount = Number(draft.amount);
-      if (!Number.isFinite(amount) || amount < 0) {
-        toast('error', 'Periksa kembali nominal kompensasi khusus yang dipilih');
+      if (!draft.amount || !Number.isFinite(amount) || amount <= 0) {
+        toast('error', 'Isi kompensasi lebih dari nol untuk setiap associate');
         return;
       }
-      if (!/^[A-Za-z]{3}$/.test(draft.currency.trim())) {
-        toast('error', 'Kode mata uang harus tiga huruf, misalnya IDR');
-        return;
+      const fee = { compensation: amount } as { compensation: number; transport?: number; preparation?: number };
+      for (const [field, value] of [['transport', draft.transport], ['preparation', draft.preparation]] as const) {
+        if (value === '') continue;
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+          toast('error', 'Transportasi dan persiapan harus bernilai nol atau lebih');
+          return;
+        }
+        fee[field] = parsed;
       }
-      compensationByAssociate[associateId] = {
-        mode: 'override',
-        amount,
-        currency: draft.currency.trim().toUpperCase(),
-        basis: draft.basis,
-        notes: draft.notes.trim() || null,
-      };
+      feeByAssociate[associateId] = fee;
+    }
+    const deadline = new Date(inviteDeadline);
+    if (!inviteDeadline || !Number.isFinite(deadline.getTime()) || deadline.getTime() <= Date.now() + 5 * 60_000 || deadline.getTime() > Date.now() + 30 * 24 * 60 * 60_000) {
+      toast('error', 'Pilih batas respons antara lima menit dan 30 hari dari sekarang');
+      return;
     }
 
     setInviting(true);
@@ -312,7 +321,7 @@ export default function AssignmentDetailPage() {
       const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}/invite`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ associate_ids: selectedIds, compensation_by_associate: compensationByAssociate }),
+        body: JSON.stringify({ associate_ids: selectedIds, fee_by_associate: feeByAssociate, invitation_expires_at: deadline.toISOString() }),
       });
       const data = await resp.json();
       if (data.success) {
@@ -511,7 +520,7 @@ export default function AssignmentDetailPage() {
               {assignment.start_date && <span>Mulai: {new Date(assignment.start_date).toLocaleDateString('id-ID')}</span>}
               {assignment.end_date && <span>Selesai: {new Date(assignment.end_date).toLocaleDateString('id-ID')}</span>}
               {assignment.needed_roles.length > 0 && <span>Role: {assignment.needed_roles.join(', ')}</span>}
-              <span>Dibutuhkan: {assignment.needed_count} orang</span>
+              <span>Slot diterima: {assignees.filter((person) => ['accepted', 'in_progress', 'completed', 'reviewed'].includes(person.status)).length}/{assignment.needed_count}</span>
             </div>
           </div>
           <button
@@ -560,7 +569,7 @@ export default function AssignmentDetailPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Pilih Associate untuk Diundang</h3>
-              <p className="mt-0.5 text-xs text-slate-500">Setiap orang dapat mengikuti kompensasi default atau menerima nilai khusus sebelum undangan dikirim.</p>
+              <p className="mt-0.5 text-xs text-slate-500">Tentukan rincian fee setiap orang sebelum undangan dikirim. Undangan cadangan boleh lebih banyak dari slot, tetapi penerimaan berhenti saat slot penuh.</p>
             </div>
             <input
               type="text"
@@ -570,6 +579,10 @@ export default function AssignmentDetailPage() {
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none w-64"
             />
           </div>
+          <label className="mb-4 block max-w-sm text-xs font-semibold text-slate-700">Batas respons undangan
+            <input type="datetime-local" value={inviteDeadline} onChange={(event) => setInviteDeadline(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal" />
+            <span className="mt-1 block font-normal text-slate-500">Waktu mengikuti zona waktu perangkat Anda. Setelah lewat, associate tidak dapat menerima undangan.</span>
+          </label>
           {loadingRecs && (
             <div className="flex items-center justify-center gap-2 py-3 bg-blue-50/50 rounded-lg border border-blue-100 mb-4 text-xs font-semibold text-[#0B2C6B] animate-pulse">
               <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -685,33 +698,17 @@ export default function AssignmentDetailPage() {
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <div>
                                 <p className="text-xs font-bold text-slate-900">Kompensasi untuk {a.full_name || a.email}</p>
-                                <p className="mt-0.5 text-[11px] text-slate-500">Nilai ini tampil sebelum associate menerima undangan.</p>
-                              </div>
-                              <div className="inline-flex rounded-lg bg-slate-100 p-1 text-[11px] font-semibold">
-                                <button type="button" onClick={() => updateDraft({ mode: 'inherit' })} className={`rounded-md px-2.5 py-1.5 ${draft.mode === 'inherit' ? 'bg-white text-[#0B2C6B] shadow-sm' : 'text-slate-500'}`}>Ikuti default</button>
-                                <button type="button" onClick={() => updateDraft({ mode: 'override' })} className={`rounded-md px-2.5 py-1.5 ${draft.mode === 'override' ? 'bg-white text-[#0B2C6B] shadow-sm' : 'text-slate-500'}`}>Nilai khusus</button>
+                                <p className="mt-0.5 text-[11px] text-slate-500">Rincian dan total akan ditampilkan di undangan.</p>
                               </div>
                             </div>
-                            {draft.mode === 'inherit' ? (
-                              <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">{assignment.compensation || 'Kompensasi default belum ditetapkan'}</p>
-                            ) : (
-                              <div className="mt-3 grid gap-2 sm:grid-cols-[1.2fr_0.55fr_0.8fr]">
-                                <label className="text-[11px] font-semibold text-slate-600">Nominal
-                                  <input type="number" min="0" step="1000" value={draft.amount} onChange={(event) => updateDraft({ amount: event.target.value })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal outline-none focus:border-[#0B2C6B]" placeholder="5000000" />
+                            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                              {([['amount', 'Kompensasi *'], ['transport', 'Transportasi'], ['preparation', 'Persiapan']] as const).map(([field, label]) => (
+                                <label key={field} className="text-[11px] font-semibold text-slate-600">{label}
+                                  <input type="number" min={field === 'amount' ? '1' : '0'} step="1000" value={draft[field]} onChange={(event) => updateDraft({ [field]: event.target.value })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal outline-none focus:border-[#0B2C6B]" placeholder={field === 'amount' ? '1000000' : 'Opsional'} />
                                 </label>
-                                <label className="text-[11px] font-semibold text-slate-600">Mata uang
-                                  <input maxLength={3} value={draft.currency} onChange={(event) => updateDraft({ currency: event.target.value.toUpperCase() })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal uppercase outline-none focus:border-[#0B2C6B]" />
-                                </label>
-                                <label className="text-[11px] font-semibold text-slate-600">Satuan
-                                  <select value={draft.basis} onChange={(event) => updateDraft({ basis: event.target.value as CompensationBasis })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal outline-none focus:border-[#0B2C6B]">
-                                    {Object.entries(compensationBasisLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                                  </select>
-                                </label>
-                                <label className="text-[11px] font-semibold text-slate-600 sm:col-span-3">Catatan kesepakatan <span className="font-normal text-slate-400">(opsional)</span>
-                                  <textarea rows={2} maxLength={2000} value={draft.notes} onChange={(event) => updateDraft({ notes: event.target.value })} className="mt-1 w-full resize-y rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-normal leading-5 outline-none focus:border-[#0B2C6B]" placeholder="Contoh: termasuk transport lokal, dibayarkan setelah laporan disetujui." />
-                                </label>
-                              </div>
-                            )}
+                              ))}
+                            </div>
+                            <p className="mt-2 text-xs font-semibold text-[#0B2C6B]">Total: {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(draft.amount || 0) + Number(draft.transport || 0) + Number(draft.preparation || 0))}</p>
                           </div>
                         );
                       })()}
@@ -745,7 +742,7 @@ export default function AssignmentDetailPage() {
               const config = statusConfig[a.status] || statusConfig.invited;
               const { photos, report } = parseEvidence(a.evidence_notes);
               const compensationOverride = formatCompensationOverride(a);
-              const compensationLocked = !['invited', 'applied'].includes(a.status);
+              const compensationLocked = !['invited', 'applied'].includes(a.status) || Boolean(a.invitation_expires_at);
               const avatarSrc = a.profile?.photo_url 
                 ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(a.profile.photo_url)}` 
                 : undefined;
@@ -804,8 +801,12 @@ export default function AssignmentDetailPage() {
                           </span>
                         </div>
                         <p className="mt-1 text-sm font-bold text-slate-900">{compensationOverride || assignment.compensation || 'Belum ditetapkan'}</p>
+                        {a.transport_amount !== null && <p className="mt-1 text-xs text-slate-600">Transportasi: Rp {Number(a.transport_amount).toLocaleString('id-ID')}</p>}
+                        {a.preparation_amount !== null && <p className="text-xs text-slate-600">Persiapan: Rp {Number(a.preparation_amount).toLocaleString('id-ID')}</p>}
+                        {a.compensation_amount !== null && <p className="mt-1 text-xs font-bold text-slate-900">Total fee: Rp {(Number(a.compensation_amount) + Number(a.transport_amount || 0) + Number(a.preparation_amount || 0)).toLocaleString('id-ID')}</p>}
+                        {a.invitation_expires_at && <p className="mt-1 text-xs text-slate-600">Batas respons: {new Date(a.invitation_expires_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' })} WIB</p>}
                         {a.compensation_notes && <p className="mt-1 text-xs leading-5 text-slate-500">{a.compensation_notes}</p>}
-                        {compensationLocked && <p className="mt-1 text-[10px] font-medium text-amber-700">Terkunci karena undangan sudah diterima atau pekerjaan telah dimulai.</p>}
+                        {compensationLocked && <p className="mt-1 text-[10px] font-medium text-amber-700">Fee terkunci setelah penawaran dikirim agar sesuai dengan email associate.</p>}
                       </div>
                       <button
                         type="button"

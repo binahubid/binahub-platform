@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS assignment_assignees (
   compensation_currency text,
   compensation_basis text,
   compensation_notes text,
+  transport_amount numeric(18, 2),
+  preparation_amount numeric(18, 2),
+  invitation_expires_at timestamp with time zone,
   compensation_updated_at timestamp with time zone,
   compensation_updated_by uuid,
   invited_by uuid,
@@ -78,6 +81,10 @@ ALTER TABLE assignment_assignees DROP CONSTRAINT IF EXISTS assignment_assignees_
 ALTER TABLE assignment_assignees ADD CONSTRAINT assignment_assignees_compensation_override_check CHECK ((compensation_amount IS NULL AND compensation_currency IS NULL AND compensation_basis IS NULL) OR (compensation_amount IS NOT NULL AND compensation_currency IS NOT NULL AND compensation_basis IS NOT NULL));
 ALTER TABLE assignment_assignees DROP CONSTRAINT IF EXISTS assignment_assignees_compensation_notes_check;
 ALTER TABLE assignment_assignees ADD CONSTRAINT assignment_assignees_compensation_notes_check CHECK (compensation_notes IS NULL OR char_length(compensation_notes) <= 2000);
+ALTER TABLE assignment_assignees DROP CONSTRAINT IF EXISTS assignment_assignees_transport_amount_check;
+ALTER TABLE assignment_assignees ADD CONSTRAINT assignment_assignees_transport_amount_check CHECK (transport_amount IS NULL OR transport_amount >= 0);
+ALTER TABLE assignment_assignees DROP CONSTRAINT IF EXISTS assignment_assignees_preparation_amount_check;
+ALTER TABLE assignment_assignees ADD CONSTRAINT assignment_assignees_preparation_amount_check CHECK (preparation_amount IS NULL OR preparation_amount >= 0);
 
 CREATE TABLE IF NOT EXISTS assignment_compensation_history (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -220,6 +227,45 @@ EXECUTE FUNCTION record_initial_assignment_compensation();
 
 -- 4. UNIQUE CONSTRAINT: satu associate hanya satu assignment role
 CREATE UNIQUE INDEX IF NOT EXISTS idx_assignment_assignees_unique ON assignment_assignees(assignment_id, associate_id);
+
+CREATE OR REPLACE FUNCTION public.guard_assignment_acceptance()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE required_count integer; filled_count integer;
+BEGIN
+  IF new.status <> 'accepted' OR old.status = 'accepted' THEN RETURN new; END IF;
+  IF old.status NOT IN ('invited', 'applied') THEN RAISE EXCEPTION 'Undangan tidak lagi dapat diterima'; END IF;
+  IF new.invitation_expires_at IS NOT NULL AND new.invitation_expires_at <= now() THEN RAISE EXCEPTION 'Batas waktu undangan telah lewat'; END IF;
+  SELECT needed_count INTO required_count FROM public.assignments WHERE id = new.assignment_id FOR UPDATE;
+  IF required_count IS NULL THEN RAISE EXCEPTION 'Assignment tidak tersedia'; END IF;
+  SELECT count(*) INTO filled_count FROM public.assignment_assignees
+  WHERE assignment_id = new.assignment_id AND id <> new.id AND status IN ('accepted', 'in_progress', 'completed', 'reviewed');
+  IF filled_count >= required_count THEN RAISE EXCEPTION 'Seluruh posisi assignment sudah terisi'; END IF;
+  RETURN new;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.guard_assignment_acceptance() FROM PUBLIC;
+DROP TRIGGER IF EXISTS assignment_assignees_acceptance_guard ON public.assignment_assignees;
+CREATE TRIGGER assignment_assignees_acceptance_guard BEFORE UPDATE OF status ON public.assignment_assignees
+FOR EACH ROW WHEN (new.status = 'accepted' AND old.status IS DISTINCT FROM new.status)
+EXECUTE FUNCTION public.guard_assignment_acceptance();
+
+CREATE OR REPLACE FUNCTION public.guard_assignment_needed_count()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE filled_count integer;
+BEGIN
+  SELECT count(*) INTO filled_count FROM public.assignment_assignees
+  WHERE assignment_id = new.id AND status IN ('accepted', 'in_progress', 'completed', 'reviewed');
+  IF new.needed_count < filled_count THEN
+    RAISE EXCEPTION 'Jumlah kebutuhan tidak boleh lebih kecil dari posisi terisi';
+  END IF;
+  RETURN new;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.guard_assignment_needed_count() FROM PUBLIC;
+DROP TRIGGER IF EXISTS assignments_needed_count_guard ON public.assignments;
+CREATE TRIGGER assignments_needed_count_guard BEFORE UPDATE OF needed_count ON public.assignments
+FOR EACH ROW WHEN (new.needed_count IS DISTINCT FROM old.needed_count)
+EXECUTE FUNCTION public.guard_assignment_needed_count();
 
 -- 5. INDEXES
 ALTER TABLE associate_documents ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;

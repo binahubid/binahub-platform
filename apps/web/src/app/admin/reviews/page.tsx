@@ -61,6 +61,10 @@ export default function AdminReviewsPage() {
 
   const handleInlineReview = async (associateId: string, status: 'approved' | 'rejected') => {
     if (!accessToken) return;
+    if (status === 'rejected' && !inlineNotes.trim()) {
+      toast('error', 'Tulis bagian profil yang perlu diperbaiki sebelum meminta revisi.');
+      return;
+    }
     setReviewing(true);
     try {
       const resp = await fetch(`${apiUrl}/api/reviews/associate/${associateId}/decision`, {
@@ -199,7 +203,7 @@ export default function AdminReviewsPage() {
                     <textarea
                       value={inlineNotes}
                       onChange={(e) => setInlineNotes(e.target.value)}
-                      placeholder="Catatan review (opsional)..."
+                      placeholder="Catatan untuk associate (wajib jika meminta revisi)..."
                       rows={2}
                       className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-[#0B2C6B] focus:outline-none focus:ring-1 focus:ring-[#0B2C6B]/20"
                     />
@@ -213,7 +217,7 @@ export default function AdminReviewsPage() {
                       </button>
                       <button
                         onClick={() => handleInlineReview(a.id, 'rejected')}
-                        disabled={reviewing}
+                        disabled={reviewing || !inlineNotes.trim()}
                         className="rounded-lg border border-red-300 bg-white px-4 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                       >
                         Tolak
