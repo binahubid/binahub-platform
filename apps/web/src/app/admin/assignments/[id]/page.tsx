@@ -294,7 +294,7 @@ export default function AssignmentDetailPage() {
     for (const associateId of selectedIds) {
       const draft = inviteCompensations[associateId] || defaultCompensationDraft();
       const amount = Number(draft.amount);
-      if (!draft.amount || !Number.isFinite(amount) || amount <= 0) {
+      if (!draft.amount || !Number.isSafeInteger(amount) || amount <= 0) {
         toast('error', 'Isi kompensasi lebih dari nol untuk setiap associate');
         return;
       }
@@ -302,7 +302,7 @@ export default function AssignmentDetailPage() {
       for (const [field, value] of [['transport', draft.transport], ['preparation', draft.preparation]] as const) {
         if (value === '') continue;
         const parsed = Number(value);
-        if (!Number.isFinite(parsed) || parsed < 0) {
+        if (!Number.isSafeInteger(parsed) || parsed < 0) {
           toast('error', 'Transportasi dan persiapan harus bernilai nol atau lebih');
           return;
         }
@@ -338,7 +338,29 @@ export default function AssignmentDetailPage() {
         toast('error', data.error || 'Gagal mengundang associate');
       }
     } catch {
-      toast('error', 'Gagal terhubung ke server');
+      // A timeout does not mean the insert failed: the server may still be
+      // sending emails or syncing APP after the invitations were persisted.
+      try {
+        const check = await fetch(`${apiUrl}/api/admin/assignments/${id}/assignees`, { headers: getHeaders(), cache: 'no-store' });
+        const result = await check.json();
+        if (result.success) {
+          const latest = result.data as Assignee[];
+          setAssignees(latest);
+          const saved = selectedIds.filter((associateId) => latest.some((assignee) => assignee.associate_id === associateId));
+          if (saved.length === selectedIds.length) {
+            toast('success', 'Undangan sudah tersimpan. Email dan sinkronisasi mungkin masih diproses.');
+            setSelectedIds([]);
+            setInviteCompensations({});
+            setShowInvite(false);
+          } else {
+            toast('warning', `${saved.length} dari ${selectedIds.length} undangan sudah tersimpan. Periksa daftar sebelum mengirim ulang.`);
+          }
+        } else {
+          toast('warning', 'Status undangan belum dapat dipastikan. Periksa daftar penerima sebelum mengirim ulang.');
+        }
+      } catch {
+        toast('warning', 'Koneksi terputus. Periksa daftar penerima sebelum mengirim ulang agar undangan tidak ganda.');
+      }
     } finally {
       setInviting(false);
     }
@@ -430,10 +452,13 @@ export default function AssignmentDetailPage() {
     }
   };
 
-  const handleRemove = async (assigneeId: string) => {
-    if (!confirm('Hapus associate dari assignment ini?')) return;
+  const handleRemove = async (assignee: Assignee) => {
+    const isAppOffer = Boolean(assignment?.external_program_id && assignment.external_module_key);
+    if (!confirm(isAppOffer
+      ? 'Batalkan penawaran ini dan cabut akses APP? Tindakan ini tidak mengubah fee secara diam-diam. Kirim penawaran baru setelah pembatalan selesai.'
+      : 'Hapus associate dari assignment ini?')) return;
     try {
-      const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}/assignees/${assigneeId}`, {
+      const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}/assignees/${assignee.id}`, {
         method: 'DELETE',
         headers: getHeaders(),
       });
@@ -704,7 +729,7 @@ export default function AssignmentDetailPage() {
                             <div className="mt-3 grid gap-2 sm:grid-cols-3">
                               {([['amount', 'Kompensasi *'], ['transport', 'Transportasi'], ['preparation', 'Persiapan']] as const).map(([field, label]) => (
                                 <label key={field} className="text-[11px] font-semibold text-slate-600">{label}
-                                  <input type="number" min={field === 'amount' ? '1' : '0'} step="1000" value={draft[field]} onChange={(event) => updateDraft({ [field]: event.target.value })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal outline-none focus:border-[#0B2C6B]" placeholder={field === 'amount' ? '1000000' : 'Opsional'} />
+                                  <input type="number" min={field === 'amount' ? '1' : '0'} step="1" value={draft[field]} onChange={(event) => updateDraft({ [field]: event.target.value })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal outline-none focus:border-[#0B2C6B]" placeholder={field === 'amount' ? '1000000' : 'Opsional'} />
                                 </label>
                               ))}
                             </div>
@@ -781,7 +806,8 @@ export default function AssignmentDetailPage() {
                         Lihat Profil
                       </Link>
                       <button
-                        onClick={() => handleRemove(a.id)}
+                        onClick={() => handleRemove(a)}
+                        aria-label={assignment?.external_program_id ? 'Batalkan penawaran' : 'Hapus associate'}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors border border-slate-100 hover:border-red-100"
                       >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -804,6 +830,7 @@ export default function AssignmentDetailPage() {
                         {a.transport_amount !== null && <p className="mt-1 text-xs text-slate-600">Transportasi: Rp {Number(a.transport_amount).toLocaleString('id-ID')}</p>}
                         {a.preparation_amount !== null && <p className="text-xs text-slate-600">Persiapan: Rp {Number(a.preparation_amount).toLocaleString('id-ID')}</p>}
                         {a.compensation_amount !== null && <p className="mt-1 text-xs font-bold text-slate-900">Total fee: Rp {(Number(a.compensation_amount) + Number(a.transport_amount || 0) + Number(a.preparation_amount || 0)).toLocaleString('id-ID')}</p>}
+                        {a.status === 'invited' && a.compensation_amount === null && a.invitation_expires_at && <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-900">Penawaran lama ini belum memiliki fee. Jangan minta associate menerimanya. Batalkan penawaran dengan tombol di atas, lalu kirim penawaran baru dengan rincian fee lengkap.</p>}
                         {a.invitation_expires_at && <p className="mt-1 text-xs text-slate-600">Batas respons: {new Date(a.invitation_expires_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' })} WIB</p>}
                         {a.compensation_notes && <p className="mt-1 text-xs leading-5 text-slate-500">{a.compensation_notes}</p>}
                         {compensationLocked && <p className="mt-1 text-[10px] font-medium text-amber-700">Fee terkunci setelah penawaran dikirim agar sesuai dengan email associate.</p>}
@@ -842,7 +869,7 @@ export default function AssignmentDetailPage() {
                         {compensationEditor.mode === 'override' && (
                           <div className="grid gap-3 sm:grid-cols-[1.2fr_0.55fr_0.8fr]">
                             <label className="text-xs font-semibold text-slate-600">Nominal
-                              <input type="number" min="0" step="1000" value={compensationEditor.amount} onChange={(event) => setCompensationEditor({ ...compensationEditor, amount: event.target.value })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none focus:border-[#0B2C6B]" placeholder="5000000" />
+                              <input type="number" min="0" step="1" value={compensationEditor.amount} onChange={(event) => setCompensationEditor({ ...compensationEditor, amount: event.target.value })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none focus:border-[#0B2C6B]" placeholder="5000000" />
                             </label>
                             <label className="text-xs font-semibold text-slate-600">Mata uang
                               <input maxLength={3} value={compensationEditor.currency} onChange={(event) => setCompensationEditor({ ...compensationEditor, currency: event.target.value.toUpperCase() })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-normal uppercase outline-none focus:border-[#0B2C6B]" />

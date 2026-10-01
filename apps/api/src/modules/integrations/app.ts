@@ -73,7 +73,13 @@ integration.post('/assignments', async (c) => {
 
   const { data: existing } = await db.from('assignments').select('id').eq('source_system', 'app-binahub').eq('external_reference', input.requestId).maybeSingle();
   if (existing) {
-    const { data: assignees } = await db.from('assignment_assignees').select('id, associate_id, status').eq('assignment_id', existing.id);
+    const { data: assignees } = await db.from('assignment_assignees').select('id, associate_id, status, compensation_amount, transport_amount, preparation_amount').eq('assignment_id', existing.id);
+    if (!assignees || assignees.length !== new Set(input.associateIds).size) return c.json({ success: false, error: 'Undangan masih disimpan. Periksa kembali beberapa saat lagi.' }, 409);
+    const matchesOriginalOffer = assignees.every((assignee) => input.associateIds.includes(assignee.associate_id)
+      && Number(assignee.compensation_amount) === input.fee.compensation
+      && (assignee.transport_amount === null ? null : Number(assignee.transport_amount)) === (input.fee.transport ?? null)
+      && (assignee.preparation_amount === null ? null : Number(assignee.preparation_amount)) === (input.fee.preparation ?? null));
+    if (!matchesOriginalOffer) return c.json({ success: false, error: 'Undangan lama memiliki fee berbeda. Batalkan penawaran lama di AMS sebelum membuat yang baru.' }, 409);
     return c.json({ success: true, duplicate: true, data: { assignmentId: existing.id, assignees: assignees || [] } });
   }
 
@@ -92,7 +98,7 @@ integration.post('/assignments', async (c) => {
     const relatedIds = relatedAssignments!.map((assignment) => assignment.id);
     const { data: existingAssignees } = await db
       .from('assignment_assignees')
-      .select('id, assignment_id, associate_id, status')
+      .select('id, assignment_id, associate_id, status, compensation_amount, transport_amount, preparation_amount')
       .in('assignment_id', relatedIds)
       .in('associate_id', requestedIds)
       .not('status', 'in', '(declined,withdrawn)');
@@ -103,14 +109,7 @@ integration.post('/assignments', async (c) => {
       return requestedIds.every((associateId) => assigned.has(associateId));
     });
     if (duplicateAssignment) {
-      return c.json({
-        success: true,
-        duplicate: true,
-        data: {
-          assignmentId: duplicateAssignment.id,
-          assignees: (existingAssignees || []).filter((assignee) => assignee.assignment_id === duplicateAssignment.id),
-        },
-      });
+      return c.json({ success: false, error: 'Associate ini sudah memiliki penawaran untuk modul yang sama. Periksa fee pada undangan lama di AMS; batalkan dahulu sebelum mengirim penawaran baru.' }, 409);
     }
     if ((existingAssignees || []).length > 0) {
       return c.json({ success: false, error: 'Satu atau lebih associate sudah memiliki penugasan aktif pada modul program ini' }, 409);
@@ -169,21 +168,18 @@ integration.post('/assignments', async (c) => {
       link: `/dashboard/assignments/${assignment.id}`,
       reference_id: assignment.id,
     }, { onConflict: 'recipient_id,type,reference_id' }).select('id').single();
-    if (notification) await queueNotificationEmail(notification.id, 'assignment-invitation');
     await db.rpc('enqueue_transformation_event', {
       p_type: 'AssignmentAssigneeChanged',
       p_aggregate_type: 'assignment',
       p_aggregate_id: assignment.id,
       p_payload: { assignee_id: assignee.id },
     });
-    try {
-      await syncAssignmentAssignee(assignee.id);
-    } catch (error) {
-      console.error('Immediate APP assignment sync failed; queued for retry', {
-        assigneeId: assignee.id,
-        error: error instanceof Error ? error.message : 'unknown_error',
-      });
-    }
+    const [emailResult, syncResult] = await Promise.allSettled([
+      notification ? queueNotificationEmail(notification.id, 'assignment-invitation') : Promise.resolve(),
+      syncAssignmentAssignee(assignee.id),
+    ]);
+    if (emailResult.status === 'rejected') console.error('APP assignment invitation email queued after immediate delivery failed', { assigneeId: assignee.id, error: emailResult.reason });
+    if (syncResult.status === 'rejected') console.error('Immediate APP assignment sync failed; queued for retry', { assigneeId: assignee.id, error: syncResult.reason });
   }
 
   return c.json({ success: true, data: { assignmentId: assignment.id, assignees } }, 201);

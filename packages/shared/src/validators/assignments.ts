@@ -22,7 +22,7 @@ export const assigneeCompensationUpdateSchema = z.discriminatedUnion('mode', [
   }).strict(),
 ]);
 
-const feeAmountSchema = z.number().finite().min(0).max(1_000_000_000_000_000);
+const feeAmountSchema = z.number().int().finite().min(0).max(1_000_000_000_000_000);
 
 export const assignmentOfferFeeSchema = z.object({
   compensation: feeAmountSchema.positive(),

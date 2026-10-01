@@ -5,7 +5,6 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { CapabilityRadar, ProfileStrength, Avatar, ServiceError } from '../../components/ui';
 import { OnboardingChecklist } from '../../components/onboarding/checklist';
-import { usePageVisibility } from '../../hooks/use-page-visibility';
 import { ProtectedFileImage, ProtectedFileLink } from '../../components/ui/protected-file';
 
 type ProfileData = {
@@ -61,6 +60,7 @@ type CapabilityData = {
 
 type DashboardData = {
   status: string;
+  created_at?: string;
   profile: ProfileData | null;
   assignments: Assignment[];
   skills: Skill[];
@@ -110,31 +110,7 @@ export default function DashboardPage() {
   const searchRef = useRef<HTMLInputElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [showNotifPopover, setShowNotifPopover] = useState<boolean>(false);
-  const notifPopoverRef = useRef<HTMLDivElement>(null);
-
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
-  const fetchNotifications = useCallback(async () => {
-    if (!accessToken) return;
-    try {
-      const res = await fetch(`${apiUrl}/api/associate/notifications`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) {
-          setNotifications(json.data || []);
-          const unread = (json.data || []).filter((n: any) => !n.read).length;
-          setUnreadCount(unread);
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [accessToken, apiUrl]);
 
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -163,54 +139,6 @@ export default function DashboardPage() {
     }
   };
 
-  const { isVisible, justBecameVisible } = usePageVisibility();
-
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchNotifications();
-      }
-    }, 90000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
-  useEffect(() => {
-    if (isVisible && justBecameVisible > 0) {
-      fetchNotifications();
-    }
-  }, [isVisible, justBecameVisible, fetchNotifications]);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (notifPopoverRef.current && !notifPopoverRef.current.contains(e.target as Node)) {
-        setShowNotifPopover(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const handleMarkAsRead = async (notifId: string) => {
-    if (!accessToken) return;
-    try {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-
-      const res = await fetch(`${apiUrl}/api/associate/notifications/${notifId}/read`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      if (res.ok) {
-        window.dispatchEvent(new Event('update-notif-count'));
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const fetchDashboard = useCallback(async () => {
     if (!accessToken) return;
@@ -361,6 +289,9 @@ export default function DashboardPage() {
 
   const cvDoc = data?.documents?.find((d) => d.type === 'cv');
   const hasCV = !!cvDoc;
+  const accountAge = data?.created_at ? Date.now() - new Date(data.created_at).getTime() : Infinity;
+  const isNewDraft = data?.status === 'draft' && accountAge >= 0 && accountAge < 7 * 24 * 60 * 60_000;
+  const needsCvOnboarding = isNewDraft && !hasCV && completionPercentage < 50;
   const hasExperience = !!(data?.experiences && data.experiences.length > 0);
   const hasEducation = !!(data?.educations && data.educations.length > 0);
   const hasSkills = !!(data?.skills && data.skills.length > 0);
@@ -405,7 +336,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-5 relative">
       {/* Floating feedback toast */}
       {toast && (
         <div className="fixed bottom-5 right-5 z-50 animate-bounce flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg border text-xs font-semibold text-white bg-slate-900 border-slate-800">
@@ -421,14 +352,14 @@ export default function DashboardPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {getGreeting()}, {data?.profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}! 👋
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+            {getGreeting()}, {data?.profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}
           </h1>
-          <p className="text-sm text-slate-500">Berikut perkembangan aktivitas Anda hari ini.</p>
+          <p className="text-sm text-slate-500">Ringkasan profil dan penugasan Anda.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="hidden items-center gap-4 lg:flex">
           {/* Search */}
           <div className={`relative hidden sm:block transition-all`} ref={searchDropdownRef}>
             <div className={`relative ${searchFocused ? 'w-80' : 'w-64'} transition-all`}>
@@ -486,82 +417,6 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
-          </div>
-          {/* Notifications Popover */}
-          <div className="relative" ref={notifPopoverRef}>
-            <button
-              onClick={() => setShowNotifPopover(!showNotifPopover)}
-              className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {showNotifPopover && (
-              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
-                  <span className="text-xs font-bold text-slate-900">Notifikasi ({unreadCount})</span>
-                  <Link 
-                    href="/dashboard/notifications" 
-                    onClick={() => setShowNotifPopover(false)}
-                    className="text-[10px] font-bold text-[#0B2C6B] hover:underline"
-                  >
-                    Lihat Semua
-                  </Link>
-                </div>
-                <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-xs text-slate-400">
-                      Tidak ada notifikasi baru
-                    </div>
-                  ) : (
-                    notifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        onClick={() => handleMarkAsRead(notif.id)}
-                        className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors ${!notif.read ? 'bg-blue-50/30' : ''}`}
-                      >
-                        <div className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${!notif.read ? 'bg-[#0B2C6B]' : 'bg-transparent'}`} />
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-xs ${!notif.read ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{notif.title}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{notif.message}</p>
-                          <p className="text-[9px] text-slate-400 mt-1">
-                            {new Date(notif.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-          {/* User */}
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 overflow-hidden rounded-full bg-[#0B2C6B] flex items-center justify-center">
-              {data?.profile?.photo_url ? (
-                <ProtectedFileImage
-                  src={getPhotoUrl(data.profile.photo_url) || data.profile.photo_url}
-                  accessToken={accessToken}
-                  alt="Foto profil"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
-                  {getInitials(data?.profile?.full_name || user?.email)}
-                </div>
-              )}
-            </div>
-            <div className="hidden lg:block">
-              <p className="text-sm font-semibold text-slate-900">{data?.profile?.full_name || user?.email}</p>
-              <p className="text-[11px] text-slate-400">Associate</p>
-            </div>
           </div>
         </div>
       </div>
@@ -629,13 +484,13 @@ export default function DashboardPage() {
       )}
 
       {/* Profile Hero & Completion Banner */}
-      <div className="overflow-hidden rounded-xl bg-gradient-to-br from-[#0B2C6B] via-[#1440a0] to-[#1e3a8a] p-6 sm:p-8 shadow-lg text-white">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="overflow-hidden rounded-2xl bg-[#123575] p-5 text-white sm:p-7">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           {/* Left/Middle: Profile Block (2 cols on large screens) */}
-          <div className="lg:col-span-2 flex flex-col sm:flex-row items-start sm:items-center gap-6 border-b lg:border-b-0 lg:border-r border-white/10 pb-6 lg:pb-0 lg:pr-8">
+          <div className="lg:col-span-2 flex items-start gap-4 border-b border-white/15 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
             {/* Avatar Photo Widget */}
             <div className="relative flex-shrink-0">
-              <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-white/30 shadow-lg sm:h-24 sm:w-24 bg-slate-100 flex items-center justify-center">
+              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white/50 bg-slate-100 sm:h-20 sm:w-20">
                 {data?.profile?.photo_url ? (
                   <ProtectedFileImage
                     src={getPhotoUrl(data.profile.photo_url) || data.profile.photo_url}
@@ -651,9 +506,9 @@ export default function DashboardPage() {
 
             {/* Name & Info */}
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold sm:text-2xl truncate">
+              <h2 className="truncate text-lg font-semibold sm:text-2xl">
                 {data?.profile?.full_name || 'Lengkapi Profil Anda'}
-              </h1>
+              </h2>
 
               {/* Badge Status Verifikasi Profil */}
               <div className="mt-2 flex flex-wrap gap-2">
@@ -679,13 +534,13 @@ export default function DashboardPage() {
                 )}
               </div>
               
-              <div className="mt-4 flex flex-col gap-3">
+              <div className="mt-3 flex flex-col gap-2.5">
                 {/* Bidang */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
                   <span className="text-[11px] uppercase tracking-wider text-white/60 font-semibold w-20 flex-shrink-0">Bidang</span>
                   <div className="flex flex-wrap gap-1.5">
                     {data?.profile?.roles && data.profile.roles.length > 0 ? (
-                      data.profile.roles.map((role) => (
+                      data.profile.roles.slice(0, 2).map((role) => (
                         <span key={role} className="rounded-md bg-white/25 border border-white/10 px-2.5 py-0.5 text-xs font-medium text-white shadow-sm">
                           {role}
                         </span>
@@ -693,21 +548,22 @@ export default function DashboardPage() {
                     ) : (
                       <span className="text-xs text-white/50 italic">Belum diisi</span>
                     )}
+                    {data?.profile?.roles && data.profile.roles.length > 2 && <Link href="/dashboard/profile" className="text-xs text-white/80 underline underline-offset-2">+{data.profile.roles.length - 2} lainnya</Link>}
                   </div>
                 </div>
 
                 {/* Keahlian */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+                <div className="hidden flex-col gap-1.5 sm:flex sm:flex-row sm:items-center sm:gap-3">
                   <span className="text-[11px] uppercase tracking-wider text-white/60 font-semibold w-20 flex-shrink-0">Keahlian</span>
                   <div className="flex flex-wrap gap-1.5">
                     {data?.profile?.expertises && data.profile.expertises.length > 0 ? (
-                      data.profile.expertises.map((exp) => (
+                      data.profile.expertises.slice(0, 2).map((exp) => (
                         <span key={exp} className="rounded-md bg-black/25 border border-white/5 px-2.5 py-0.5 text-xs text-white/95">
                           {exp}
                         </span>
                       ))
                     ) : data?.skills && data.skills.length > 0 ? (
-                      data.skills.map((sk) => (
+                      data.skills.slice(0, 2).map((sk) => (
                         <span key={sk.id} className="rounded-md bg-black/25 border border-white/5 px-2.5 py-0.5 text-xs text-white/95">
                           {sk.skill_name}
                         </span>
@@ -715,6 +571,7 @@ export default function DashboardPage() {
                     ) : (
                       <span className="text-xs text-white/50 italic">Belum diisi</span>
                     )}
+                    {(data?.profile?.expertises?.length || data?.skills?.length || 0) > 2 && <Link href="/dashboard/profile" className="text-xs text-white/80 underline underline-offset-2">Lihat semua keahlian</Link>}
                   </div>
                 </div>
 
@@ -761,8 +618,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Right: Profile Completion & Next Step */}
-          <div className="flex flex-col sm:flex-row lg:flex-col justify-center gap-6">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col justify-center gap-4">
+            {completionPercentage < 100 ? <div className="flex items-center gap-4">
               <div className="relative h-20 w-20 flex-shrink-0">
                 <svg className="h-20 w-20 -rotate-90" viewBox="0 0 128 128">
                   <circle cx="64" cy="64" r="56" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8" />
@@ -791,10 +648,10 @@ export default function DashboardPage() {
                   Ubah Profil ➔
                 </Link>
               </div>
-            </div>
+            </div> : <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3"><p className="text-sm font-semibold">Profil siap untuk penugasan</p><p className="mt-1 text-xs text-white/75">Data profil Anda sudah lengkap.</p></div>}
 
             {/* Quick Upload CV Action - only show if no CV yet */}
-            {!hasCV && (
+            {needsCvOnboarding && (
               <div className="flex-1 flex items-center justify-between gap-4 rounded-xl bg-white/10 p-3.5 backdrop-blur-sm">
                 <div className="min-w-0">
                   <h3 className="text-xs font-bold text-white truncate">Unggah CV Anda</h3>
@@ -808,7 +665,7 @@ export default function DashboardPage() {
                 </Link>
               </div>
             )}
-            {hasCV && (
+            {hasCV && completionPercentage < 100 && (
               <div className="flex-1 flex items-center justify-between gap-3 rounded-xl bg-emerald-500/15 border border-emerald-400/20 p-3.5">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
@@ -836,7 +693,7 @@ export default function DashboardPage() {
       </div>
 
       {/* CV Upload Banner - Prominent when no CV */}
-      {!hasCV && (
+      {needsCvOnboarding && (
         <div className="mb-6 rounded-xl border-2 border-dashed border-[#0B2C6B]/30 bg-gradient-to-r from-[#0B2C6B]/5 to-[#D9A441]/5 p-6">
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] shadow-lg shadow-[#0B2C6B]/25 flex-shrink-0">
@@ -1073,7 +930,7 @@ export default function DashboardPage() {
                 <span className="rounded-full bg-[#0B2C6B]/10 px-2 py-0.5 text-[10px] font-semibold text-[#0B2C6B]">Baru</span>
               </div>
               
-              {!hasCV ? (
+              {needsCvOnboarding ? (
                 <div className="rounded-lg bg-slate-50 p-4">
                   <p className="text-sm font-medium text-slate-900">Halo {data?.profile?.full_name?.split(' ')[0] || 'Associate'},</p>
                   <p className="mt-2 text-xs text-slate-600 leading-relaxed">
@@ -1149,13 +1006,10 @@ export default function DashboardPage() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Onboarding Checklist */}
-          <OnboardingChecklist 
-            hasCV={hasCV}
-            hasProfile={!!data?.profile?.full_name}
-          />
+          {isNewDraft && completionPercentage < 50 && <OnboardingChecklist hasCV={hasCV} hasProfile={!!data?.profile?.full_name} />}
  
           {/* Profile Strength */}
-          <div id="profile-strength">
+          {completionPercentage < 100 && <div id="profile-strength">
             <ProfileStrength
               percentage={completionPercentage}
               hasCV={hasCV}
@@ -1169,7 +1023,7 @@ export default function DashboardPage() {
               hasAvailability={!!(data?.availability && (Array.isArray(data.availability) ? data.availability[0]?.status : data.availability?.status))}
               hasFullName={!!data?.profile?.full_name}
             />
-          </div>
+          </div>}
 
           {/* Recent Activity */}
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1178,7 +1032,7 @@ export default function DashboardPage() {
               <Link href="/dashboard/notifications" className="text-xs font-medium text-[#0B2C6B] hover:underline">Lihat semua</Link>
             </div>
             <div className="space-y-4">
-              {!hasCV && (
+              {needsCvOnboarding && (
                 <div className="flex items-start gap-3">
                   <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-100">
                     <svg className="h-4 w-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

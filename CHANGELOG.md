@@ -2,6 +2,18 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [Unreleased] - 2026-10-01
+
+### Fixed
+
+- Validasi input fee menerima angka rupiah bulat tanpa batasan kelipatan yang keliru; timeout undangan dicek ulang terhadap daftar penerima sebelum admin diarahkan untuk mengirim ulang.
+- Permintaan ulang dari APP tidak lagi menganggap penawaran lama dengan fee berbeda sebagai keberhasilan; admin mendapat petunjuk untuk membatalkan penawaran lama terlebih dahulu.
+- Modal onboarding hanya muncul untuk akun draft yang baru dibuat dan membaca dokumen serta status profil dari server, bukan progres lokal akun lain.
+- SPK memakai nama legal PT Binahub Solusi Transformasi; undangan tanpa rincian fee tidak bisa diterima sampai admin memperbaiki datanya.
+- Email penawaran menampilkan project, peran, batas respons, rincian kompensasi/transportasi/persiapan yang diisi, dan total sesuai record undangan.
+- Pengiriman email dan sinkronisasi APP dijalankan paralel setelah undangan tersimpan agar respons admin lebih cepat; keduanya tetap dapat ditindaklanjuti lewat antrean jika gagal.
+- Dashboard associate seluler menampilkan identitas dan keahlian secara ringkas tanpa notifikasi/avatar ganda serta tanpa ajakan CV berulang bagi profil lengkap; panduan CV hanya untuk akun draft baru yang memang belum terisi.
+
 ## [0.10.2] - 2026-09-30
 
 ### Added

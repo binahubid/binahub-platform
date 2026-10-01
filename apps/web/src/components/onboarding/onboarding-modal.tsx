@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useOnboarding } from './context';
 
 export function OnboardingModal() {
-  const { currentStep, totalSteps, completedSteps, isVisible, skipAll, completeStep, completionPercent } = useOnboarding();
+  const { currentStep, totalSteps, completedSteps, isVisible, skipAll, completionPercent } = useOnboarding();
 
   if (!currentStep || !isVisible) return null;
 
@@ -80,7 +80,7 @@ export function OnboardingModal() {
           <div className="flex gap-3">
             <Link
               href={currentStep.actionHref}
-              onClick={() => completeStep(currentStep.id)}
+              onClick={skipAll}
               className="flex-1 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all"
             >
               {currentStep.actionLabel}

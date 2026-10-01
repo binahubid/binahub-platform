@@ -532,7 +532,7 @@ export default function AdminAssociatesPage() {
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {([['compensation', 'Kompensasi *'], ['transport', 'Transportasi'], ['preparation', 'Persiapan']] as const).map(([field, label]) => (
                 <label key={field} className="text-xs font-medium text-slate-600">{label}
-                  <input type="number" min={field === 'compensation' ? '1' : '0'} step="1000" value={inviteFee[field]} onChange={(event) => setInviteFee((current) => ({ ...current, [field]: event.target.value }))} placeholder={field === 'compensation' ? '1000000' : 'Opsional'} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                  <input type="number" min={field === 'compensation' ? '1' : '0'} step="1" value={inviteFee[field]} onChange={(event) => setInviteFee((current) => ({ ...current, [field]: event.target.value }))} placeholder={field === 'compensation' ? '1000000' : 'Opsional'} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
                 </label>
               ))}
             </div>

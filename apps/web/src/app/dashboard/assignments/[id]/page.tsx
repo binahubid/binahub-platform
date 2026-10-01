@@ -104,7 +104,7 @@ function effectiveCompensation(assignment: AssignmentDetail) {
       };
     }
   }
-  return assignment.compensation
+  return !assignment.external_program_id && assignment.compensation
     ? { label: fmtCurrency(assignment.compensation), breakdown: [], notes: null, individual: false }
     : null;
 }
@@ -543,9 +543,9 @@ export default function AssignmentDetailPage() {
                 </div>
               )}
               {my.invitation_expires_at && <p className="text-sm font-semibold text-slate-700">Jawab paling lambat {new Date(my.invitation_expires_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short' })} WIB.</p>}
-              {compensation && <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{compensation.breakdown.map((line) => <p key={line}>{line}</p>)}<p className="mt-2 border-t border-slate-200 pt-2 font-bold">Total: {compensation.label}</p></div>}
+              {compensation ? <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{compensation.breakdown.map((line) => <p key={line}>{line}</p>)}<p className="mt-2 border-t border-slate-200 pt-2 font-bold">Total: {compensation.label}</p></div> : <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Rincian fee belum tersedia. Hubungi admin sebelum menerima undangan ini.</p>}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button onClick={() => setShowAgreementModal(true)} disabled={acting || Boolean(my.invitation_expires_at && new Date(my.invitation_expires_at).getTime() <= Date.now()) || assignment.accepted_count >= assignment.needed_count} className="w-full sm:flex-1 rounded-xl bg-[#0B2C6B] py-3 text-sm font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-sm text-center">{my.invitation_expires_at && new Date(my.invitation_expires_at).getTime() <= Date.now() ? 'Batas Respons Terlewat' : assignment.accepted_count >= assignment.needed_count ? 'Posisi Sudah Terisi' : 'Terima Undangan'}</button>
+                <button onClick={() => setShowAgreementModal(true)} disabled={acting || !compensation || Boolean(my.invitation_expires_at && new Date(my.invitation_expires_at).getTime() <= Date.now()) || assignment.accepted_count >= assignment.needed_count} className="w-full sm:flex-1 rounded-xl bg-[#0B2C6B] py-3 text-sm font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-sm text-center">{!compensation ? 'Menunggu Rincian Fee' : my.invitation_expires_at && new Date(my.invitation_expires_at).getTime() <= Date.now() ? 'Batas Respons Terlewat' : assignment.accepted_count >= assignment.needed_count ? 'Posisi Sudah Terisi' : 'Terima Undangan'}</button>
                 <button onClick={() => handleStatusUpdate('declined')} disabled={acting} className="w-full sm:w-32 rounded-xl border border-red-200 bg-red-50/50 py-3 text-sm font-semibold text-red-600 hover:bg-red-100/70 disabled:opacity-50 transition-colors text-center">Tolak</button>
               </div>
             </div>
@@ -888,7 +888,7 @@ export default function AssignmentDetailPage() {
                 <p className="text-base font-bold text-slate-900 uppercase tracking-wide">Surat Perjanjian Kerja Sama (SPK)</p>
                 <p className="text-[11px] text-slate-400">No. SPK/BINAHUB/{assignment.id.substring(0,8).toUpperCase()}/{new Date().getFullYear()}</p>
               </div>
-              <p className="text-xs text-slate-600">Perjanjian ini dibuat oleh dan antara <strong className="text-slate-800">PT Binahub Global Indonesia (BinaHub)</strong> sebagai Pemberi Kerja dan <strong className="text-slate-800">{user?.email}</strong> sebagai Mitra Pelaksana.</p>
+              <p className="text-xs text-slate-600">Perjanjian ini dibuat oleh dan antara <strong className="text-slate-800">PT Binahub Solusi Transformasi (BinaHub)</strong> sebagai Pemberi Kerja dan <strong className="text-slate-800">{user?.email}</strong> sebagai Mitra Pelaksana.</p>
               {[
                 { title: 'Pasal 1: Ruang Lingkup', items: [`Nama Proyek: ${assignment.title}`, `Klien: ${assignment.client_name}`, `Peran/Role: ${myRole || 'Associate'}`] },
                 { title: 'Pasal 2: Jangka Waktu', items: ([assignment.start_date && `Tanggal Mulai: ${fmtDate(assignment.start_date)}`, assignment.end_date && `Tanggal Selesai: ${fmtDate(assignment.end_date)}`, assignment.mandays ? `Durasi: ${assignment.mandays} Manday(s)` : null] as (string | null | false)[]).filter((x): x is string => !!x) },
@@ -908,7 +908,7 @@ export default function AssignmentDetailPage() {
               </label>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setShowAgreementModal(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors">Batal</button>
-                <button onClick={() => handleStatusUpdate('accepted')} disabled={!agreementChecked || acting} className="rounded-xl bg-[#0B2C6B] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-sm">
+                <button onClick={() => handleStatusUpdate('accepted')} disabled={!agreementChecked || !compensation || acting} className="rounded-xl bg-[#0B2C6B] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-sm">
                   {acting ? 'Memproses...' : 'Setujui & Terima Undangan'}
                 </button>
               </div>

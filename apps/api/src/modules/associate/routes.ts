@@ -1729,7 +1729,7 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
   // 1. Fetch current assignee state to validate state machine transition and get metadata
   const { data: currentAssignee, error: fetchError } = await db
     .from('assignment_assignees')
-    .select('status, invited_by, invitation_expires_at')
+    .select('status, invited_by, invitation_expires_at, compensation_amount, compensation_currency, compensation_basis')
     .eq('assignment_id', assignmentId)
     .eq('associate_id', associate.id)
     .maybeSingle();
@@ -1760,6 +1760,13 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
 
   if (status === 'accepted' && currentAssignee.invitation_expires_at && new Date(currentAssignee.invitation_expires_at).getTime() <= Date.now()) {
     return c.json({ success: false, error: 'Batas respons undangan telah lewat. Hubungi admin jika masih berminat.' }, 409);
+  }
+  if (status === 'accepted') {
+    const { data: offeredAssignment } = await db.from('assignments').select('external_program_id').eq('id', assignmentId).maybeSingle();
+    const requiresFixedOffer = Boolean(currentAssignee.invitation_expires_at || offeredAssignment?.external_program_id);
+    if (requiresFixedOffer && (currentAssignee.compensation_amount === null || Number(currentAssignee.compensation_amount) <= 0 || !currentAssignee.compensation_currency || !currentAssignee.compensation_basis)) {
+      return c.json({ success: false, error: 'Rincian fee belum ditetapkan. Hubungi admin sebelum menerima undangan.' }, 409);
+    }
   }
 
   // Extra guard: associate cannot start working (in_progress) if the assignment is not yet active

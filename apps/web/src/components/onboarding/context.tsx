@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 export type OnboardingStep = {
   id: string;
@@ -45,7 +46,7 @@ type OnboardingContextType = {
   completionPercent: number;
 };
 
-const STORAGE_KEY = 'binahub_onboarding_state';
+const storageKey = (userId: string) => `binahub_onboarding_state:${userId}`;
 
 const OnboardingContext = createContext<OnboardingContextType | null>(null);
 
@@ -55,29 +56,10 @@ export function useOnboarding() {
   return ctx;
 }
 
-function loadState(): string[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.completedSteps || [];
-    }
-  } catch {}
-  return [];
-}
-
-function saveState(completedSteps: string[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ completedSteps, skipped: false }));
-  } catch {}
-}
-
-function loadSkipped(): boolean {
+function loadSkipped(userId: string): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey(userId));
     if (saved) {
       const parsed = JSON.parse(saved);
       return parsed.skipped === true;
@@ -86,45 +68,53 @@ function loadSkipped(): boolean {
   return false;
 }
 
-function saveSkipped() {
+function saveSkipped(userId: string) {
   if (typeof window === 'undefined') return;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey(userId));
     const parsed = saved ? JSON.parse(saved) : {};
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...parsed, skipped: true }));
+    localStorage.setItem(storageKey(userId), JSON.stringify({ ...parsed, skipped: true }));
   } catch {}
 }
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
+  const { user, accessToken } = useAuth();
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [skipped, setSkipped] = useState(false);
 
-  // Load state on mount
+  // Server profile is authoritative. Local storage only remembers a dismissal for
+  // this particular account; it must never invent a 0% profile for an old user.
   useEffect(() => {
-    const completed = loadState();
-    const wasSkipped = loadSkipped();
-    setCompletedSteps(completed);
-    setSkipped(wasSkipped);
-
-    // Show modal if not completed and not skipped
-    if (!wasSkipped && completed.length < defaultSteps.length) {
-      // Find first incomplete step
-      const firstIncomplete = defaultSteps.findIndex((s) => !completed.includes(s.id));
-      if (firstIncomplete >= 0) {
-        setCurrentStepIndex(firstIncomplete);
-        setIsVisible(true);
-      }
-    }
-  }, []);
-
-  // Save state when it changes
-  useEffect(() => {
-    if (completedSteps.length > 0) {
-      saveState(completedSteps);
-    }
-  }, [completedSteps]);
+    if (!user?.id || !accessToken) return;
+    let active = true;
+    setIsVisible(false);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    void fetch(`${apiUrl}/api/associate/me`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((result) => {
+        if (!active || !result?.success || !result.data) return;
+        const associate = result.data as { status?: string; created_at?: string; documents?: Array<{ type?: string }>; profile?: { full_name?: string; roles?: string[]; expertises?: string[] } | Array<{ full_name?: string; roles?: string[]; expertises?: string[] }> };
+        const profile = Array.isArray(associate.profile) ? associate.profile[0] : associate.profile;
+        const hasCv = associate.documents?.some((document) => document.type === 'cv') === true;
+        const hasProfile = Boolean(profile?.full_name && (profile.roles?.length || profile.expertises?.length));
+        const completed = associate.status === 'active' || associate.status === 'pending_review'
+          ? ['cv', 'profile']
+          : [...(hasCv ? ['cv'] : []), ...(hasProfile ? ['profile'] : [])];
+        setCompletedSteps(completed);
+        const wasSkipped = loadSkipped(user.id);
+        setSkipped(wasSkipped);
+        const accountAge = Date.now() - new Date(associate.created_at || 0).getTime();
+        const isNewAccount = Number.isFinite(accountAge) && accountAge >= 0 && accountAge < 7 * 24 * 60 * 60_000;
+        if (associate.status === 'draft' && isNewAccount && !wasSkipped && completed.length < defaultSteps.length) {
+          setCurrentStepIndex(defaultSteps.findIndex((step) => !completed.includes(step.id)));
+          setIsVisible(true);
+        }
+      })
+      .catch(() => { /* Never show onboarding when profile status cannot be verified. */ });
+    return () => { active = false; };
+  }, [user?.id, accessToken]);
 
   // Get available steps (not completed)
   const availableSteps = defaultSteps.filter((s) => !completedSteps.includes(s.id));
@@ -145,26 +135,27 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       if (prev.includes(stepId)) return prev;
       return [...prev, stepId];
     });
-    setIsVisible(true);
+    setIsVisible(false);
   }, []);
 
   const skipAll = useCallback(() => {
     setSkipped(true);
     setIsVisible(false);
-    saveSkipped();
-  }, []);
+    if (user?.id) saveSkipped(user.id);
+  }, [user?.id]);
 
   const reopenModal = useCallback(() => {
-    const completed = loadState();
-    const wasSkipped = loadSkipped();
+    if (!user?.id) return;
+    const completed = completedSteps;
+    const wasSkipped = loadSkipped(user.id);
     
     if (wasSkipped) {
       // Reset skipped status
       setSkipped(false);
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const saved = localStorage.getItem(storageKey(user.id));
         const parsed = saved ? JSON.parse(saved) : {};
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...parsed, skipped: false }));
+        localStorage.setItem(storageKey(user.id), JSON.stringify({ ...parsed, skipped: false }));
       } catch {}
     }
     
@@ -174,11 +165,9 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       setCurrentStepIndex(firstIncomplete);
       setIsVisible(true);
     } else {
-      // All completed, show from step 0
-      setCurrentStepIndex(0);
-      setIsVisible(true);
+      setIsVisible(false);
     }
-  }, []);
+  }, [user?.id, completedSteps]);
 
   return (
     <OnboardingContext.Provider

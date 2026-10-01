@@ -1229,8 +1229,6 @@ admin.post('/assignments/:id/invite', async (c) => {
       }).select('id').single();
       if (notifError) {
         console.error(`Failed to create invite notification for associate ${record.associate_id}:`, notifError);
-      } else {
-        await queueNotificationEmail(notification.id, 'assignment-invitation');
       }
       await db.rpc('enqueue_transformation_event', {
         p_type: 'AssignmentAssigneeChanged',
@@ -1238,16 +1236,16 @@ admin.post('/assignments/:id/invite', async (c) => {
         p_aggregate_id: assignmentId,
         p_payload: { assignee_id: record.id },
       });
+      const [emailResult, syncResult] = await Promise.allSettled([
+        notification ? queueNotificationEmail(notification.id, 'assignment-invitation') : Promise.resolve(),
+        isAppLinked ? syncAssignmentAssignee(record.id) : Promise.resolve(),
+      ]);
+      if (emailResult.status === 'rejected') console.error('Assignment email queued after immediate delivery failed', { assigneeId: record.id, error: emailResult.reason });
       if (isAppLinked) {
-        try {
-          await syncAssignmentAssignee(record.id);
-          synced += 1;
-        } catch (syncError) {
+        if (syncResult.status === 'fulfilled') synced += 1;
+        else {
           syncFailed += 1;
-          console.error('Immediate AMS-origin assignment sync failed; queued for retry', {
-            assigneeId: record.id,
-            error: syncError instanceof Error ? syncError.message : 'unknown_error',
-          });
+          console.error('Immediate AMS-origin assignment sync failed; queued for retry', { assigneeId: record.id, error: syncResult.reason });
         }
       }
     }
