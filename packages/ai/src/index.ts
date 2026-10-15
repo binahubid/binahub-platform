@@ -2,8 +2,10 @@ import OpenAI from "openai";
 import { OpenAIProvider } from "./providers/openai.js";
 import { parseCVWithFallback } from "./providers/cv-router.js";
 import type { ParsedCV } from "./providers/base.js";
+import { createManagedAIClient, usesManagedAI } from "./providers/managed.js";
 
 export function createAIClient() {
+  if (usesManagedAI()) return createManagedAIClient();
   const apiKey = process.env.LAPAKVIP_API_KEY
     || process.env.OPENROUTER_API_KEY
     || process.env.OPENAI_API_KEY
@@ -37,7 +39,7 @@ export async function rankCandidates(
   candidates: Array<{ id: string; name: string; roles: string[]; expertises: string[]; skills: string[]; bio: string }>
 ): Promise<Array<{ associate_id: string; score: number; reasoning: string }>> {
   const client = createAIClient();
-  const modelName = process.env.LAPAKVIP_API_KEY
+  const modelName = usesManagedAI() ? "binahub-managed" : process.env.LAPAKVIP_API_KEY
     ? process.env.LAPAKVIP_MODEL || "lv/deepseek-v4.1-flash"
     : process.env.OPENROUTER_API_KEY
       ? process.env.OPENROUTER_MODEL || "deepseek/deepseek-v4.1-flash"
@@ -81,8 +83,8 @@ Bio: ${c.bio || "-"}`).join("\n\n")}`;
 
     const parsed = JSON.parse(content);
     return parsed.recommendations || [];
-  } catch (error) {
-    console.error("AI ranking failed:", error);
+  } catch {
+    console.error("AI ranking failed");
     return [];
   }
 }

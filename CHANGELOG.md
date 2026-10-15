@@ -2,6 +2,18 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [0.11.0] - 2026-10-15
+
+### Added
+
+- CV parsing dan talent ranking mengikuti provider utama/cadangan yang dipilih admin BinaHub melalui router API terpusat. Request ditandatangani dengan integrasi APP existing; key provider tidak diduplikasi ke browser atau dikirim ke APP.
+- Mode terpusat aktif jika `APP_INTEGRATION_SECRET` tersedia. Tidak ada retry ke provider langsung pada kegagalan router, agar tidak melewati provider yang dimatikan admin. Deployment tanpa integrasi tetap memakai rute legacy; konfigurasi terpusat harus disiapkan satu kali sebelum mengklaim kontrol lintas-platform.
+- Self-test sintetis untuk HMAC, kompatibilitas SDK CV/ranking, dan larangan bypass/duplikasi request pada kegagalan; tidak mengakses layanan AI berbayar.
+
+### Deployment
+
+- Deploy API BinaHub **0.36.0** lebih dahulu. `APP_INTEGRATION_API_URL=https://api.binahub.id` dan `APP_INTEGRATION_SECRET` AMS harus cocok dengan `AMS_INTEGRATION_SECRET` API BinaHub. Tidak ada secret baru. Build `@ams/ai` sebelum API AMS.
+
 ## [Unreleased] - 2026-10-01
 
 ### Fixed

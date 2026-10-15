@@ -338,9 +338,9 @@ export class OpenAIProvider implements AIProvider {
   private jsonMode: boolean;
   private timeoutMs: number;
 
-  constructor(config: AIProviderConfig) {
+  constructor(config: AIProviderConfig, client?: OpenAI) {
     this.timeoutMs = config.timeoutMs ?? 30_000;
-    this.client = new OpenAI({
+    this.client = client || new OpenAI({
       apiKey: config.apiKey,
       baseURL: config.baseURL || process.env.OPENAI_API_BASE || "https://opencode.ai/zen/v1",
       timeout: this.timeoutMs,

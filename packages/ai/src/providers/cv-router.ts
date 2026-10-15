@@ -1,5 +1,6 @@
 import type { ParsedCV } from './base.js';
 import { OpenAIProvider } from './openai.js';
+import { createManagedAIClient, usesManagedAI } from './managed.js';
 
 type CVProviderAttempt = {
   provider: 'lapakvip' | 'openrouter' | 'legacy';
@@ -10,7 +11,7 @@ type CVProviderAttempt = {
 };
 
 type SafeFailure = {
-  provider: CVProviderAttempt['provider'];
+  provider: CVProviderAttempt['provider'] | 'managed';
   model: string;
   reason: string;
 };
@@ -147,6 +148,17 @@ export async function parseCVWithFallback(
   text: string,
   environment: NodeJS.ProcessEnv = process.env,
 ): Promise<ParsedCV> {
+  if (usesManagedAI(environment)) {
+    // Fallback is owned by BinaHub's router. Never bypass an admin OFF switch
+    // with a direct-provider retry when the managed request fails.
+    try {
+      return await new OpenAIProvider({ apiKey: 'binahub-managed', model: 'binahub-managed',
+        timeoutMs: 70_000, maxTokens: 12_000, jsonMode: true,
+      }, createManagedAIClient(environment)).parseCV(text);
+    } catch (error) {
+      throw new AIProviderExhaustedError([{ provider: 'managed', model: 'binahub-managed', reason: failureReason(error) }]);
+    }
+  }
   const attempts = buildCVProviderAttempts(environment);
   if (!attempts.length) throw new AIProviderConfigurationError();
 
