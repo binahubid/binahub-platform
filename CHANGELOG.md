@@ -2,6 +2,18 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [0.11.2] - 2026-11-02
+
+- Ranking memakai referensi kandidat sementara dan allowlist kualifikasi,
+  bukan nama/kontak/ID database. Pasang kembali ID hanya dari record server;
+  periksa skor/referensi dan hindari request kandidat kosong.
+- Batasi kontak/URL/kredensial pada ringkasan/insight; parsing CV tetap dapat
+  mengekstrak identitas yang diperlukan, tetapi menghapus pola kredensial.
+  Managed routing, HMAC dan kebijakan provider/fallback tidak berubah.
+- Tambah empat tes privasi sintetis dan jalankan di CI. Dokumentasikan
+  pengecualian CV serta keterbatasan teks bebas; bukan klaim anonimitas/pentest.
+- API/root0.11.2, web tetap0.10.2. Tidak ada SQL/env atau aktivasi worker.
+
 ## [0.11.1] - 2026-11-02
 
 - Patch Next.js/config ESLint ke 15.5.28, Hono ke 4.13.14, adapter Node ke

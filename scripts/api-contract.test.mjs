@@ -20,7 +20,7 @@ const {default:app}=await import('../apps/api/dist/app.js');
 test('built Hono app preserves health version and request/security headers', async()=>{
   const response=await app.request('https://example.invalid/api/health',{headers:{'X-Request-Id':'synthetic-contract'}});
   assert.equal(response.status,200);
-  assert.deepEqual(await response.json(),{status:'ok',version:'0.11.1'});
+  assert.deepEqual(await response.json(),{status:'ok',version:'0.11.2'});
   assert.equal(response.headers.get('X-Request-Id'),'synthetic-contract');
   assert.equal(response.headers.get('X-Content-Type-Options'),'nosniff');
   assert.equal(outbound,0);

@@ -19,7 +19,7 @@ const server = createServer(async (req, res) => {
   const isRanking = body.messages[0].content.includes('Talent Matcher');
   res.end(JSON.stringify({ id: 'test', object: 'chat.completion', model: 'test',
     choices: [{ index: 0, message: { role: 'assistant', content: JSON.stringify(isRanking
-      ? { recommendations: [{ associate_id: 'synthetic-id', score: 80, reasoning: 'Synthetic match' }] }
+      ? { recommendations: [{ associate_id: 'candidate-1', score: 80, reasoning: 'Synthetic match' }] }
       : { fullName: 'Synthetic Person', email: 'synthetic@example.invalid', roles: [], expertises: [], skills: [], experience: [], education: [], certifications: [], languages: [], portfolios: [] }) }, finish_reason: 'stop' }] }));
 });
 server.listen(0, '127.0.0.1'); await once(server, 'listening');
@@ -32,7 +32,7 @@ try {
   const parsed = await parseCVWithFallback('Synthetic CV text only', environment);
   assert.equal(parsed.fullName, 'Synthetic Person'); assert.equal(requests.length, 1);
   Object.assign(process.env, { APP_INTEGRATION_SECRET: secret, APP_INTEGRATION_API_URL: base });
-  const ranking = await rankCandidates({ title: 'Synthetic project', client_name: 'Synthetic client', description: '', needed_roles: [] }, []);
+  const ranking = await rankCandidates({ title: 'Synthetic project', client_name: 'Synthetic client', description: '', needed_roles: [] }, [{id:'synthetic-id',name:'Synthetic candidate',roles:['Trainer'],expertises:[],skills:[],bio:''}]);
   assert.equal(ranking[0].associate_id, 'synthetic-id'); assert.equal(requests.length, 2);
   fail = true;
   await assert.rejects(() => parseCVWithFallback('Synthetic CV', environment), { name: 'AIProviderExhaustedError' });

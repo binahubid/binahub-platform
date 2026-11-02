@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import type { AIProvider, AIProviderConfig, ParsedCV } from './base.js';
 import { CV_PARSING_PROMPT } from '../prompts/cv-parsing.js';
+import {withoutAISecrets,redactAIText,insightAIProjection} from '../privacy.js';
 
 const nullableText = (max: number) => z.string().trim().max(max).nullable().optional().default(null);
 const nullableDate = z.string().trim().refine((value) => {
@@ -361,7 +362,7 @@ export class OpenAIProvider implements AIProvider {
         model: this.model,
         messages: [
           { role: 'system', content: CV_PARSING_PROMPT },
-          { role: 'user', content: text }
+          { role: 'user', content: withoutAISecrets(text) }
         ],
         response_format: this.jsonMode ? { type: 'json_object' } : undefined,
         temperature: this.temperature,
@@ -430,7 +431,7 @@ export class OpenAIProvider implements AIProvider {
         },
         {
           role: 'user',
-          content: `Generate insight from this data:\n${JSON.stringify(data, null, 2)}`
+          content: `Generate insight from this data:\n${JSON.stringify(insightAIProjection(data), null, 2)}`
         }
       ],
       temperature: 0.5,
@@ -448,7 +449,7 @@ export class OpenAIProvider implements AIProvider {
           role: 'system',
           content: 'Summarize the following text concisely.'
         },
-        { role: 'user', content: text }
+        { role: 'user', content: redactAIText(text) }
       ],
       temperature: 0.3,
       max_tokens: 500

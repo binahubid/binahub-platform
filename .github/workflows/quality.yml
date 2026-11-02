@@ -36,6 +36,8 @@ jobs:
         run: pnpm run test:api:contract
       - name: Check synthetic AI routing without provider quota
         run: pnpm run test:ai-router && pnpm run test:ai-managed
+      - name: Check purpose-limited AI payloads with synthetic data
+        run: pnpm run test:ai:privacy
       - name: Check lint
         run: pnpm run lint
       - name: Build web without production credentials
