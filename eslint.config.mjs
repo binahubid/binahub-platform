@@ -1,9 +1,11 @@
+import './tools/minimatch-compat.mjs';
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { FlatCompat } from '@eslint/eslintrc';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const baseDirectory = path.dirname(fileURLToPath(import.meta.url));
+const { FlatCompat } = createRequire(import.meta.url)('@eslint/eslintrc');
 const compat = new FlatCompat({ baseDirectory });
 
 export default defineConfig([

@@ -310,7 +310,7 @@ export const importCVSchema = z.object({
     website: z.string().trim().url('URL website hasil CV tidak valid').max(2000).nullable().optional(),
     roles: z.array(z.string().trim().min(1).max(100)).max(20).optional().default([]),
     expertises: z.array(z.string().trim().min(1).max(100)).max(30).optional().default([]),
-  }).strict().optional().default({}),
+  }).strict().optional().prefault({}),
   experiences: z.array(z.object({
     organization: z.string().trim().min(1).max(255),
     position: z.string().trim().min(1).max(255),

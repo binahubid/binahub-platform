@@ -38,7 +38,7 @@ export const fileRegistrationSchema = z.object({
   mime: z.string().min(1),
   size: z.number().int().min(1),
   visibility: fileVisibilitySchema.optional().default('private'),
-  metadata: z.record(z.unknown()).optional()
+  metadata: z.record(z.string(), z.unknown()).optional()
 });
 
 // ============================================

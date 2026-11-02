@@ -1,6 +1,6 @@
 {
   "name": "binahub-platform",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "private": true,
   "scripts": {
     "dev": "turbo dev",
@@ -11,6 +11,9 @@
     "test:cv-admin": "node scripts/ams-admin-cv-enrichment-smoke.mjs",
     "test:ai-router": "node scripts/ai-cv-router-self-test.mjs",
     "test:ai-managed": "node scripts/ai-managed-router-self-test.mjs",
+    "test:validation": "pnpm --filter @ams/shared build && pnpm --filter @ams/validation build && node --test scripts/validation-contract.test.mjs",
+    "test:dependencies": "node --test tools/dependency-contract.test.mjs",
+    "test:api:contract": "node --test scripts/api-contract.test.mjs",
     "admin:cv-enrich": "node scripts/ams-cv-enrichment-interactive.mjs",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
@@ -20,8 +23,9 @@
     "db:seed": "pnpm --filter @ams/database db:seed"
   },
   "devDependencies": {
+    "minimatch": "11.0.1",
     "eslint": "^9.39.1",
-    "eslint-config-next": "15.5.24",
+    "eslint-config-next": "15.5.28",
     "@types/node": "^26.1.0",
     "prettier": "^3.3.0",
     "turbo": "^2.1.0",
@@ -33,7 +37,20 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
-    "openai": "^4.50.0",
+    "openai": "^6.42.0",
     "pdf-parse": "^1.1.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "nanoid": "3.3.18",
+      "postcss": "8.5.28",
+      "sharp": "0.35.5",
+      "source-map-js": "1.2.2",
+      "minimatch": "11.0.1",
+      "esbuild": "0.28.1",
+      "browserslist": "4.28.7",
+      "baseline-browser-mapping": "2.11.0",
+      "postcss-selector-parser@>=6 <7": "6.1.5"
+    }
   }
 }

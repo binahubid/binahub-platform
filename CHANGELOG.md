@@ -2,6 +2,26 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [0.11.1] - 2026-11-02
+
+- Patch Next.js/config ESLint ke 15.5.28, Hono ke 4.13.14, adapter Node ke
+  2.1.3, serta sharp/source-map-js. Tetap pada major Next.js yang sama.
+- Migrasi validator bersama, API dan parsing CV ke Zod4.6.7; sesuaikan record
+  metadata dan pertahankan default profil CV melalui prefault. SDK OpenAI6
+  menghindari ketergantungan Zod3 dari SDK lama; router dan kontrak AI tetap.
+- Simpan override pada root manifest yang didukung pnpm9.15 yang dipin repo;
+  hapus hook khusus Next15.5.24 yang tidak lagi diperlukan. Tidak mengganti
+  package manager global atau memasukkan vendor ke Git.
+- Tambah regresi kontrak validasi sintetis. Tidak mengubah database, peran,
+  jadwal worker, kebijakan peserta, biaya atau konfigurasi produksi.
+- Tuntaskan patch tooling: minimatch11.0.1, esbuild0.28.1, browserslist4.28.7,
+  baseline-browser-mapping2.11.0 dan selector-parser6.1.5. Audit penuh/runtime
+  pnpm9.15.0:0 advisori. Tetap memakai matcher resmi; facade hanya saat lint,
+  FlatCompat memakai entry CommonJS yang didukung tanpa mematikan rule.
+- Tambah CI read-only dengan pnpm yang dipin,16 kontrak dependency/validasi/API,
+  self-test AI sintetis dan build web/API. Tidak menjalankan migrasi database
+  atau memakai kredensial/kuota provider produksi. Web dirilis sebagai0.10.2.
+
 ## [0.11.0] - 2026-10-15
 
 ### Added

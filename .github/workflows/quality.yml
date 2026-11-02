@@ -1,0 +1,46 @@
+name: AMS quality
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ams-quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Activate repository-pinned pnpm, not runner default
+        run: corepack enable && corepack prepare pnpm@9.15.0 --activate
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check advisories including development tooling
+        run: pnpm audit --audit-level=moderate
+      - name: Check dependency compatibility
+        run: pnpm run test:dependencies
+      - name: Check shared validators
+        run: pnpm run test:validation
+      - name: Build and check API
+        run: pnpm --filter @ams/api build && pnpm --filter @ams/api typecheck
+      - name: Check built API contracts without external requests
+        run: pnpm run test:api:contract
+      - name: Check synthetic AI routing without provider quota
+        run: pnpm run test:ai-router && pnpm run test:ai-managed
+      - name: Check lint
+        run: pnpm run lint
+      - name: Build web without production credentials
+        run: pnpm --filter @ams/web build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-build-only
+      # No production secrets, SQL application, real email, AI quota or worker.
