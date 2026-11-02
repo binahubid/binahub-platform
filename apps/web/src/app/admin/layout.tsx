@@ -274,7 +274,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <ToastProvider>
       <div className="flex min-h-screen bg-[#F5F7FA]">
         {/* Sidebar — Desktop */}
-        <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col bg-[#0B2C6B] lg:flex">
+        <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col bg-[#0B2C6B] lg:flex print:hidden">
           <div className="flex h-16 items-center gap-3 px-6">
             <Image src="/logo.png" alt="BinaHub" width={28} height={28} className="h-7 w-auto" priority />
             <div>
@@ -385,7 +385,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Mobile Sidebar Overlay */}
         {mobileSidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="fixed inset-0 z-50 lg:hidden print:hidden">
             <div className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
             <aside className="absolute left-0 top-0 bottom-0 w-64 flex flex-col bg-[#0B2C6B]">
               <div className="flex h-16 items-center justify-between px-6">
@@ -437,9 +437,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )}
 
         {/* Main Area */}
-        <div className="flex-1 pl-0 lg:pl-64">
+        <div className="flex-1 pl-0 lg:pl-64 print:!pl-0 print:w-full">
           {/* Top Header */}
-          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:px-6">
+          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:px-6 print:hidden">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setMobileSidebarOpen(true)}
@@ -604,7 +604,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </header>
 
-          <main className="mx-auto max-w-7xl px-4 lg:px-6 py-8">
+          <main className="mx-auto max-w-7xl px-4 lg:px-6 py-8 print:max-w-none print:!p-0">
             {children}
           </main>
         </div>

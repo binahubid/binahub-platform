@@ -1,0 +1,29 @@
+.document { max-width:800px; margin-inline:auto; border:1px solid #dce4ef; border-radius:12px; background:#fff; color:#24364b; font-family:var(--font-inter),Arial,sans-serif; }
+.printTable { width:100%; border-collapse:collapse; text-align:left; }
+.content { padding:0 42px 38px; }
+.brand { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:38px 42px 24px; color:#405779; font-size:12px; }
+.brand img { width:116px; height:33px; object-fit:contain; }
+.document h2 { letter-spacing:.03em; }
+.document p,.document a,.document span { overflow-wrap:anywhere; }
+@media print {
+  @page {
+    size:A4; margin:14mm 15mm 18mm;
+    @bottom-left { content:"BinaHub | Profil Associate - Rahasia"; font-family:Arial,sans-serif; font-size:8pt; color:#405779; border-top:.5pt solid #dce4ef; }
+    @bottom-right { content:counter(page) " / " counter(pages); font-family:Arial,sans-serif; font-size:8pt; color:#405779; border-top:.5pt solid #dce4ef; }
+  }
+  .document { max-width:none; border:0; border-radius:0; box-shadow:none; font-size:10.5pt; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+  .content { padding:0; }
+  .printTable thead { display:table-header-group; break-inside:avoid-page; }
+  .printTable td { vertical-align:top; }
+  .brand { padding:0 0 14pt; margin-bottom:14pt; border-bottom:.5pt solid #dce4ef; font-size:8.5pt; }
+  .brand img { width:116pt; height:33pt; }
+  .document h1 { font-size:22pt!important; color:#0b2c6b; line-height:1.2; }
+  .document h2[class] { font-size:14pt!important; font-weight:600; text-transform:none; padding-bottom:6pt; margin-bottom:10pt; color:#0b2c6b; break-after:avoid-page; }
+  .document p[class],.document a[class] { font-size:10.5pt!important; line-height:1.45; orphans:3; widows:3; }
+  .document :is(span,[class*="text-xs"],[class*="text-[10px]"],[class*="text-[9px]"]) { font-size:9pt!important; }
+  .document [class*="mt-6"] { margin-top:20pt; }
+  .document [data-cv-entry] { margin-bottom:12pt; }
+  .document [data-cv-entry]>div:first-child { break-inside:avoid-page; break-after:avoid-page; }
+  .document [class*="text-slate-"] { color:#405779!important; }
+  .document [class*="text-center"]:last-child { font-size:8pt; break-inside:avoid-page; }
+}

@@ -40,6 +40,8 @@ jobs:
         run: pnpm run test:ai:privacy
       - name: Check basic status page semantics without external requests
         run: pnpm run test:status
+      - name: Check private CV print contracts without participant data
+        run: pnpm run test:pdf
       - name: Check lint
         run: pnpm run lint
       - name: Build web without production credentials

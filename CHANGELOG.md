@@ -2,6 +2,16 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [0.11.4] - 2026-11-02
+
+- Web0.10.4 merapikan CV cetak/PDF dengan identitas PETA: logo BinaHub asli,
+  hierarki judul, ukuran teks, margin A4, header berulang dan footer bernomor.
+- Pisahkan komponen dokumen dari pengambilan data; akses admin, seluruh bagian
+  profil, foto terproteksi dan nilai data tidak berubah. Navigasi dan offset
+  sidebar tidak ikut dicetak. Unggahan CV asli tidak diubah.
+- Tambah3 kontrak cetak dan langkah CI; contoh sintetis pendek/panjang dirender
+  melalui browser dan diperiksa visual. API tetap0.11.2; tidak ada SQL/env baru.
+
 ## [0.11.3] - 2026-11-02
 
 - Web0.10.3 tidak lagi menganggap versi API baru sebagai outage karena pembanding
