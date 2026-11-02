@@ -2,6 +2,14 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [0.11.3] - 2026-11-02
+
+- Web0.10.3 tidak lagi menganggap versi API baru sebagai outage karena pembanding
+ 0.10.1 yang usang. Versi tetap ditampilkan, status/format respons tetap divalidasi.
+- Perjelas hasil status publik sebagai pemeriksaan dasar API/autentikasi, bukan
+  klaim database, antrean, AI atau email bekerja. Tambah3 kontrak lokal dan CI.
+- API AMS tetap0.11.2; tidak ada SQL/env, perubahan profil, provider atau worker.
+
 ## [0.11.2] - 2026-11-02
 
 - Ranking memakai referensi kandidat sementara dan allowlist kualifikasi,

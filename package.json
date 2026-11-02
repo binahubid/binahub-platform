@@ -1,6 +1,6 @@
 {
   "name": "binahub-platform",
-  "version": "0.11.2",
+  "version": "0.11.3",
   "private": true,
   "scripts": {
     "dev": "turbo dev",
@@ -12,6 +12,7 @@
     "test:ai-router": "node scripts/ai-cv-router-self-test.mjs",
     "test:ai-managed": "node scripts/ai-managed-router-self-test.mjs",
     "test:ai:privacy": "node --test scripts/ai-data-privacy-self-test.mjs",
+    "test:status": "node --experimental-strip-types --test scripts/status-health.contract.mjs",
     "test:validation": "pnpm --filter @ams/shared build && pnpm --filter @ams/validation build && node --test scripts/validation-contract.test.mjs",
     "test:dependencies": "node --test tools/dependency-contract.test.mjs",
     "test:api:contract": "node --test scripts/api-contract.test.mjs",

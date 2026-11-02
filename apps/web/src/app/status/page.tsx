@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePageVisibility } from '../../hooks/use-page-visibility';
+import { classifyAPIHealth } from '../../lib/status-health';
 
 interface HealthCheck {
   name: string;
@@ -20,7 +21,6 @@ interface HealthCheckDefinition {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const EXPECTED_API_VERSION = '0.10.1';
 
 const checks: HealthCheckDefinition[] = [
   { name: 'API Health', url: `${API_URL}/api/health` },
@@ -64,15 +64,7 @@ export default function StatusPage() {
           const latency = Math.round(performance.now() - start);
           if (res.ok && check.name === 'API Health') {
             const body = await res.json().catch(() => null);
-            if (body?.status === 'ok' && body?.version === EXPECTED_API_VERSION) {
-              return { ...resultBase, status: 'ok' as const, latency, message: `Versi ${body.version}` };
-            }
-            return {
-              ...resultBase,
-              status: 'error' as const,
-              latency,
-              message: `Respons health tidak sesuai (diharapkan ${EXPECTED_API_VERSION})`,
-            };
+            return { ...resultBase, ...classifyAPIHealth(body), latency };
           }
           if (res.ok) {
             return { ...resultBase, status: 'ok' as const, latency };
@@ -131,7 +123,8 @@ export default function StatusPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
               </div>
-              <p className="font-semibold text-emerald-800">Semua Sistem Beroperasi Normal</p>
+              <p className="font-semibold text-emerald-800">Pemeriksaan dasar berhasil</p>
+              <p className="mt-2 text-sm text-emerald-800">API dan autentikasi dapat dijangkau. Koneksi database, antrean laporan, AI dan pengiriman email belum diperiksa di halaman ini.</p>
             </>
           ) : results.some((r) => r.status === 'error') ? (
             <>

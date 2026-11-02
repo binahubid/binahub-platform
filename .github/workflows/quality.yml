@@ -38,6 +38,8 @@ jobs:
         run: pnpm run test:ai-router && pnpm run test:ai-managed
       - name: Check purpose-limited AI payloads with synthetic data
         run: pnpm run test:ai:privacy
+      - name: Check basic status page semantics without external requests
+        run: pnpm run test:status
       - name: Check lint
         run: pnpm run lint
       - name: Build web without production credentials
