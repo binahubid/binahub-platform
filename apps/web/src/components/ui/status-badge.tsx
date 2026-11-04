@@ -68,10 +68,7 @@ export function StatusBadge({
       className={`inline-flex items-center gap-1.5 rounded-full font-medium ring-1 ring-inset ${sizeClasses[size]} ${config.classes} ${className}`}
     >
       {showDot && (
-        <span className={`relative flex h-1.5 w-1.5 ${config.pulse ? '' : ''}`}>
-          {config.pulse && (
-            <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${config.dot}`} />
-          )}
+        <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
           <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${config.dot}`} />
         </span>
       )}

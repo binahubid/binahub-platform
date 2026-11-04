@@ -29,19 +29,19 @@ export function StatCard({
 
   return (
     <div
-      className={`group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover ${className}`}
+      className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <p className="text-sm font-medium text-slate-600">
             {label}
           </p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+          <p className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
             {value}
           </p>
           {change && (
             <span
-              className={`mt-2 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${changeColors[changeType]}`}
+              className={`mt-2 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ${changeColors[changeType]}`}
             >
               <span aria-hidden="true">{arrow[changeType]}</span>
               {change}
@@ -49,7 +49,7 @@ export function StatCard({
           )}
         </div>
         {icon && (
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#1440a0] text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
             {icon}
           </div>
         )}

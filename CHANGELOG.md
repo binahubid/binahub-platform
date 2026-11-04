@@ -2,6 +2,17 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [0.11.5] - 2026-11-04
+
+- Web0.10.5 menerapkan perapihan Unslop pada shell admin/associate dan komponen
+  bersama: sidebar lebih terbaca, header tabel tenang, angka sejajar, tombol
+  gold dengan teks navy dan ikon statistik netral. Status review tidak berkedip.
+- Tambahkan skip link, label kontrol dan Escape/fokus menu admin mobile. Popup
+  notifikasi kini muat di ponsel; pencarian dan formulir memakai teks 16px mobile.
+- Fixture QA loopback mencakup admin/reviewer/associate tanpa login produksi.
+  Styling tabel dibatasi ke screen, bukan CV/PDF. API tetap0.11.2; tanpa SQL/env,
+  perubahan role, profil, approval, notifikasi backend, provider atau worker.
+
 ## [0.11.4] - 2026-11-02
 
 - Web0.10.4 merapikan CV cetak/PDF dengan identitas PETA: logo BinaHub asli,

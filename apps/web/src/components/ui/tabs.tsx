@@ -13,12 +13,14 @@ export function Tabs({
 }) {
   return (
     <div className={`border-b border-slate-200 ${className}`}>
-      <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+      <nav className="flex gap-6 overflow-x-auto" aria-label="Pilihan tampilan">
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            type="button"
+            aria-pressed={activeTab === tab.id}
             onClick={() => onChange(tab.id)}
-            className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`flex min-h-11 items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === tab.id
                 ? 'border-[#0B2C6B] text-[#0B2C6B]'
                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'

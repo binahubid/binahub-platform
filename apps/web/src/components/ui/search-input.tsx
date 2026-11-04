@@ -30,10 +30,11 @@ export function SearchInput({
       </div>
       <input
         type="text"
+        aria-label={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="block w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-[#0B2C6B] focus:outline-none focus:ring-1 focus:ring-[#0B2C6B]"
+        className="block min-h-11 w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-3 text-base sm:text-sm text-slate-900 placeholder-slate-500 transition-colors focus:border-[#0B2C6B] focus:outline-none focus:ring-1 focus:ring-[#0B2C6B]"
       />
     </div>
   );

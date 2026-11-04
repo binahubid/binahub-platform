@@ -122,7 +122,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="ams-workspace flex min-h-screen bg-slate-50">
+      <a href="#ams-main-content" className="ams-skip-link">Lewati ke konten utama</a>
       {/* Sidebar — Desktop */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-slate-200 bg-white lg:flex">
         <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5">
@@ -134,7 +135,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           {sidebarSections.map((section, idx) => (
             <div key={section.label || `section-${idx}`} className="mb-4">
               {section.label && (
-                <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{section.label}</p>
+                <p className="mb-2 px-3 text-xs font-medium text-slate-600">{section.label}</p>
               )}
               <div className="space-y-0.5">
                 {section.items.map((item) => (
@@ -142,7 +143,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     id={(item as any).id}
-                    className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                    className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                       isActive(item.href)
                         ? 'bg-[#0B2C6B]/10 text-[#0B2C6B] font-semibold ring-1 ring-inset ring-[#0B2C6B]/10'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -232,9 +233,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate">{user.email}</p>
-              <p className="text-[11px] text-slate-400">Associate</p>
+              <p className="text-xs text-slate-600">Associate</p>
             </div>
-            <button onClick={signOut} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500" title="Sign out">
+            <button type="button" aria-label="Keluar" onClick={signOut} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600" title="Sign out">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
@@ -250,7 +251,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-semibold text-[#0B2C6B]">BinaHub</span>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/notifications" className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100">
+          <Link href="/dashboard/notifications" aria-label="Notifikasi" className="relative grid h-11 w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
@@ -280,7 +281,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                 </svg>
-                <span className="text-[10px]">{item.label}</span>
+                <span className="text-xs">{item.label}</span>
                 {item.href === '/dashboard/notifications' && notifCount > 0 && (
                   <span className="absolute -top-0.5 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
                     {notifCount > 9 ? '9+' : notifCount}
@@ -293,7 +294,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 pt-14 pb-16 lg:pt-0 lg:pb-0 lg:pl-60">
+      <main id="ams-main-content" tabIndex={-1} className="min-w-0 flex-1 pt-14 pb-20 lg:pt-0 lg:pb-0 lg:pl-60">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </div>

@@ -16,17 +16,17 @@ const sidebarSections = [
     ],
   },
   {
-    label: 'TALENT OPERATIONS',
+    label: 'Talent operations',
     items: [
       { href: '/admin/associates', label: 'Associates', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
       { href: '/admin/assignments', label: 'Assignments', icon: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
       { href: '/admin/reviews', label: 'Reviews', icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
-      { href: '/admin/assessments', label: 'Assessments', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+      { href: '/admin/assessments', label: 'Self Diagnostic', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
       { href: '/admin/development-plans', label: 'Development Plans', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
     ],
   },
   {
-    label: 'INSIGHTS & REPORTS',
+    label: 'Insights & reports',
     items: [
       { href: '/admin/analytics', label: 'Capability Analytics', icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' },
       { href: '/admin/reports', label: 'Reports', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
@@ -34,7 +34,7 @@ const sidebarSections = [
     ],
   },
   {
-    label: 'SYSTEM',
+    label: 'System',
     items: [
       { href: '/admin/users', label: 'Users & Reviewers', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
     ],
@@ -72,6 +72,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const searchRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!mobileSidebarOpen || !mobileMenuRef.current) return;
+    const menu = mobileMenuRef.current, previousOverflow = document.body.style.overflow;
+    const trigger = menuTriggerRef.current;
+    const controls = () => Array.from(menu.querySelectorAll<HTMLElement>('aside a[href], aside button:not(:disabled)'));
+    document.body.style.overflow = 'hidden';
+    controls()[0]?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setMobileSidebarOpen(false); }
+      if (event.key !== 'Tab') return;
+      const elements = controls(), first = elements[0], last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = previousOverflow; trigger?.focus(); };
+  }, [mobileSidebarOpen]);
 
   const role = (user?.app_metadata?.role as string) || 'associate';
   const isAdmin = role === 'admin';
@@ -80,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const visibleSidebarSections = useMemo(() => {
     if (!isReviewer) return sidebarSections;
     return [{
-      label: 'REVIEW OPERATIONS',
+      label: 'Review operations',
       items: sidebarSections.flatMap((section) => section.items).filter((item) => item.href === '/admin/reviews'),
     }];
   }, [isReviewer]);
@@ -272,14 +292,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <ToastProvider>
-      <div className="flex min-h-screen bg-[#F5F7FA]">
+      <div className="ams-workspace flex min-h-screen bg-[#F5F7FA]">
+        <a href="#ams-main-content" className="ams-skip-link">Lewati ke konten utama</a>
         {/* Sidebar — Desktop */}
         <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col bg-[#0B2C6B] lg:flex print:hidden">
           <div className="flex h-16 items-center gap-3 px-6">
             <Image src="/logo.png" alt="BinaHub" width={28} height={28} className="h-7 w-auto" priority />
             <div>
               <span className="text-base font-semibold text-white">BinaHub AMS</span>
-              <p className="text-[10px] text-white/50">Associate Management System</p>
+              <p className="text-xs text-white/80">Associate Management System</p>
             </div>
           </div>
 
@@ -287,7 +308,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {visibleSidebarSections.map((section, idx) => (
               <div key={section.label || `s-${idx}`} className="mb-4">
                 {section.label && (
-                  <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-white/40">{section.label}</p>
+                  <p className="mb-2 px-3 text-xs font-medium text-white/80">{section.label}</p>
                 )}
                 <div className="space-y-0.5">
                   {section.items.map((item) => {
@@ -296,8 +317,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                          active ? 'bg-white/15 text-white font-semibold ring-1 ring-inset ring-white/20' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                        className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                          active ? 'bg-white/15 text-white font-semibold ring-1 ring-inset ring-white/20' : 'text-white/85 hover:bg-white/10 hover:text-white'
                         }`}
                       >
                         <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,7 +344,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                 isActive('/admin/notifications')
                   ? 'bg-white/15 text-white font-semibold'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  : 'text-white/85 hover:bg-white/10 hover:text-white'
               }`}
             >
               <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,7 +363,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                 isActive('/admin/settings')
                   ? 'bg-white/15 text-white font-semibold'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  : 'text-white/85 hover:bg-white/10 hover:text-white'
               }`}
             >
               <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -355,9 +376,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               href="https://wa.me/6281383521750"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-white/85 hover:bg-white/10 hover:text-white transition-colors"
             >
-              <svg className="h-4 w-4 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 text-white/85 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>Pusat Bantuan</span>
@@ -368,7 +389,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                 pathname === '/skk'
                   ? 'bg-white/15 text-white font-semibold'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  : 'text-white/85 hover:bg-white/10 hover:text-white'
               }`}
             >
               <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -379,21 +400,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="border-t border-white/10 px-6 py-3">
-            <p className="text-[10px] text-white/30">© {new Date().getFullYear()} BinaHub. All rights reserved.</p>
+            <p className="text-xs text-white/80">© {new Date().getFullYear()} BinaHub. All rights reserved.</p>
           </div>
         </aside>
 
         {/* Mobile Sidebar Overlay */}
         {mobileSidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden print:hidden">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
+          <div ref={mobileMenuRef} className="fixed inset-0 z-50 lg:hidden print:hidden" role="dialog" aria-modal="true" aria-label="Navigasi admin">
+            <button type="button" aria-label="Tutup menu admin" className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
             <aside className="absolute left-0 top-0 bottom-0 w-64 flex flex-col bg-[#0B2C6B]">
               <div className="flex h-16 items-center justify-between px-6">
                 <div className="flex items-center gap-3">
                   <Image src="/logo.png" alt="BinaHub" width={24} height={24} className="h-6 w-auto" priority />
                   <span className="text-base font-semibold text-white">BinaHub AMS</span>
                 </div>
-                <button onClick={() => setMobileSidebarOpen(false)} className="text-white/70 hover:text-white">
+                <button type="button" aria-label="Tutup navigasi" onClick={() => setMobileSidebarOpen(false)} className="grid h-11 w-11 place-items-center rounded-lg text-white/85 hover:text-white">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -403,7 +424,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {visibleSidebarSections.map((section, idx) => (
                   <div key={section.label || `s-${idx}`} className="mb-4">
                     {section.label && (
-                      <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-white/40">{section.label}</p>
+                      <p className="mb-2 px-3 text-xs font-medium text-white/80">{section.label}</p>
                     )}
                     <div className="space-y-0.5">
                       {section.items.map((item) => {
@@ -412,8 +433,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           <Link
                             key={item.href}
                             href={item.href}
-                            className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                              active ? 'bg-white/15 text-white font-semibold ring-1 ring-inset ring-white/20' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                            className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                              active ? 'bg-white/15 text-white font-semibold ring-1 ring-inset ring-white/20' : 'text-white/85 hover:bg-white/10 hover:text-white'
                             }`}
                           >
                             <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -442,8 +463,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:px-6 print:hidden">
             <div className="flex items-center gap-3">
               <button
+                ref={menuTriggerRef}
+                type="button"
+                aria-label="Buka navigasi admin"
+                aria-expanded={mobileSidebarOpen}
                 onClick={() => setMobileSidebarOpen(true)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 lg:hidden"
+                className="grid h-11 w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -457,16 +482,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <input
                   ref={searchRef}
                   type="text"
+                  aria-label="Cari di workspace AMS"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
                   placeholder="Cari associate, assignment, atau capability..."
-                  className="w-72 lg:w-96 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-12 text-sm text-slate-900 outline-none transition-colors focus:border-[#0B2C6B] focus:bg-white focus:ring-1 focus:ring-[#0B2C6B]/20"
+                  className="w-72 lg:w-96 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-12 text-base sm:text-sm text-slate-900 outline-none transition-colors focus:border-[#0B2C6B] focus:bg-white focus:ring-1 focus:ring-[#0B2C6B]/20"
                 />
-                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400">⌘K</kbd>
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-medium text-slate-600">⌘K</kbd>
 
                 {searchFocused && searchQuery.trim().length >= 2 && (
-                  <div className="absolute top-full left-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
+                  <div className="absolute top-full left-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
                     {searchResults.length === 0 ? (
                       <div className="px-4 py-6 text-center">
                         <p className="text-sm text-slate-500">Tidak ada hasil untuk &quot;{searchQuery}&quot;</p>
@@ -481,11 +507,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
                           >
                             <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#0B2C6B]/10 text-xs font-bold text-[#0B2C6B]">
-                              {r.type === 'Associates' ? '👤' : r.type === 'Reviews' ? '⭐' : r.type === 'Assignments' ? '📋' : '📊'}
+                              <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={sidebarSections.flatMap(section => section.items).find(item => item.label === r.type)?.icon || sidebarSections[0].items[0].icon}/></svg>
                             </span>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium text-slate-900 truncate">{r.label}</p>
-                              <p className="text-[11px] text-slate-500">{r.type} · {r.sublabel}</p>
+                              <p className="text-xs text-slate-600">{r.type} · {r.sublabel}</p>
                             </div>
                             <svg className="h-4 w-4 flex-shrink-0 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -504,8 +530,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {/* Notification Bell + Dropdown */}
               <div className="relative" ref={notifDropdownRef}>
                 <button
+                  type="button"
+                  aria-label="Notifikasi"
+                  aria-expanded={notifDropdownOpen}
                   onClick={handleNotifBellClick}
-                  className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                  className="relative grid h-11 w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
                   title="Notifikasi"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -519,7 +548,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </button>
 
                 {notifDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-96 rounded-xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden">
+                  <div className="fixed left-4 right-4 top-16 w-auto rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:max-w-[calc(100vw-2rem)]">
                     <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                       <h3 className="text-sm font-semibold text-slate-900">Notifikasi</h3>
                       {unreadCount > 0 && (
@@ -560,8 +589,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                   <p className={`text-xs font-semibold ${isRead ? 'text-slate-500' : 'text-slate-900'}`}>{n.title}</p>
                                   {!isRead && <div className="h-1.5 w-1.5 rounded-full bg-[#0B2C6B] flex-shrink-0" />}
                                 </div>
-                                <p className="mt-0.5 text-[11px] text-slate-400 line-clamp-1">{n.message}</p>
-                                <p className="mt-1 text-[10px] text-slate-300">{getTimeAgo(n.created_at)}</p>
+                                <p className="mt-0.5 text-xs text-slate-600 line-clamp-1">{n.message}</p>
+                                <p className="mt-1 text-xs text-slate-500">{getTimeAgo(n.created_at)}</p>
                               </div>
                             </div>
                           );
@@ -589,11 +618,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
                 <div className="hidden lg:block">
                   <p className="text-sm font-semibold text-slate-900">{displayName}</p>
-                  <p className="text-[11px] text-slate-400 capitalize">{role}</p>
+                  <p className="text-xs text-slate-600 capitalize">{role}</p>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Keluar"
                   onClick={signOut}
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                  className="grid h-11 w-11 place-items-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
                   title="Keluar"
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -604,7 +635,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </header>
 
-          <main className="mx-auto max-w-7xl px-4 lg:px-6 py-8 print:max-w-none print:!p-0">
+          <main id="ams-main-content" tabIndex={-1} className="mx-auto min-w-0 max-w-7xl px-4 lg:px-6 py-8 print:max-w-none print:!p-0">
             {children}
           </main>
         </div>
