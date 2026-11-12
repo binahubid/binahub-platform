@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Hono, type Context } from 'hono';
+import { z } from 'zod';
 import { appAssignmentRequestSchema, appAssociateSearchSchema } from '@ams/shared/validators/integration';
 import { getDb } from '../../lib/database.js';
 import { queueNotificationEmail } from '../../lib/notification-email.js';
@@ -61,6 +62,41 @@ integration.post('/associates/search', async (c) => {
     availability: associate.availability?.status || null,
   }));
   return c.json({ success: true, data: rows });
+});
+
+// Portal assignments require an exact, current AMS identity. General search
+// limits results before ranking and may omit a valid account.
+const eligibilitySchema = z.object({
+  emails: z.array(z.string().trim().max(254).email()
+    .refine((value) => !value.includes('*')).transform((value) => value.toLowerCase())).min(1).max(100),
+}).strict();
+
+integration.post('/associates/eligible', async (c) => {
+  const body = await signedBody(c);
+  if ('error' in body) return body.error;
+  const parsed = eligibilitySchema.safeParse(body.value);
+  if (!parsed.success) return c.json({ success: false, error: 'Daftar akun tidak valid' }, 400);
+
+  const db = getDb();
+  const emails = [...new Set(parsed.data.emails)];
+  const matches: Array<{ id: string; email: string }> = [];
+  for (let i = 0; i < emails.length; i += 8) {
+    const results = await Promise.all(emails.slice(i, i + 8).map(async (email) => {
+      // Match the whole address, including literal underscores in email names.
+      const pattern = email.replace(/[\\%_]/g, '\\$&');
+      const { data, error } = await db.from('associates').select('id,email')
+        .eq('status', 'active').ilike('email', pattern).limit(2);
+      if (error) return { error: true as const };
+      const rows = (data || []).filter((row) => row.email.toLowerCase() === email);
+      // A case-variant duplicate must be resolved in AMS before assignment.
+      return { match: rows.length === 1 ? { id: rows[0].id, email } : null };
+    }));
+    for (const result of results) {
+      if (result.error) return c.json({ success: false, error: 'Status akun AMS belum dapat diperiksa' }, 503);
+      if (result.match) matches.push(result.match);
+    }
+  }
+  return c.json({ success: true, data: matches });
 });
 
 integration.post('/assignments', async (c) => {

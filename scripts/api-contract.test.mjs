@@ -1,17 +1,30 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHmac } from 'node:crypto';
 
 Object.assign(process.env, {
   NODE_ENV:'production', SUPABASE_URL:'https://example.invalid',
   SUPABASE_ANON_KEY:'synthetic-anon', SUPABASE_SERVICE_ROLE_KEY:'synthetic-service',
   CORS_ALLOWED_ORIGINS:'', FRONTEND_URL:'', APP_URL:'',
+  APP_INTEGRATION_SECRET:'synthetic-integration-contract-only',
 });
-let outbound=0,rateChecks=0;
+let outbound=0,rateChecks=0,associateLookups=0;
 globalThis.fetch=async input=>{
   const url=new URL(input instanceof Request?input.url:String(input));
   if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/rpc/consume_rate_limit'){
     rateChecks++;
     return Response.json({allowed:true,remaining:9,reset_at:'2099-01-01T00:00:00Z'});
+  }
+  if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/associates'){
+    associateLookups++;
+    assert.equal(url.searchParams.get('status'),'eq.active');
+    assert.equal(url.searchParams.get('limit'),'2');
+    const filter=url.searchParams.get('email');
+    if(filter==='ilike.active\\_associate@example.com'){
+      return Response.json([{id:'00000000-0000-4000-8000-000000000007',email:'Active_Associate@example.com'}]);
+    }
+    assert.equal(filter,'ilike.unknown@example.com');
+    return Response.json([]);
   }
   outbound++;throw new Error('Unexpected outbound requests are forbidden in the API contract.');
 };
@@ -47,5 +60,19 @@ test('CORS allows only the approved frontend, not an arbitrary caller', async()=
     const response=await app.request('https://example.invalid/api/health',{headers:{Origin:origin}});
     assert.equal(response.headers.get('Access-Control-Allow-Origin'),origin==='https://ams.binahub.id'?origin:null);
   }
+  assert.equal(outbound,0);
+});
+test('signed eligibility matches full email for active associates only',async()=>{
+  const url='https://example.invalid/api/integrations/app/associates/eligible';
+  const body=JSON.stringify({emails:['Active_Associate@EXAMPLE.COM','unknown@example.com']});
+  const timestamp=String(Date.now());
+  const signature=createHmac('sha256',process.env.APP_INTEGRATION_SECRET).update(`${timestamp}.${body}`).digest('hex');
+  const request=(headers={})=>app.request(url,{method:'POST',body,headers:{'Content-Type':'application/json',...headers}});
+  assert.equal((await request()).status,401);
+  assert.equal(associateLookups,0);
+  const response=await request({'x-binahub-timestamp':timestamp,'x-binahub-signature':signature});
+  assert.equal(response.status,200);
+  assert.deepEqual(await response.json(),{success:true,data:[{id:'00000000-0000-4000-8000-000000000007',email:'active_associate@example.com'}]});
+  assert.equal(associateLookups,2);
   assert.equal(outbound,0);
 });
