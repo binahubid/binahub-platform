@@ -30,6 +30,8 @@ jobs:
         run: pnpm run test:dependencies
       - name: Check shared validators
         run: pnpm run test:validation
+      - name: Verify consultant membership consent and database access
+        run: node --test scripts/consultant-team.sql.test.mjs
       - name: Build and check API
         run: pnpm --filter @ams/api build && pnpm --filter @ams/api typecheck
       - name: Check built API contracts without external requests

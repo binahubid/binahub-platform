@@ -337,6 +337,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 relative">
+      <ConsultantPortalEntry />
       {/* Floating feedback toast */}
       {toast && (
         <div className="fixed bottom-5 right-5 z-50 animate-bounce flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg border text-xs font-semibold text-white bg-slate-900 border-slate-800">
@@ -1095,3 +1096,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+import { ConsultantPortalEntry } from '@/components/consultant-team-context';

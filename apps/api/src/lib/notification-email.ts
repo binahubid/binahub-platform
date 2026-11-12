@@ -122,6 +122,15 @@ export async function sendQueuedNotificationEmail(deliveryId: string) {
   try {
     const { data: notification } = await db.from('notifications').select('*').eq('id', claimed.notification_id).maybeSingle();
     if (!notification) throw new Error('Notifikasi email tidak memiliki sumber');
+    if (claimed.template_key === 'consultant-team-invitation') {
+      const { data: membership } = await db.from('consultant_team_memberships')
+        .select('status').eq('associate_id', notification.recipient_id)
+        .eq('invitation_id', notification.reference_id).maybeSingle();
+      if (membership?.status !== 'invited') {
+        await db.from('email_notification_deliveries').update({ status: 'skipped', updated_at: new Date().toISOString() }).eq('id', deliveryId);
+        return;
+      }
+    }
 
     let enabled = true;
     if (notification.recipient_role === 'associate') {

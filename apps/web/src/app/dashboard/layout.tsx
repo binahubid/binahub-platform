@@ -9,6 +9,7 @@ import { OnboardingProvider } from '../../components/onboarding/context';
 import { OnboardingModal } from '../../components/onboarding/onboarding-modal';
 import { ToastProvider } from '../../components/ui';
 import { usePageVisibility } from '../../hooks/use-page-visibility';
+import { ConsultantTeamProvider, ConsultantPortalEntry } from '@/components/consultant-team-context';
 
 const sidebarSections = [
   {
@@ -165,6 +166,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
+        <ConsultantPortalEntry navigation />
         <div className="mx-3 mb-3 border-t border-slate-100 pt-3 space-y-1">
           <Link
             href="/dashboard/notifications"
@@ -310,7 +312,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <ToastProvider>
       <OnboardingProvider>
-        <DashboardLayoutInner>{children}</DashboardLayoutInner>
+        <ConsultantTeamProvider><DashboardLayoutInner>{children}</DashboardLayoutInner></ConsultantTeamProvider>
       </OnboardingProvider>
     </ToastProvider>
   );

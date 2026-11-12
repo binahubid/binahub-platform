@@ -35,6 +35,7 @@ export type EventType =
   | 'CVUploaded'
   | 'DocumentUploaded'
   | 'AssignmentAssigneeChanged'
+  | 'ConsultantMembershipChanged'
   | 'ProfileIncompleteReminder'
   | 'NotificationEmailRequested'
   | 'SearchSyncNeeded';

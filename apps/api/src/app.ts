@@ -175,6 +175,8 @@ app.onError((err, c) => {
 app.notFound((c) => c.json({ success: false, error: 'Endpoint tidak ditemukan' }, 404));
 
 app.route("/api/auth", auth);
+app.route("/api/admin/consultant-team", teamAdminRoutes);
+app.route("/api/associate/consultant-team", teamAssociateRoutes);
 app.route("/api/associate", associateRoutes);
 app.route("/api/admin", admin);
 app.route("/api/ai", ai);
@@ -185,6 +187,8 @@ app.route("/api/integrations/app", appIntegration);
 
 // Fallback routes for requests without /api prefix
 app.route("/auth", auth);
+app.route("/admin/consultant-team", teamAdminRoutes);
+app.route("/associate/consultant-team", teamAssociateRoutes);
 app.route("/associate", associateRoutes);
 app.route("/admin", admin);
 app.route("/ai", ai);
@@ -214,3 +218,4 @@ app.get("/api/health", healthHandler);
 app.get("/health", healthHandler);
 
 export default app;
+import { teamAdminRoutes, teamAssociateRoutes } from "./modules/consultant-team/routes.js";

@@ -1,0 +1,46 @@
+.page{display:grid;gap:24px;color:#172a47;font-size:14px;line-height:1.65}
+.page h1{font-size:26px;line-height:1.25;font-weight:600;letter-spacing:-.025em;color:#0b2c6b}
+.page h2,.dialog h2{font-size:18px;line-height:1.4;font-weight:600;color:#0b2c6b}
+.page h3{font-size:14px;font-weight:600;color:#172a47}
+.heading{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.heading p{margin-top:8px;max-width:68ch;color:#53647c}
+.panel{background:white;border:1px solid #dbe3ed;border-radius:12px;padding:24px;min-width:0}
+.page button,.button,.dialog button{display:inline-flex;min-height:44px;align-items:center;justify-content:center;gap:8px;border:1px solid #ccd6e3;border-radius:8px;padding:8px 14px;background:white;font:inherit;font-weight:500;cursor:pointer}
+.page button:hover,.button:hover,.dialog button:hover{background:#f1f5f9}
+.page .primary,.dialog .primary{background:#0b2c6b;color:white;border-color:#0b2c6b;font-weight:600}
+.page .primary:hover,.dialog .primary:hover{background:#123e84}
+.page button:disabled,.dialog button:disabled{opacity:.5;cursor:default}
+.page :focus-visible,.dialog :focus-visible{outline:2px solid #0b2c6b;outline-offset:3px}
+.form{display:grid;gap:20px;max-width:800px;margin-top:20px}
+.field{display:grid;gap:6px;font-weight:500;min-width:0;margin-top:16px}
+.field input,.field select,.field textarea{min-height:44px;border:1px solid #b8c6d8;border-radius:8px;padding:10px 12px;background:white;color:#172a47;font:inherit;width:100%;min-width:0}
+.field textarea{resize:vertical;font-weight:400;line-height:1.9}
+.field input::placeholder,.field textarea::placeholder{color:#64748b}
+.field input[type=search]{font-size:16px}
+.check{display:flex;align-items:flex-start;gap:12px;max-width:72ch}
+.check input{width:20px;height:20px;flex-shrink:0;margin-top:3px}
+.hint{font-size:12px;line-height:1.7;font-weight:400;color:#53647c}
+.filters{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.filters .field:first-child{flex:1;min-width:180px}
+.row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 0;border-bottom:1px solid #e7edf4}
+.row p{color:#53647c;font-size:13px}
+.table{overflow-x:auto;max-width:100%}
+.table table{width:100%;min-width:700px;border-collapse:collapse}
+.table th{text-align:left;padding:12px 14px 12px 0;color:#53647c;font-size:12px;font-weight:500;border-bottom:1px solid #dbe3ed}
+.table td{padding:18px 14px 18px 0;vertical-align:top;border-bottom:1px solid #edf1f6}
+.table td p{color:#53647c;font-size:12px;margin-top:4px;max-width:220px;overflow-wrap:anywhere}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.empty{padding:28px 0;color:#53647c}
+.error,.notice{padding:14px 16px;border-radius:8px}
+.error{background:#fff2f2;color:#991b1b;border:1px solid #fecaca}
+.error button{text-decoration:underline;background:transparent;border:0;padding:0 8px}
+.notice{background:#edf4ff;color:#0b2c6b}
+.prose{white-space:pre-line;line-height:1.95;max-width:76ch;margin:18px 0 24px}
+.history{padding:14px 0;border-bottom:1px solid #e7edf4}
+.history summary{color:#0b2c6b;cursor:pointer;margin-top:8px}
+.dialog{width:calc(100% - 32px);max-width:460px;border:1px solid #dbe3ed;border-radius:12px;padding:24px;background:white;color:#172a47}
+.dialog::backdrop{background:#071b3d66}
+.dialog p{margin:14px 0 24px;font-size:14px;line-height:1.8;color:#53647c}
+.dialog .actions{justify-content:flex-end}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media(max-width:600px){.panel{padding:18px}.heading h1{font-size:24px}.filters{align-items:stretch}.filters .field{flex:1;width:100%}.form .primary{width:100%}.heading .primary{width:100%}}

@@ -8,7 +8,7 @@ Object.assign(process.env, {
   CORS_ALLOWED_ORIGINS:'', FRONTEND_URL:'', APP_URL:'',
   APP_INTEGRATION_SECRET:'synthetic-integration-contract-only',
 });
-let outbound=0,rateChecks=0,associateLookups=0;
+let outbound=0,rateChecks=0,associateLookups=0,teamActive=true;
 globalThis.fetch=async input=>{
   const url=new URL(input instanceof Request?input.url:String(input));
   if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/rpc/consume_rate_limit'){
@@ -16,6 +16,7 @@ globalThis.fetch=async input=>{
     return Response.json({allowed:true,remaining:9,reset_at:'2099-01-01T00:00:00Z'});
   }
   if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/associates'){
+    if(url.searchParams.get('id')) return Response.json([{id:'00000000-0000-4000-8000-000000000007',email:'active_associate@example.com',status:'active'}]);
     associateLookups++;
     assert.equal(url.searchParams.get('status'),'eq.active');
     assert.equal(url.searchParams.get('limit'),'2');
@@ -25,6 +26,10 @@ globalThis.fetch=async input=>{
     }
     assert.equal(filter,'ilike.unknown@example.com');
     return Response.json([]);
+  }
+  if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/consultant_team_memberships'){
+    return Response.json([{associate_id:'00000000-0000-4000-8000-000000000007',
+      membership_id:'00000000-0000-4000-8000-000000000009',status:teamActive?'active':'paused',accepted_at:'2026-11-12T00:00:00Z'}]);
   }
   outbound++;throw new Error('Unexpected outbound requests are forbidden in the API contract.');
 };
@@ -49,10 +54,25 @@ test('built app rejects malformed registration/login without reaching an auth pr
   assert.equal(rateChecks,2);
 });
 test('private associate/admin/worker routes still reject missing authentication', async()=>{
-  for(const [route,method] of [['associate/me','GET'],['admin/stats','GET'],['workers/process-events','POST']]){
+  for(const [route,method] of [['associate/me','GET'],['admin/stats','GET'],['workers/process-events','POST'],
+    ['admin/consultant-team','GET'],['admin/consultant-team','POST'],['associate/consultant-team','GET'],['associate/consultant-team/open','POST']]){
     const response=await app.request('https://example.invalid/api/'+route,{method});
     assert.equal(response.status,401,route);
   }
+  assert.equal(outbound,0);
+});
+test('signed consultant checks use current membership and matching email',async()=>{
+  const url='https://example.invalid/api/integrations/app/consultant-team/check';
+  async function check(email='active_associate@example.com'){
+    const body=JSON.stringify({associateId:'00000000-0000-4000-8000-000000000007',
+      membershipId:'00000000-0000-4000-8000-000000000009',email});
+    const timestamp=String(Date.now()),signature=createHmac('sha256',process.env.APP_INTEGRATION_SECRET).update(`${timestamp}.${body}`).digest('hex');
+    const response=await app.request(url,{method:'POST',body,headers:{'content-type':'application/json','x-binahub-timestamp':timestamp,'x-binahub-signature':signature}});
+    assert.equal(response.status,200);return response.json();
+  }
+  assert.equal((await check()).active,true);
+  assert.equal((await check('other@example.com')).active,false);
+  teamActive=false;assert.equal((await check()).active,false);teamActive=true;
   assert.equal(outbound,0);
 });
 test('CORS allows only the approved frontend, not an arbitrary caller', async()=>{

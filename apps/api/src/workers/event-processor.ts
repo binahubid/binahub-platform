@@ -2,6 +2,7 @@ import { getDb } from '../lib/database.js';
 import { parseCVWithFallback } from '@ams/ai';
 import type { EventQueue } from '@ams/shared/types/events';
 import { syncAssociateIdentity, syncAssignmentAssignee } from '../lib/app-integration.js';
+import { syncConsultantMembership } from '../lib/consultant-team.js';
 import { queueNotificationEmail, sendQueuedNotificationEmail } from '../lib/notification-email.js';
 
 // ============================================
@@ -71,6 +72,9 @@ async function processEvent(event: EventQueue): Promise<{ id: string; type: stri
 
   try {
     switch (event.type) {
+      case 'ConsultantMembershipChanged':
+        await syncConsultantMembership(String((event.payload as { associateId?: string }).associateId || event.aggregateId || ''));
+        break;
       case 'AssociateCreated':
         await processAssociateCreated(event);
         break;

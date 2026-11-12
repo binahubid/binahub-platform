@@ -84,7 +84,7 @@ export function normalizeIntegrationTimestamp(value: unknown): string {
   return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
 }
 
-async function postSigned<T>(path: string, payload: unknown): Promise<T> {
+export async function postSigned<T>(path: string, payload: unknown): Promise<T> {
   const { baseUrl, secret } = integrationConfig();
   const body = JSON.stringify(payload);
   const timestamp = Date.now().toString();

@@ -1,6 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
+import { teamCheckSchema, teamEmailSchema } from '@ams/shared/validators/consultant-team';
+import { activeConsultantMembership } from '@ams/domain';
+import { getTeamMembership } from '../../lib/consultant-team.js';
 import { appAssignmentRequestSchema, appAssociateSearchSchema } from '@ams/shared/validators/integration';
 import { getDb } from '../../lib/database.js';
 import { queueNotificationEmail } from '../../lib/notification-email.js';
@@ -31,6 +34,39 @@ async function signedBody(c: Context<AppEnv>) {
     return { error: c.json({ success: false, error: 'Payload JSON tidak valid' }, 400) };
   }
 }
+
+integration.post('/consultant-team/check', async (c) => {
+  const body = await signedBody(c);
+  if ('error' in body) return body.error;
+  const parsed = teamCheckSchema.safeParse(body.value);
+  if (!parsed.success) return c.json({ success: false, error: 'Akun tidak valid.' }, 400);
+  const membership = await getTeamMembership(parsed.data.associateId);
+  const { data: associate, error } = await getDb().from('associates').select('status,email')
+    .eq('id', parsed.data.associateId).maybeSingle();
+  if (error) return c.json({ success: false, error: 'Keanggotaan belum dapat diperiksa.' }, 503);
+  return c.json({ success: true, active: activeConsultantMembership(membership, associate?.status || '')
+    && (!parsed.data.membershipId || membership?.membership_id === parsed.data.membershipId)
+    && (!parsed.data.email || associate?.email?.toLowerCase() === parsed.data.email.toLowerCase()) });
+});
+
+integration.post('/consultant-team/eligible', async (c) => {
+  const body = await signedBody(c);
+  if ('error' in body) return body.error;
+  const parsed = teamEmailSchema.safeParse(body.value);
+  if (!parsed.success) return c.json({ success: false, error: 'Daftar akun tidak valid.' }, 400);
+  const db = getDb(), rows: Array<{ id: string; email: string }> = [];
+  for (const email of [...new Set(parsed.data.emails)]) {
+    const pattern = email.replace(/[\\%_]/g, '\\$&');
+    const { data, error } = await db.from('associates').select('id,email')
+      .eq('status', 'active').ilike('email', pattern).limit(2);
+    if (error) return c.json({ success: false, error: 'Keanggotaan belum dapat diperiksa.' }, 503);
+    const matches = (data || []).filter((row) => row.email.toLowerCase() === email);
+    if (matches.length !== 1) continue;
+    const member = await getTeamMembership(matches[0].id);
+    if (activeConsultantMembership(member, 'active')) rows.push({ id: matches[0].id, email });
+  }
+  return c.json({ success: true, data: rows });
+});
 
 integration.post('/associates/search', async (c) => {
   const body = await signedBody(c);
