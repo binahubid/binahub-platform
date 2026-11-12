@@ -5,6 +5,7 @@ import { after,before,beforeEach,test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 const db=new PGlite(),admin=randomUUID(),alice=randomUUID(),bob=randomUUID(),outsider=randomUUID();
 const migration=readFileSync('packages/database/migrations/014_consultant_team.sql','utf8');
+const optionalCompensation=readFileSync('packages/database/migrations/018_consultant_team_optional_compensation.sql','utf8');
 const rpc=async(actor,associate,action,revision,data={})=>(await db.query(
   'select consultant_team_change($1,$2,$3,$4,$5) value',[actor,associate,action,revision,data],
 )).rows[0].value;
@@ -24,6 +25,7 @@ before(async()=>{
       insert into event_queue(type,aggregate_type,aggregate_id,payload) values($1,$2,$3,$4) returning id;
     $$;`);
   await db.exec(migration);
+  await db.exec(optionalCompensation);
 });
 after(()=>db.close());
 beforeEach(async()=>{
@@ -50,10 +52,10 @@ test('acceptance requires the current invitation, agreement and explicit consent
   const result=await accept(member);assert.equal(result.status,'active');assert.ok(result.accepted_at);
   await assert.rejects(accept(member),/TEAM_CONFLICT/);
 });
-test('non-admins cannot grant membership; unfinished or unreviewed terms are rejected',async()=>{
+test('non-admins cannot grant membership; unreviewed agreements are rejected',async()=>{
   await assert.rejects(rpc(bob,alice,'invite',0,offer),/TEAM_ADMIN_REQUIRED/);
   await assert.rejects(rpc(admin,alice,'invite',0,{...offer,reviewed:false}),/TEAM_AGREEMENT_REQUIRED/);
-  await assert.rejects(rpc(admin,alice,'invite',0,{...offer,compensationTerms:''}),/TEAM_AGREEMENT_REQUIRED/);
+  await assert.rejects(rpc(admin,alice,'invite',0,{...offer,agreementText:''}),/TEAM_AGREEMENT_REQUIRED/);
   await db.query("update associates set status='suspended' where id=$1",[alice]);
   await assert.rejects(invite(),/TEAM_ASSOCIATE_INACTIVE/);
 });
@@ -94,5 +96,39 @@ test('browser roles cannot read terms, alter membership or invoke its service fu
     }finally{await db.exec('reset role');}
   }
   await db.exec(migration);
+  await db.exec(optionalCompensation);
   assert.equal((await db.query('select count(*)::int n from consultant_team_memberships')).rows[0].n,1);
+});
+
+test('missing and whitespace compensation terms are stored empty and can be accepted',async()=>{
+  const {compensationTerms,...withoutCompensation}=offer;
+  const first=await rpc(admin,alice,'invite',0,withoutCompensation);
+  assert.equal(first.compensation_terms,'');
+  assert.equal((await accept(first)).status,'active');
+  const second=await rpc(admin,bob,'invite',0,{...offer,compensationTerms:'   '});
+  assert.equal(second.compensation_terms,'');
+  const snapshot=(await db.query("select snapshot from consultant_team_history where associate_id=$1",[bob])).rows[0].snapshot;
+  assert.equal(snapshot.compensation_terms,'');
+});
+
+test('optional compensation accepts short text and retains the maximum length',async()=>{
+  const member=await rpc(admin,alice,'invite',0,{...offer,compensationTerms:'  -  '});
+  assert.equal(member.compensation_terms,'-');
+  await assert.rejects(rpc(admin,bob,'invite',0,{...offer,compensationTerms:'a'.repeat(2001)}),/TEAM_AGREEMENT_REQUIRED/);
+  const maximum=await rpc(admin,bob,'invite',0,{...offer,compensationTerms:'a'.repeat(2000)});
+  assert.equal(maximum.compensation_terms.length,2000);
+});
+
+test('migration preserves existing invitations, consent hashes, and history',async()=>{
+  const pending=await invite();
+  const active=await accept(await invite(bob));
+  const membersBefore=(await db.query('select * from consultant_team_memberships order by associate_id')).rows;
+  const before=(await db.query('select * from consultant_team_history order by associate_id,revision')).rows;
+  await db.exec(optionalCompensation);
+  const rows=(await db.query('select * from consultant_team_memberships order by associate_id')).rows;
+  assert.deepEqual(rows,membersBefore);
+  assert.equal(rows.find(row=>row.associate_id===alice).agreement_hash,pending.agreement_hash);
+  assert.equal(rows.find(row=>row.associate_id===bob).agreement_hash,active.agreement_hash);
+  assert.deepEqual((await db.query('select * from consultant_team_history order by associate_id,revision')).rows,before);
+  assert.equal((await accept(pending)).status,'active');
 });

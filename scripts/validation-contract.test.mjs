@@ -6,8 +6,24 @@ import { fileRegistrationSchema, presignedUrlRequestSchema } from '../packages/s
 import { assignmentOfferFeeSchema } from '../packages/shared/dist/validators/assignments.js';
 import { appAssignmentRequestSchema } from '../packages/shared/dist/validators/integration.js';
 import { updateReviewSchema } from '../packages/shared/dist/validators/reviews.js';
+import { teamAdminSchema } from '../packages/shared/dist/validators/consultant-team.js';
 
 const id = '11111111-1111-4111-8111-111111111111';
+
+test('consultant-team compensation is optional while agreement review remains required', () => {
+  const invite = {
+    action: 'invite', associateId: id, revision: 0,
+    agreementText: 'Synthetic consultant cooperation agreement for the validation fixture.',
+    reviewed: true,
+  };
+  for (const compensationTerms of [undefined, '', '   ']) {
+    assert.equal(teamAdminSchema.parse({ ...invite, compensationTerms }).compensationTerms, '');
+  }
+  assert.equal(teamAdminSchema.parse({ ...invite, compensationTerms: ' - ' }).compensationTerms, '-');
+  assert.equal(teamAdminSchema.safeParse({ ...invite, compensationTerms: 'a'.repeat(2001) }).success, false);
+  assert.equal(teamAdminSchema.safeParse({ ...invite, reviewed: false }).success, false);
+  assert.equal(teamAdminSchema.safeParse({ ...invite, agreementText: '' }).success, false);
+});
 
 test('registration/login preserve accepted fields, reject malformed input and strip extras', () => {
   const input = { email: 'synthetic@example.invalid', full_name: 'Peserta Uji', password: 'test-only-password', role: 'admin' };

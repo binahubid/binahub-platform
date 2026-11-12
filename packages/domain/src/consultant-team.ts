@@ -14,7 +14,7 @@ export const consultantTeamAgreement = [
   'Akses Portal Konsultan berlaku selama keanggotaan aktif. Admin dapat menjeda atau mengakhiri keanggotaan; riwayat pekerjaan dan persetujuan tetap dicatat sesuai kebijakan penyimpanan data.',
   '',
   'Kompensasi',
-  'Ketentuan kompensasi yang berlaku dicantumkan pada bagian terpisah di bawah. Perubahan ketentuan kerja sama harus dikomunikasikan dan disepakati kembali.',
+  'Ketentuan kompensasi dapat dicantumkan jika telah disepakati. Perubahan ketentuan kerja sama dikomunikasikan dan disepakati bersama.',
 ].join('\n');
 
 export function activeConsultantMembership(membership: { status: string; accepted_at: string | null } | null, associateStatus: string) {

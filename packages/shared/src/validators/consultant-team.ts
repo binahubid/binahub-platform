@@ -9,7 +9,7 @@ export const teamAdminSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('invite'), associateId: z.string().uuid(), revision: z.number().int().min(0),
     agreementText: z.string().trim().min(40).max(16000),
-    compensationTerms: z.string().trim().min(5).max(2000), reviewed: z.literal(true),
+    compensationTerms: z.string().trim().max(2000).optional().default(''), reviewed: z.literal(true),
   }).strict(),
   z.object({
     action: z.enum(['pause','resume','end','retry_sync']), associateId: z.string().uuid(), revision: z.number().int().min(1),
