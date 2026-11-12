@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase-client';
+import { notificationLoginReturn } from '@/lib/notification-client';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -12,6 +13,11 @@ export default function AuthCallbackPage() {
   const continueWithSession = useCallback((session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
     if (!session || handled.current) return false;
     handled.current = true;
+    const returnToNotice = notificationLoginReturn();
+    if (returnToNotice) {
+      router.replace(returnToNotice);
+      return true;
+    }
 
     const role = session.user?.app_metadata?.role;
     if (role === 'admin' || role === 'reviewer') {

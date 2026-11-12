@@ -4,11 +4,11 @@ import { getDb } from '../lib/database.js';
 import { processPendingEvents } from './event-processor.js';
 import type { AppEnv } from '../types/env.js';
 import { timingSafeEqual } from 'node:crypto';
+import { notificationPushConfig, runNotificationWorker } from '../lib/notifications.js';
 
 export const workerRoutes = new Hono<AppEnv>();
 
-function validWorkerSecret(value: string | undefined) {
-  const secret = process.env.AMS_WORKER_SECRET || process.env.CRON_SECRET;
+function validWorkerSecret(value: string | undefined, secret: string | undefined) {
   if (!secret || !value) return false;
   const expected = Buffer.from(secret);
   const received = Buffer.from(value.replace(/^Bearer\s+/i, ''));
@@ -16,7 +16,7 @@ function validWorkerSecret(value: string | undefined) {
 }
 
 async function processCron(c: Context<AppEnv>) {
-  if (!validWorkerSecret(c.req.header('authorization') || c.req.header('x-worker-secret'))) {
+  if (!validWorkerSecret(c.req.header('authorization') || c.req.header('x-worker-secret'), process.env.AMS_WORKER_SECRET || process.env.CRON_SECRET)) {
     return c.json({ success: false, error: 'Worker secret tidak valid' }, 401);
   }
   try {
@@ -32,6 +32,19 @@ async function processCron(c: Context<AppEnv>) {
 // queued integration and email events without owning an admin session.
 workerRoutes.get('/cron', processCron);
 workerRoutes.post('/cron', processCron);
+
+workerRoutes.post('/notifications', async c => {
+  c.header('Cache-Control', 'no-store');
+  const authorization = c.req.header('authorization');
+  if (!authorization?.startsWith('Bearer ') || !validWorkerSecret(authorization, process.env.AMS_NOTIFICATION_WORKER_SECRET))
+    return c.json({ success: false, error: 'Worker secret tidak valid' }, 401);
+  if (!notificationPushConfig().enabled)
+    return c.json({ success: false, error: 'Notifikasi HP belum diaktifkan.' }, 503);
+  const [email, push] = await Promise.allSettled([processPendingEvents(3, true), runNotificationWorker()]);
+  if (email.status === 'rejected' || push.status === 'rejected')
+    return c.json({ success: false, error: 'Sebagian antrean notifikasi belum dapat diproses.' }, 503);
+  return c.json({ success: true, data: { email: email.value, push: push.value } });
+});
 
 // ============================================
 // PROTECTED (admin only)

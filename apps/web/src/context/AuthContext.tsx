@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { type SupabaseClient, type User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase-client";
+import { releaseNotificationDevice } from "@/lib/notification-client";
 
 type AuthContextType = {
   user: User | null;
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    if (user) await releaseNotificationDevice(accessToken, user.id).catch(() => {});
     await supabase.auth.signOut();
   };
 

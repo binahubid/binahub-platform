@@ -9,6 +9,7 @@ import { getDb } from '../../lib/database.js';
 import { queueNotificationEmail } from '../../lib/notification-email.js';
 import { syncAssignmentAssignee } from '../../lib/app-integration.js';
 import type { AppEnv } from '../../types/env.js';
+import { consultantNoticeSchema } from '@ams/shared/validators/notifications';
 
 const integration = new Hono<AppEnv>();
 
@@ -25,6 +26,8 @@ function verifySignature(rawBody: string, timestamp: string | undefined, signatu
 
 async function signedBody(c: Context<AppEnv>) {
   const rawBody = await c.req.text();
+  if (c.req.path.endsWith('/notifications') && rawBody.length > 4000)
+    return { error: c.json({ success: false, error: 'Ukuran pemberitahuan tidak valid.' }, 413) };
   if (!verifySignature(rawBody, c.req.header('x-binahub-timestamp'), c.req.header('x-binahub-signature'))) {
     return { error: c.json({ success: false, error: 'Tanda tangan integrasi tidak valid' }, 401) };
   }
@@ -47,6 +50,16 @@ integration.post('/consultant-team/check', async (c) => {
   return c.json({ success: true, active: activeConsultantMembership(membership, associate?.status || '')
     && (!parsed.data.membershipId || membership?.membership_id === parsed.data.membershipId)
     && (!parsed.data.email || associate?.email?.toLowerCase() === parsed.data.email.toLowerCase()) });
+});
+
+integration.post('/notifications', async (c) => {
+  const body = await signedBody(c);
+  if ('error' in body) return body.error;
+  const parsed = consultantNoticeSchema.safeParse(body.value);
+  if (!parsed.success) return c.json({ success: false, error: 'Pemberitahuan tidak valid.' }, 400);
+  const { data, error } = await getDb().rpc('ams_notification_external', { p_event: parsed.data });
+  if (error) return c.json({ success: false, error: 'Pemberitahuan belum dapat dicatat.' }, 503);
+  return c.json({ success: true, data });
 });
 
 integration.post('/consultant-team/eligible', async (c) => {

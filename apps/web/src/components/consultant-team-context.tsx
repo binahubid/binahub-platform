@@ -6,7 +6,7 @@ import { teamRequest,type TeamMembership } from '@/lib/consultant-team';
 
 const Team=createContext<{
   membership:TeamMembership|null; error:string; opening:boolean; loading:boolean;
-  reload:()=>Promise<void>; open:()=>Promise<void>;
+  reload:()=>Promise<void>; open:(leadId?: string)=>Promise<void>;
 }|null>(null);
 export function ConsultantTeamProvider({children}:{children:ReactNode}) {
   const {accessToken}=useAuth();
@@ -34,11 +34,11 @@ export function ConsultantTeamProvider({children}:{children:ReactNode}) {
     window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',refresh);
     return()=>{window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh)};
   },[reload]);
-  async function open(){
+  async function open(leadId?: string){
     if(!accessToken||opening)return;
     setOpening(true);setError('');
     try {
-      const {url}=await teamRequest<{url:string}>(accessToken,'/api/associate/consultant-team/open',{});
+      const {url}=await teamRequest<{url:string}>(accessToken,'/api/associate/consultant-team/open',leadId ? { leadId } : {});
       const destination=new URL(url);
       if(destination.protocol!=='https:'||destination.hostname!=='app.binahub.id'||destination.pathname!=='/auth/ams')
         throw new Error('Alamat portal belum dapat dipastikan. Hubungi admin.');

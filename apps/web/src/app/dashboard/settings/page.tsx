@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { DeviceSettings, NoticePreferences } from '@/components/notifications/device-settings';
 
 type Preferences = {
   email_notifications: boolean;
@@ -84,9 +85,12 @@ export default function SettingsPage() {
       )}
 
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500">Manage your account preferences</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Pengaturan</h1>
+        <p className="mt-1 text-sm text-slate-600">Kelola akun dan pemberitahuan AMS.</p>
       </div>
+
+      <DeviceSettings />
+      <NoticePreferences />
 
       {loading ? (
         <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-slate-200 bg-white">
@@ -117,8 +121,8 @@ export default function SettingsPage() {
             <h2 className="text-sm font-semibold text-slate-900">Notifikasi</h2>
             <div className="mt-4 space-y-4">
               <ToggleRow
-                label="Email Notifications"
-                description="Receive updates about your profile and assignments"
+                label="Notifikasi email"
+                description="Terima pembaruan profil dan penugasan melalui email."
                 enabled={prefs.email_notifications}
                 disabled={saving}
                 onToggle={() => handleToggle('email_notifications')}

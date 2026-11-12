@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { AuthProvider } from "../context/AuthContext";
+import { AmsNotificationProvider } from "@/components/notifications/provider";
 import "./globals.css";
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -31,7 +32,9 @@ export const metadata: Metadata = {
   authors: [{ name: "BinaHub" }],
   icons: {
     icon: "/favicon.ico",
+    apple: "/icons/ams-192.png",
   },
+  appleWebApp: { capable: true, title: "BinaHub AMS" },
   openGraph: {
     title: "BinaApps AMS - Associate Management System",
     description: "Sistem Kelola profil profesional Associate BinaHub.",
@@ -48,7 +51,7 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${jakartaSans.variable} ${inter.variable} h-full scroll-smooth antialiased`}>
       <body className="flex min-h-full flex-col font-[family-name:var(--font-jakarta-sans)] selection:bg-[#0B2C6B] selection:text-white">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider><AmsNotificationProvider>{children}</AmsNotificationProvider></AuthProvider>
       </body>
     </html>
   );

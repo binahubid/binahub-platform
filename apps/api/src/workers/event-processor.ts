@@ -4,22 +4,30 @@ import type { EventQueue } from '@ams/shared/types/events';
 import { syncAssociateIdentity, syncAssignmentAssignee } from '../lib/app-integration.js';
 import { syncConsultantMembership } from '../lib/consultant-team.js';
 import { queueNotificationEmail, sendQueuedNotificationEmail } from '../lib/notification-email.js';
+import { NotificationDeferred } from '../lib/notifications.js';
 
 // ============================================
 // EVENT PROCESSOR
 // ============================================
 
-export async function processPendingEvents(limit: number = 10) {
+export async function processPendingEvents(limit: number = 10, notificationOnly = false) {
   const db = getDb();
+  if (notificationOnly) {
+    const { error } = await db.from('event_queue').update({ status: 'pending' })
+      .eq('type', 'NotificationEmailRequested').eq('status', 'processing').lte('available_at', new Date().toISOString());
+    if (error) throw new Error('Antrean email belum dapat diperiksa');
+  }
   
   // Get pending events
-  const { data: events, error } = await db
+  let query = db
     .from('event_queue')
     .select('*')
     .eq('status', 'pending')
     .lte('available_at', new Date().toISOString())
     .order('created_at', { ascending: true })
     .limit(limit);
+  if (notificationOnly) query = query.eq('type', 'NotificationEmailRequested');
+  const { data: events, error } = await query;
 
   if (error) {
     throw new Error(`Failed to fetch events: ${error.message}`);
@@ -60,6 +68,7 @@ async function processEvent(event: EventQueue): Promise<{ id: string; type: stri
     .update({
       status: 'processing',
       attempts: currentAttempts + 1,
+      ...(event.type === 'NotificationEmailRequested' ? { available_at: new Date(Date.now() + 11 * 60000).toISOString() } : {}),
       error_message: null,
     })
     .eq('id', event.id)
@@ -119,14 +128,16 @@ async function processEvent(event: EventQueue): Promise<{ id: string; type: stri
 
   } catch (error) {
     console.error(`Error processing event ${event.id}:`, error);
-    const nextAttempt = currentAttempts + 1;
-    const shouldRetry = nextAttempt < maxAttempts;
-    const retryAt = new Date(Date.now() + Math.min(2 ** nextAttempt, 60) * 60 * 1000).toISOString();
+    const deferred = error instanceof NotificationDeferred;
+    const nextAttempt = deferred ? currentAttempts : currentAttempts + 1;
+    const shouldRetry = deferred || nextAttempt < maxAttempts;
+    const retryAt = new Date(Date.now() + (deferred ? error.seconds * 1000 : Math.min(2 ** nextAttempt, 60) * 60 * 1000)).toISOString();
 
     await db
       .from('event_queue')
       .update({
         status: shouldRetry ? 'pending' : 'failed',
+        attempts: nextAttempt,
         available_at: shouldRetry ? retryAt : new Date().toISOString(),
         error_message: error instanceof Error ? error.message.slice(0, 1000) : 'Unknown error'
       })
@@ -169,8 +180,10 @@ async function processAssignmentAssigneeChanged(event: EventQueue) {
 }
 
 async function processNotificationEmailRequested(event: EventQueue) {
-  const { delivery_id } = event.payload as { delivery_id: string };
-  await sendQueuedNotificationEmail(delivery_id);
+  const { delivery_id, notification_id, template_key } = event.payload as { delivery_id?: string; notification_id?: string; template_key?: string };
+  if (delivery_id) await sendQueuedNotificationEmail(delivery_id);
+  else if (notification_id && template_key) await queueNotificationEmail(notification_id, template_key, true);
+  else throw new Error('Notification delivery context missing');
 }
 
 async function processProfileIncompleteReminder(event: EventQueue) {

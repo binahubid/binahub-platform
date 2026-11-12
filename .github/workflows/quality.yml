@@ -36,6 +36,8 @@ jobs:
         run: pnpm --filter @ams/api build && pnpm --filter @ams/api typecheck
       - name: Check built API contracts without external requests
         run: pnpm run test:api:contract
+      - name: Check notification data and scheduler contracts
+        run: pnpm run test:notifications
       - name: Check synthetic AI routing without provider quota
         run: pnpm run test:ai-router && pnpm run test:ai-managed
       - name: Check purpose-limited AI payloads with synthetic data

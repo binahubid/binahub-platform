@@ -1,4 +1,5 @@
 import { getDb } from './database.js';
+import { noticeDeliveryDecision, NotificationDeferred, notificationPushConfig } from './notifications.js';
 
 export async function getAdminRecipientIds(): Promise<string[]> {
   const db = getDb();
@@ -47,7 +48,7 @@ async function assignmentInvitationEmail(recipientId: string, assignmentId: stri
   return { subject, text, html };
 }
 
-export async function queueNotificationEmail(notificationId: string, templateKey: string) {
+export async function queueNotificationEmail(notificationId: string, templateKey: string, fromWorker = false) {
   const db = getDb();
   const { data: notification } = await db.from('notifications').select('id, recipient_id, recipient_role').eq('id', notificationId).maybeSingle();
   if (!notification) throw new Error('Notifikasi tidak ditemukan');
@@ -73,20 +74,29 @@ export async function queueNotificationEmail(notificationId: string, templateKey
     updated_at: new Date().toISOString(),
   }, { onConflict: 'idempotency_key', ignoreDuplicates: true }).select('id').maybeSingle();
   if (error) throw new Error('Gagal membuat antrean email notifikasi');
+  if (fromWorker) {
+    const existing = delivery || (await db.from('email_notification_deliveries').select('id').eq('idempotency_key', idempotencyKey).maybeSingle()).data;
+    if (!existing) throw new Error('Pengiriman email belum tercatat');
+    await sendQueuedNotificationEmail(existing.id);
+    return;
+  }
   if (!delivery) return;
 
-  await db.rpc('enqueue_transformation_event', {
+  const { error: enqueueError } = await db.rpc('enqueue_transformation_event', {
     p_type: 'NotificationEmailRequested',
     p_aggregate_type: 'notification',
     p_aggregate_id: notificationId,
     p_payload: { delivery_id: delivery.id },
   });
+  if (enqueueError) console.error('Notification retry could not be queued', { deliveryId: delivery.id, code: enqueueError.code });
 
   // Attempt delivery in the originating request so important notifications do
   // not depend on a scheduler. The queued event remains the durable retry path.
   try {
     await sendQueuedNotificationEmail(delivery.id);
   } catch (error) {
+    if (enqueueError) throw new Error('Email belum terkirim dan antrean belum tersedia');
+    if (error instanceof NotificationDeferred) return;
     console.error('Immediate notification email delivery failed; queued for retry', {
       deliveryId: delivery.id,
       error: error instanceof Error ? error.message : 'unknown_error',
@@ -98,11 +108,13 @@ export async function sendQueuedNotificationEmail(deliveryId: string) {
   const db = getDb();
   const { data: delivery } = await db.from('email_notification_deliveries').select('*').eq('id', deliveryId).maybeSingle();
   if (!delivery || ['sent', 'skipped'].includes(delivery.status)) return;
+  if (new Date(delivery.available_at).getTime() > Date.now())
+    throw new NotificationDeferred(Math.ceil((new Date(delivery.available_at).getTime() - Date.now()) / 1000));
 
   if (delivery.status === 'processing') {
     const processingSince = new Date(delivery.updated_at).getTime();
     if (Number.isFinite(processingSince) && Date.now() - processingSince < 10 * 60_000) {
-      throw new Error('Pengiriman email masih diproses oleh worker lain');
+      throw new NotificationDeferred(Math.ceil((processingSince + 10 * 60000 - Date.now()) / 1000));
     }
     await db.from('email_notification_deliveries').update({
       status: 'failed',
@@ -122,6 +134,23 @@ export async function sendQueuedNotificationEmail(deliveryId: string) {
   try {
     const { data: notification } = await db.from('notifications').select('*').eq('id', claimed.notification_id).maybeSingle();
     if (!notification) throw new Error('Notifikasi email tidak memiliki sumber');
+    const newDelivery = ['consultant-work', 'notification-reminder'].includes(claimed.template_key);
+    if (newDelivery && (!notificationPushConfig().enabled || Date.now() - new Date(notification.created_at).getTime() > 3 * 86400000)) {
+      await db.from('email_notification_deliveries').update({ status: 'skipped', updated_at: new Date().toISOString() }).eq('id', deliveryId);
+      return;
+    }
+    if (notification.category && notificationPushConfig().enabled) {
+      const decision = await noticeDeliveryDecision(notification);
+      if (decision.wait) {
+        await db.from('email_notification_deliveries').update({ status: 'pending', attempts: delivery.attempts,
+          available_at: new Date(Date.now() + decision.wait * 1000).toISOString(), updated_at: new Date().toISOString() }).eq('id', deliveryId);
+        throw new NotificationDeferred(decision.wait);
+      }
+      if (!decision.send) {
+        await db.from('email_notification_deliveries').update({ status: 'skipped', updated_at: new Date().toISOString() }).eq('id', deliveryId);
+        return;
+      }
+    }
     if (claimed.template_key === 'consultant-team-invitation') {
       const { data: membership } = await db.from('consultant_team_memberships')
         .select('status').eq('associate_id', notification.recipient_id)
@@ -134,10 +163,12 @@ export async function sendQueuedNotificationEmail(deliveryId: string) {
 
     let enabled = true;
     if (notification.recipient_role === 'associate') {
-      const { data: preferences } = await db.from('associate_preferences').select('email_notifications').eq('associate_id', notification.recipient_id).maybeSingle();
+      const { data: preferences, error } = await db.from('associate_preferences').select('email_notifications').eq('associate_id', notification.recipient_id).maybeSingle();
+      if (error) throw new Error('Preferensi email belum dapat diperiksa');
       enabled = preferences?.email_notifications !== false;
     } else {
-      const { data: preferences } = await db.from('admin_preferences').select('email_notifications').eq('admin_id', notification.recipient_id).maybeSingle();
+      const { data: preferences, error } = await db.from('admin_preferences').select('email_notifications').eq('admin_id', notification.recipient_id).maybeSingle();
+      if (error) throw new Error('Preferensi email belum dapat diperiksa');
       enabled = preferences?.email_notifications !== false;
     }
     if (!enabled) {
@@ -149,7 +180,9 @@ export async function sendQueuedNotificationEmail(deliveryId: string) {
     const from = process.env.NOTIFICATION_EMAIL_FROM || process.env.EMAIL_FROM;
     if (!apiKey || !from) throw new Error('Konfigurasi email notifikasi belum lengkap');
     const appUrl = (process.env.APP_URL || 'https://ams.binahub.id').replace(/\/$/, '');
-    const link = notification.link?.startsWith('/') ? `${appUrl}${notification.link}` : appUrl;
+    const link = notification.category && notificationPushConfig().enabled
+      ? `${appUrl}/notifications/open?id=${notification.id}`
+      : notification.link?.startsWith('/') ? `${appUrl}${notification.link}` : appUrl;
     const title = escapeHtml(notification.title);
     const message = escapeHtml(notification.message);
     const content = claimed.template_key === 'assignment-invitation' && notification.reference_id && notification.recipient_role === 'associate'
@@ -161,6 +194,7 @@ export async function sendQueuedNotificationEmail(deliveryId: string) {
         };
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
+      signal: AbortSignal.timeout(8000),
       headers: {
         authorization: `Bearer ${apiKey}`,
         'content-type': 'application/json',
@@ -184,6 +218,7 @@ export async function sendQueuedNotificationEmail(deliveryId: string) {
       updated_at: new Date().toISOString(),
     }).eq('id', deliveryId);
   } catch (error) {
+    if (error instanceof NotificationDeferred) throw error;
     const message = error instanceof Error ? error.message : 'Pengiriman email gagal';
     await db.from('email_notification_deliveries').update({
       status: 'failed',

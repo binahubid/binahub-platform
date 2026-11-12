@@ -84,13 +84,13 @@ export function normalizeIntegrationTimestamp(value: unknown): string {
   return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
 }
 
-export async function postSigned<T>(path: string, payload: unknown): Promise<T> {
+export async function postSigned<T>(path: string, payload: unknown, timeoutMs = 12000): Promise<T> {
   const { baseUrl, secret } = integrationConfig();
   const body = JSON.stringify(payload);
   const timestamp = Date.now().toString();
   const signature = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${baseUrl}${path}`, {

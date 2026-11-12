@@ -62,7 +62,9 @@ test('built app rejects malformed registration/login without reaching an auth pr
 });
 test('private associate/admin/worker routes still reject missing authentication', async()=>{
   for(const [route,method] of [['associate/me','GET'],['admin/stats','GET'],['workers/process-events','POST'],
-    ['admin/consultant-team','GET'],['admin/consultant-team','POST'],['associate/consultant-team','GET'],['associate/consultant-team/open','POST']]){
+    ['admin/consultant-team','GET'],['admin/consultant-team','POST'],['associate/consultant-team','GET'],['associate/consultant-team/open','POST'],
+    ['notifications','GET'],['notifications/devices','POST'],['notifications/open','POST'],['notifications/operations','GET'],
+    ['notifications/retry','POST'],['notifications/test','POST'],['workers/notifications','POST'],['integrations/app/notifications','POST']]){
     const response=await app.request('https://example.invalid/api/'+route,{method});
     assert.equal(response.status,401,route);
   }

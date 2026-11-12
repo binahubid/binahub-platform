@@ -4,11 +4,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect } from 'react';
 import { OnboardingProvider } from '../../components/onboarding/context';
 import { OnboardingModal } from '../../components/onboarding/onboarding-modal';
 import { ToastProvider } from '../../components/ui';
-import { usePageVisibility } from '../../hooks/use-page-visibility';
+import { useAmsNotifications } from '@/components/notifications/provider';
 import { ConsultantTeamProvider, ConsultantPortalEntry } from '@/components/consultant-team-context';
 
 const sidebarSections = [
@@ -41,56 +41,11 @@ const bottomNavItems = [
 ];
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
-  const { user, loading, signOut, accessToken } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [notifCount, setNotifCount] = useState(0);
-
-  const fetchNotifCount = useCallback(async () => {
-    if (!accessToken) return;
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/associate/notifications/count`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) {
-          const total = json.data.count || 0;
-          setNotifCount(total);
-        }
-      }
-    } catch { /* ignore */ }
-  }, [accessToken]);
-
-  const { isVisible, justBecameVisible } = usePageVisibility();
+  const { unread: notifCount } = useAmsNotifications();
   const role = user?.app_metadata?.role;
-  const isAssociate = !!user && role !== 'admin' && role !== 'reviewer';
-
-  useEffect(() => {
-    if (isAssociate) {
-      fetchNotifCount();
-      const interval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-          fetchNotifCount();
-        }
-      }, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [isAssociate, fetchNotifCount]);
-
-  useEffect(() => {
-    if (isAssociate && isVisible && justBecameVisible > 0) {
-      fetchNotifCount();
-    }
-  }, [isAssociate, isVisible, justBecameVisible, fetchNotifCount]);
-
-  useEffect(() => {
-    const handleUpdate = () => {
-      fetchNotifCount();
-    };
-    window.addEventListener('update-notif-count', handleUpdate);
-    return () => window.removeEventListener('update-notif-count', handleUpdate);
-  }, [fetchNotifCount]);
 
   useEffect(() => {
     if (!loading && !user) {

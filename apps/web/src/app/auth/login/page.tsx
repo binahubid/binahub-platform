@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase-client';
+import { notificationLoginReturn } from '@/lib/notification-client';
 
 function LoginForm() {
   const router = useRouter();
@@ -44,6 +45,11 @@ function LoginForm() {
       return;
     }
 
+    const returnToNotice = notificationLoginReturn();
+    if (returnToNotice) {
+      router.replace(returnToNotice);
+      return;
+    }
     const role = signInData.user?.app_metadata?.role;
     if (role === 'admin' || role === 'reviewer') {
       router.push(role === 'reviewer' ? '/admin/reviews' : '/admin');

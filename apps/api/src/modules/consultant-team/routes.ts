@@ -6,6 +6,7 @@ import { getDb } from '../../lib/database.js';
 import { getTeamMembership, syncConsultantMembership, teamErrorMessages } from '../../lib/consultant-team.js';
 import { requestAppAccessLink } from '../../lib/app-integration.js';
 import { queueNotificationEmail } from '../../lib/notification-email.js';
+import { consultantPortalTargetSchema } from '@ams/shared/validators/notifications';
 import type { AppEnv } from '../../types/env.js';
 
 export const teamAdminRoutes = new Hono<AppEnv>();
@@ -88,13 +89,15 @@ teamAssociateRoutes.post('/respond', async (c) => {
   return c.json({ success: true, data, syncPending: sync[0].status === 'rejected' });
 });
 teamAssociateRoutes.post('/open', async (c) => {
+  const target = consultantPortalTargetSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!target.success) return c.json({ success: false, error: 'Tujuan portal tidak valid.' }, 400);
   const id = c.get('user').id, membership = await getTeamMembership(id);
   const { data: associate } = await getDb().from('associates').select('status').eq('id', id).maybeSingle();
   if (!activeConsultantMembership(membership, associate?.status || ''))
     return c.json({ success: false, error: 'Keanggotaan konsultan Anda belum aktif. Hubungi admin BinaHub.' }, 403);
   try {
     await syncConsultantMembership(id);
-    const access = await requestAppAccessLink(id, '/konsultan');
+    const access = await requestAppAccessLink(id, target.data.leadId ? `/konsultan/clients/${target.data.leadId}` : '/konsultan');
     return c.json({ success: true, data: { url: access.url } });
   } catch {
     return c.json({ success: false, error: 'Portal belum dapat dibuka. Keanggotaan Anda tetap tersimpan; coba lagi sebentar.' }, 503);

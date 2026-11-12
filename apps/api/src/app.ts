@@ -10,6 +10,7 @@ import { fileRoutes } from "./modules/files/routes.js";
 import { workerRoutes } from "./workers/routes.js";
 import type { AppEnv } from "./types/env.js";
 import appIntegration from "./modules/integrations/app.js";
+import { notificationRoutes } from "./modules/notifications/routes.js";
 
 const app = new Hono<AppEnv>();
 const apiVersion = "0.11.2";
@@ -175,6 +176,7 @@ app.onError((err, c) => {
 app.notFound((c) => c.json({ success: false, error: 'Endpoint tidak ditemukan' }, 404));
 
 app.route("/api/auth", auth);
+app.route("/api/notifications", notificationRoutes);
 app.route("/api/admin/consultant-team", teamAdminRoutes);
 app.route("/api/associate/consultant-team", teamAssociateRoutes);
 app.route("/api/associate", associateRoutes);
