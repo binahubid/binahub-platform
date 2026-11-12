@@ -34,6 +34,13 @@ globalThis.fetch=async input=>{
   outbound++;throw new Error('Unexpected outbound requests are forbidden in the API contract.');
 };
 const {default:app}=await import('../apps/api/dist/app.js');
+const domain=await import('../packages/domain/dist/index.js');
+
+test('native ESM workspace entry resolves without bundler-specific extension fallback',()=>{
+  assert.equal(typeof domain.canSubmit,'function');
+  assert.equal(domain.activeConsultantMembership({status:'active',accepted_at:'2026-11-12'},'active'),true);
+  assert.equal(domain.activeConsultantMembership({status:'paused',accepted_at:'2026-11-12'},'active'),false);
+});
 
 test('built Hono app preserves health version and request/security headers', async()=>{
   const response=await app.request('https://example.invalid/api/health',{headers:{'X-Request-Id':'synthetic-contract'}});
