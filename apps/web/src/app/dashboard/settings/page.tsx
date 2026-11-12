@@ -1,181 +1,256 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useMemo } from 'react';
-import { useAuth } from '../../../context/AuthContext';
-import { DeviceSettings, NoticePreferences } from '@/components/notifications/device-settings';
+import { useEffect, useId, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import {
+  DeviceSettings,
+  NoticePreferences,
+} from "@/components/notifications/device-settings";
+import { notificationApi } from "@/lib/notification-client";
 
 type Preferences = {
   email_notifications: boolean;
-  whatsapp_notifications: boolean;
   profile_visibility: string;
-  locale: string;
 };
+type Setting = keyof Preferences;
+type Feedback = { setting: Setting; ok: boolean };
 
 export default function SettingsPage() {
   const { user, accessToken } = useAuth();
-  const [prefs, setPrefs] = useState<Preferences>({
-    email_notifications: true,
-    whatsapp_notifications: true,
-    profile_visibility: 'private',
-    locale: 'id',
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const headers = useMemo(() => ({ Authorization: `Bearer ${accessToken}` }), [accessToken]);
+  const [preferences, setPreferences] = useState<Preferences | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [saving, setSaving] = useState<Setting | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const account = user?.id;
 
   useEffect(() => {
-    if (!user || !accessToken) return;
-    fetch(`${apiUrl}/api/associate/preferences`, { headers })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success && d.data) {
-          setPrefs({
-            email_notifications: d.data.email_notifications ?? true,
-            whatsapp_notifications: d.data.whatsapp_notifications ?? true,
-            profile_visibility: d.data.profile_visibility ?? 'private',
-            locale: d.data.locale ?? 'id',
+    if (!account || !accessToken) return;
+    const abort = new AbortController();
+    setPreferences(null);
+    setLoadError(false);
+    setFeedback(null);
+    void fetch(notificationApi + "/api/associate/preferences", {
+      headers: { Authorization: "Bearer " + accessToken },
+      signal: abort.signal,
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error();
+        if (!abort.signal.aborted) {
+          setPreferences({
+            email_notifications: result.data?.email_notifications ?? true,
+            profile_visibility: result.data?.profile_visibility ?? "private",
           });
         }
-        setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, [user, accessToken, apiUrl, headers]);
-
-  const handleToggle = async (key: keyof Preferences) => {
-    const newValue = typeof prefs[key] === 'boolean' ? !prefs[key] : prefs[key];
-    const updated = { ...prefs, [key]: newValue };
-    setPrefs(updated);
-    setSaving(true);
-
-    try {
-      const res = await fetch(`${apiUrl}/api/associate/preferences`, {
-        method: 'PUT',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          emailNotifications: updated.email_notifications,
-          whatsappNotifications: updated.whatsapp_notifications,
-          profileVisibility: updated.profile_visibility,
-        }),
+      .catch(() => {
+        if (!abort.signal.aborted) setLoadError(true);
       });
-      const d = await res.json();
-      if (d.success) {
-        setToast({ message: 'Pengaturan tersimpan', type: 'success' });
-      } else {
-        setToast({ message: 'Gagal menyimpan', type: 'error' });
-        setPrefs(prefs);
-      }
+    return () => abort.abort();
+  }, [account, accessToken, retry]);
+
+  async function toggle(setting: Setting) {
+    if (!accessToken || !preferences || saving) return;
+    const update =
+      setting === "email_notifications"
+        ? { emailNotifications: !preferences.email_notifications }
+        : {
+            profileVisibility:
+              preferences.profile_visibility === "public"
+                ? "private"
+                : "public",
+          };
+
+    setSaving(setting);
+    setFeedback(null);
+    try {
+      const response = await fetch(
+        notificationApi + "/api/associate/preferences",
+        {
+          method: "PUT",
+          headers: {
+            Authorization: "Bearer " + accessToken,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(update),
+          signal: AbortSignal.timeout(10000),
+        },
+      );
+      const result = await response.json();
+      if (!response.ok || !result.success || !result.data) throw new Error();
+      setPreferences({
+        email_notifications: result.data.email_notifications,
+        profile_visibility: result.data.profile_visibility,
+      });
+      setFeedback({ setting, ok: true });
     } catch {
-      setToast({ message: 'Gagal menyimpan', type: 'error' });
-      setPrefs(prefs);
+      setFeedback({ setting, ok: false });
     } finally {
-      setSaving(false);
-      setTimeout(() => setToast(null), 3000);
+      setSaving(null);
     }
-  };
+  }
 
   return (
-    <div className="space-y-6">
-      {toast && (
-        <div className={`fixed bottom-5 right-5 z-50 rounded-lg px-4 py-3 text-xs font-semibold text-white shadow-lg ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
-          {toast.message}
-        </div>
-      )}
-
-      <div>
+    <div className="mx-auto max-w-3xl space-y-4">
+      <header className="pb-1">
         <h1 className="text-2xl font-semibold text-slate-900">Pengaturan</h1>
-        <p className="mt-1 text-sm text-slate-600">Kelola akun dan pemberitahuan AMS.</p>
-      </div>
+        <p className="mt-1 text-sm leading-6 text-slate-600">
+          Kelola notifikasi dan privasi akun Anda.
+        </p>
+      </header>
 
       <DeviceSettings />
-      <NoticePreferences />
-
-      {loading ? (
-        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-slate-200 bg-white">
-          <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
+      <section
+        className="rounded-xl border border-slate-200 bg-white px-5 sm:px-6"
+        aria-label="Notifikasi email dan WhatsApp"
+      >
+        <div className="border-b border-slate-200 py-4">
+          <h2 className="text-base font-semibold text-slate-900">Email</h2>
+          {preferences ? (
+            <ToggleRow
+              label="Notifikasi email"
+              description="Terima undangan dan pembaruan pekerjaan di email Anda."
+              enabled={preferences.email_notifications}
+              disabled={saving !== null}
+              saving={saving === "email_notifications"}
+              feedback={
+                feedback?.setting === "email_notifications" ? feedback : null
+              }
+              onToggle={() => void toggle("email_notifications")}
+            />
+          ) : loadError ? (
+            <div className="mt-2">
+              <p role="alert" className="text-sm text-red-700">
+                Pilihan email belum dapat dimuat.
+              </p>
+              <button
+                type="button"
+                className="min-h-11 text-sm font-semibold text-[#0B2C6B] hover:underline"
+                onClick={() => setRetry(retry + 1)}
+              >
+                Coba lagi
+              </button>
+            </div>
+          ) : (
+            <p role="status" className="mt-2 text-sm text-slate-600">
+              Memuat pilihan email…
+            </p>
+          )}
         </div>
-      ) : (
-        <>
-          {/* Account Info */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">Account</h2>
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <span className="text-sm text-slate-500">Email</span>
-                <span className="text-sm font-medium text-slate-900">{user?.email}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-500">Role</span>
-                <span className="text-sm font-medium text-slate-900">Associate</span>
-              </div>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 py-4">
+          <h2 className="text-base font-semibold text-slate-900">WhatsApp</h2>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+            Segera hadir
+          </span>
+        </div>
+      </section>
 
-          {/* Notification Preferences */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">Notifikasi</h2>
-            <div className="mt-4 space-y-4">
-              <ToggleRow
-                label="Notifikasi email"
-                description="Terima pembaruan profil dan penugasan melalui email."
-                enabled={prefs.email_notifications}
-                disabled={saving}
-                onToggle={() => handleToggle('email_notifications')}
-              />
-              <ToggleRow
-                label="WhatsApp Notifications"
-                description="Get notified via WhatsApp for important updates"
-                enabled={prefs.whatsapp_notifications}
-                disabled={saving}
-                onToggle={() => handleToggle('whatsapp_notifications')}
-              />
-            </div>
-          </div>
-
-          {/* Privacy */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">Privasi</h2>
-            <div className="mt-4 space-y-4">
-              <ToggleRow
-                label="Profile Visibility"
-                description="Allow others to see your profile"
-                enabled={prefs.profile_visibility === 'public'}
-                disabled={saving}
-                onToggle={() => handleToggle('profile_visibility')}
-              />
-            </div>
-          </div>
-        </>
-      )}
+      <NoticePreferences />
+      <section
+        className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
+        aria-labelledby="account-settings-heading"
+      >
+        <h2
+          id="account-settings-heading"
+          className="text-base font-semibold text-slate-900"
+        >
+          Akun dan privasi
+        </h2>
+        <dl className="mt-3 border-b border-slate-200 pb-3 text-sm">
+          <dt className="text-slate-600">Email akun</dt>
+          <dd className="mt-1 break-words font-medium text-slate-900">
+            {user?.email || "—"}
+          </dd>
+        </dl>
+        {preferences && (
+          <ToggleRow
+            label="Profil publik"
+            description="Izinkan orang lain melihat profil Anda."
+            enabled={preferences.profile_visibility === "public"}
+            disabled={saving !== null}
+            saving={saving === "profile_visibility"}
+            feedback={
+              feedback?.setting === "profile_visibility" ? feedback : null
+            }
+            onToggle={() => void toggle("profile_visibility")}
+          />
+        )}
+      </section>
     </div>
   );
 }
 
-function ToggleRow({ label, description, enabled, disabled, onToggle }: {
+function ToggleRow({
+  label,
+  description,
+  enabled,
+  disabled,
+  saving,
+  feedback,
+  onToggle,
+}: {
   label: string;
   description: string;
   enabled: boolean;
   disabled: boolean;
+  saving: boolean;
+  feedback: Feedback | null;
   onToggle: () => void;
 }) {
+  const descriptionId = useId();
   return (
-    <div className="flex items-center justify-between rounded-lg border border-slate-100 p-4">
-      <div>
-        <p className="text-sm font-medium text-slate-900">{label}</p>
-        <p className="text-xs text-slate-500">{description}</p>
+    <div className="mt-2">
+      <div className="flex items-center justify-between gap-4">
+        <p id={descriptionId} className="text-sm leading-6 text-slate-600">
+          {description}
+        </p>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-label={label}
+          aria-describedby={descriptionId}
+          aria-busy={saving}
+          disabled={disabled}
+          onClick={onToggle}
+          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md text-sm font-medium text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B2C6B] disabled:opacity-60"
+        >
+          <span aria-hidden="true">{enabled ? "Aktif" : "Nonaktif"}</span>
+          <span
+            aria-hidden="true"
+            className={
+              "relative h-6 w-11 rounded-full " +
+              (enabled ? "bg-[#0B2C6B]" : "bg-slate-400")
+            }
+          >
+            <span
+              className={
+                "absolute top-1 h-4 w-4 rounded-full bg-white " +
+                (enabled ? "left-6" : "left-1")
+              }
+            />
+          </span>
+        </button>
       </div>
-      <button
-        onClick={onToggle}
-        disabled={disabled}
-        className={`relative h-6 w-11 rounded-full transition-colors ${enabled ? 'bg-[#0B2C6B]' : 'bg-slate-200'} disabled:opacity-50`}
-      >
-        <div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${enabled ? 'left-6' : 'left-1'}`} />
-      </button>
+      {saving && (
+        <p role="status" className="text-sm text-slate-600">
+          Menyimpan…
+        </p>
+      )}
+      {feedback && (
+        <p
+          role={feedback.ok ? "status" : "alert"}
+          className={
+            "text-sm " + (feedback.ok ? "text-emerald-800" : "text-red-700")
+          }
+        >
+          {feedback.ok
+            ? "Pilihan tersimpan."
+            : "Pilihan belum tersimpan. Coba lagi."}
+        </p>
+      )}
     </div>
   );
 }

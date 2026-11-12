@@ -267,7 +267,7 @@ export default function NotificationDeliveryPage() {
           </section>
         </>
       )}
-      <DeviceSettings />
+      <DeviceSettings allowTest />
       <NoticePreferences />
     </div>
   );

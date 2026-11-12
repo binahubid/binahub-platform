@@ -9,8 +9,20 @@ Object.assign(process.env, {
   APP_INTEGRATION_SECRET:'synthetic-integration-contract-only',
 });
 let outbound=0,rateChecks=0,associateLookups=0,teamActive=true;
-globalThis.fetch=async input=>{
+const accountId='00000000-0000-4000-8000-000000000007';
+let preferenceUpdate=null;
+globalThis.fetch=async (input,init)=>{
   const url=new URL(input instanceof Request?input.url:String(input));
+  if(url.origin==='https://example.invalid'&&url.pathname==='/auth/v1/user'){
+    const token=new Headers(init?.headers||input.headers).get('authorization');
+    const role=token?.replace('Bearer synthetic-','');
+    assert(['associate','reviewer','admin'].includes(role));
+    return Response.json({id:accountId,email:'synthetic@example.invalid',app_metadata:{role},user_metadata:{}});
+  }
+  if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/associate_preferences'&&init?.method==='POST'){
+    preferenceUpdate=JSON.parse(init.body);
+    return Response.json({email_notifications:preferenceUpdate.email_notifications,whatsapp_notifications:false,profile_visibility:'private'});
+  }
   if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/rpc/consume_rate_limit'){
     rateChecks++;
     return Response.json({allowed:true,remaining:9,reset_at:'2099-01-01T00:00:00Z'});
@@ -64,11 +76,33 @@ test('private associate/admin/worker routes still reject missing authentication'
   for(const [route,method] of [['associate/me','GET'],['admin/stats','GET'],['workers/process-events','POST'],
     ['admin/consultant-team','GET'],['admin/consultant-team','POST'],['associate/consultant-team','GET'],['associate/consultant-team/open','POST'],
     ['notifications','GET'],['notifications/devices','POST'],['notifications/open','POST'],['notifications/operations','GET'],
-    ['notifications/retry','POST'],['notifications/test','POST'],['workers/notifications','POST'],['integrations/app/notifications','POST']]){
+    ['notifications/retry','POST'],['notifications/test','POST'],['workers/notifications','POST'],['workers/notifications/dispatch','POST'],['integrations/app/notifications','POST']]){
     const response=await app.request('https://example.invalid/api/'+route,{method});
     assert.equal(response.status,401,route);
   }
   assert.equal(outbound,0);
+});
+test('an associate or reviewer cannot send a push test',async()=>{
+  for(const role of ['associate','reviewer']){
+    const response=await app.request('https://example.invalid/api/notifications/test',{
+      method:'POST',headers:{authorization:'Bearer synthetic-'+role,'content-type':'application/json'},
+      body:JSON.stringify({deviceKey:accountId}),
+    });
+    assert.equal(response.status,403,role);
+  }
+  assert.equal(outbound,0);
+});
+test('saving email preferences updates the stored column and preserves WhatsApp',async()=>{
+  const response=await app.request('https://example.invalid/api/associate/preferences',{
+    method:'PUT',headers:{authorization:'Bearer synthetic-associate','content-type':'application/json'},
+    body:JSON.stringify({emailNotifications:false}),
+  });
+  assert.equal(response.status,200);
+  assert.equal(preferenceUpdate.associate_id,accountId);
+  assert.equal(preferenceUpdate.email_notifications,false);
+  assert.equal('whatsapp_notifications' in preferenceUpdate,false);
+  assert.equal('profile_visibility' in preferenceUpdate,false);
+  assert.equal((await response.json()).data.email_notifications,false);
 });
 test('signed consultant checks use current membership and matching email',async()=>{
   const url='https://example.invalid/api/integrations/app/consultant-team/check';

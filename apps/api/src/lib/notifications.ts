@@ -93,7 +93,10 @@ export async function noticeDeliveryDecision(notice: Notice) {
   return { send: !wait, reason: wait ? "QUIET_HOURS" : "", wait };
 }
 
-export async function processPushNotifications(limit = 10) {
+export async function processPushNotifications(
+  limit = 10,
+  notificationId?: string,
+) {
   const config = notificationPushConfig();
   if (!config.enabled)
     return {
@@ -110,10 +113,16 @@ export async function processPushNotifications(limit = 10) {
   );
   const db = getDb(),
     lease = randomUUID();
-  const { data: deliveries, error } = await db.rpc("ams_notification_claim", {
+  const claim = {
     p_lease: lease,
     p_limit: limit,
-  });
+  };
+  const { data: deliveries, error } = notificationId
+    ? await db.rpc("ams_notification_claim_new", {
+        ...claim,
+        p_notice: notificationId,
+      })
+    : await db.rpc("ams_notification_claim", claim);
   if (error) throw new Error("NOTIFICATION_QUEUE_UNAVAILABLE");
   const summary = {
     state: "ok",

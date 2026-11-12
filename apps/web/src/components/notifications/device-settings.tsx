@@ -7,9 +7,9 @@ import { deviceKey, notificationRequest } from "@/lib/notification-client";
 import { useAmsNotifications } from "./provider";
 
 const primaryButton =
-  "min-h-11 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#123e84] disabled:opacity-50";
+  "min-h-11 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#123e84] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B2C6B] disabled:opacity-50";
 const secondaryButton =
-  "min-h-11 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-[#0B2C6B] hover:bg-slate-50 disabled:opacity-50";
+  "min-h-11 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-[#0B2C6B] hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B2C6B] disabled:opacity-50";
 
 export function InstallAmsCard() {
   const { installed, ios, supported, subscribed } = useAmsNotifications();
@@ -33,7 +33,7 @@ export function InstallAmsCard() {
           href="/dashboard/settings#notifikasi-hp"
           className={primaryButton}
         >
-          {installed ? "Atur notifikasi HP" : "Pasang AMS"}
+          {ios && !installed ? "Pasang AMS" : "Atur notifikasi HP"}
         </Link>
         <button
           type="button"
@@ -50,156 +50,161 @@ export function InstallAmsCard() {
   );
 }
 
-export function DeviceSettings() {
+export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
   const state = useAmsNotifications();
-  const [showInstall, setShowInstall] = useState(false);
+  const { user } = useAuth();
   const [installError, setInstallError] = useState("");
   const [key, setKey] = useState("");
   useEffect(() => {
     setKey(deviceKey());
   }, []);
+
+  const installFirst = state.ios && !state.installed;
   const active =
     state.subscribed && state.permission === "granted" && state.configured;
-  const installFirst = state.ios && !state.installed;
-  const enabled =
-    state.configured &&
-    state.supported &&
-    state.permission !== "denied" &&
-    !installFirst;
-  const permissionLabel =
-    state.permission === "granted"
-      ? "Diizinkan"
-      : state.permission === "denied"
-        ? "Diblokir"
-        : "Belum diberikan";
-  const activeDevices = state.devices.filter((device) => device.active);
+  const blocked = state.permission === "denied";
+  const readyToEnable =
+    state.configured && state.supported && !installFirst && !blocked;
+  const otherDevices = state.devices.filter(
+    (device) => device.active && device.device_key !== key,
+  );
+  const canTest = allowTest && user?.app_metadata?.role === "admin";
+  const isBusy = state.busy || state.checking;
+  let status = "Belum aktif";
+  let description =
+    "Aktifkan untuk menerima undangan, penugasan, dan perubahan jadwal di perangkat ini.";
+
+  if (active) {
+    status = "Aktif di perangkat ini";
+    description =
+      "Undangan, penugasan, dan perubahan jadwal dapat muncul saat AMS ditutup.";
+  } else if (installFirst) {
+    status = "Perlu dipasang";
+    description =
+      "Di iPhone atau iPad, pasang AMS ke layar utama sebelum mengaktifkan notifikasi.";
+  } else if (blocked) {
+    status = "Izin diblokir";
+    description =
+      "Izinkan notifikasi AMS dari pengaturan HP atau browser, lalu kembali ke halaman ini.";
+  } else if (state.checking) {
+    status = "Memeriksa…";
+    description = "Memeriksa apakah perangkat ini bisa menerima notifikasi.";
+  } else if (!state.configured) {
+    status = "Belum tersedia";
+    description =
+      "Notifikasi HP sedang tidak tersedia. Anda dapat memeriksanya kembali.";
+  } else if (!state.supported) {
+    status = "Belum didukung";
+    description = state.ios
+      ? "Perbarui iOS atau iPadOS agar AMS yang terpasang dapat menerima notifikasi."
+      : "Buka AMS di Chrome atau Safari terbaru untuk mengaktifkan notifikasi.";
+  }
+
   async function install() {
     setInstallError("");
-    if (!state.canInstall) {
-      setShowInstall((value) => !value);
-      return;
-    }
     try {
       await state.install();
     } catch {
-      setInstallError("Gunakan menu browser untuk memasang AMS.");
+      setInstallError(
+        "Gunakan menu browser untuk memasang AMS ke layar utama.",
+      );
     }
   }
+
   return (
     <section
       id="notifikasi-hp"
       className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
       aria-labelledby="notification-settings-heading"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2
-            id="notification-settings-heading"
-            className="text-lg font-semibold text-slate-900"
-          >
-            Notifikasi HP
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            Terima undangan, penugasan, dan perubahan jadwal saat AMS sedang
-            ditutup.
-          </p>
-        </div>
-        <button
-          type="button"
-          className={secondaryButton}
-          disabled={state.checking || state.busy}
-          onClick={() => void state.refresh()}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h2
+          id="notification-settings-heading"
+          className="text-base font-semibold text-slate-900"
         >
-          {state.checking ? "Memeriksa perangkat…" : "Periksa perangkat ini"}
-        </button>
+          Notifikasi HP
+        </h2>
+        <span
+          role="status"
+          className={
+            "rounded-full px-2.5 py-1 text-xs font-semibold " +
+            (active
+              ? "bg-emerald-50 text-emerald-800"
+              : blocked
+                ? "bg-amber-50 text-amber-900"
+                : "bg-slate-100 text-slate-700")
+          }
+        >
+          {status}
+        </span>
       </div>
-      <dl className="my-5 grid gap-3 rounded-lg bg-slate-50 p-4 text-sm sm:grid-cols-3">
-        <div>
-          <dt className="text-slate-600">Pemasangan</dt>
-          <dd className="mt-1 font-semibold text-slate-900">
-            {state.installed ? "Dibuka dari ikon AMS" : "Dibuka di browser"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-slate-600">Izin notifikasi</dt>
-          <dd className="mt-1 font-semibold text-slate-900">
-            {state.supported ? permissionLabel : "Belum tersedia"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-slate-600">Notifikasi perangkat</dt>
-          <dd className="mt-1 font-semibold text-slate-900">
-            {active ? "Aktif" : "Belum aktif"}
-          </dd>
-        </div>
-      </dl>
-      {!state.configured && !state.checking && !state.error && (
-        <p className="mb-4 text-sm leading-6 text-slate-600">
-          Notifikasi HP sedang disiapkan. Undangan tetap tersedia di AMS dan
-          melalui email sesuai pilihan Anda.
-        </p>
-      )}
-      {state.permission === "denied" && (
-        <p className="mb-4 text-sm leading-6 text-slate-700">
-          Izinkan AMS di pengaturan notifikasi HP atau browser, lalu pilih{" "}
-          <strong>Periksa perangkat ini</strong>.
-        </p>
-      )}
+      <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+        {description}
+      </p>
+
       {installFirst && (
-        <p className="mb-4 text-sm leading-6 text-slate-700">
-          Di iPhone atau iPad, pasang AMS di layar utama dan buka dari ikonnya
-          sebelum mengaktifkan notifikasi.
-        </p>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-700">
+          <li>
+            Buka AMS di Safari dan ketuk <strong>Bagikan</strong>.
+          </li>
+          <li>
+            Pilih <strong>Tambah ke Layar Utama</strong>.
+          </li>
+          <li>
+            Buka ikon AMS dan pilih <strong>Aktifkan notifikasi HP</strong>.
+          </li>
+        </ol>
       )}
-      <div className="flex flex-wrap gap-2">
-        {!state.installed && (
-          <button
-            type="button"
-            aria-expanded={state.canInstall ? undefined : showInstall}
-            className={secondaryButton}
-            onClick={() => void install()}
-          >
-            Pasang AMS
-          </button>
-        )}
-        {!active && enabled && (
-          <button
-            type="button"
-            className={primaryButton}
-            disabled={state.busy || state.checking}
-            onClick={() => void state.enable()}
-          >
-            Aktifkan notifikasi HP
-          </button>
-        )}
-        {active && (
-          <button
-            type="button"
-            className={primaryButton}
-            disabled={state.busy}
-            onClick={() => void state.test()}
-          >
-            Kirim notifikasi uji
-          </button>
-        )}
-        {state.subscribed && (
-          <button
-            type="button"
-            className={secondaryButton}
-            disabled={state.busy}
-            onClick={() => void state.disable()}
-          >
-            Nonaktifkan di perangkat ini
-          </button>
-        )}
-      </div>
-      {showInstall && (
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-700">
-          {state.ios
-            ? "Buka ams.binahub.id di Safari. Pilih Bagikan, lalu Tambah ke Layar Utama. Buka AMS dari ikon yang baru dibuat."
-            : "Buka menu browser dan pilih Instal aplikasi atau Tambahkan ke layar utama. Jika pilihannya tidak tersedia, Anda tetap bisa menggunakan AMS di browser."}
-        </p>
+
+      {((!active && readyToEnable) ||
+        blocked ||
+        (!state.configured && !state.checking && !installFirst) ||
+        state.subscribed) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {!active && readyToEnable && (
+            <button
+              type="button"
+              className={primaryButton}
+              disabled={isBusy}
+              onClick={() => void state.enable()}
+            >
+              {state.busy ? "Mengaktifkan…" : "Aktifkan notifikasi HP"}
+            </button>
+          )}
+          {(blocked ||
+            (!state.configured && !state.checking && !installFirst)) && (
+            <button
+              type="button"
+              className={secondaryButton}
+              disabled={isBusy}
+              onClick={() => void state.refresh()}
+            >
+              Periksa lagi
+            </button>
+          )}
+          {active && canTest && (
+            <button
+              type="button"
+              className={primaryButton}
+              disabled={isBusy}
+              onClick={() => void state.test()}
+            >
+              Kirim notifikasi uji
+            </button>
+          )}
+          {state.subscribed && (
+            <button
+              type="button"
+              className={secondaryButton}
+              disabled={isBusy}
+              onClick={() => void state.disable()}
+            >
+              Nonaktifkan di perangkat ini
+            </button>
+          )}
+        </div>
       )}
+
       {(state.error || installError) && (
         <p role="alert" className="mt-3 text-sm leading-6 text-red-700">
           {state.error || installError}
@@ -210,24 +215,47 @@ export function DeviceSettings() {
           {state.message}
         </p>
       )}
-      {activeDevices.length > 0 && (
-        <details className="mt-5 border-t border-slate-200 pt-4">
-          <summary className="cursor-pointer text-sm font-semibold text-[#0B2C6B]">
-            Perangkat aktif ({activeDevices.length})
+
+      {!state.installed && !installFirst && state.supported && (
+        <details className="mt-4 border-t border-slate-200 pt-3">
+          <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-[#0B2C6B]">
+            Pasang AMS di layar utama
+          </summary>
+          <p className="text-sm leading-6 text-slate-600">
+            Buka AMS langsung dari ikon di layar utama perangkat Anda.
+          </p>
+          {state.canInstall ? (
+            <button
+              type="button"
+              className={secondaryButton + " mt-2"}
+              onClick={() => void install()}
+            >
+              Pasang AMS
+            </button>
+          ) : (
+            <p className="text-sm leading-6 text-slate-700">
+              Di menu browser, pilih <strong>Instal aplikasi</strong> atau{" "}
+              <strong>Tambahkan ke layar utama</strong>.
+            </p>
+          )}
+        </details>
+      )}
+      {otherDevices.length > 0 && (
+        <details className="mt-4 border-t border-slate-200 pt-3">
+          <summary className="cursor-pointer py-2 text-sm font-medium text-[#0B2C6B]">
+            Perangkat lain ({otherDevices.length})
           </summary>
           <ul className="mt-2 divide-y divide-slate-200">
-            {activeDevices.map((device) => (
+            {otherDevices.map((device) => (
               <li
                 key={device.id}
                 className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
               >
-                <span className="text-slate-700">
-                  {device.label}
-                  {device.device_key === key ? " · Perangkat ini" : ""}
-                </span>
+                <span className="text-slate-700">{device.label}</span>
                 <button
                   type="button"
-                  disabled={state.busy}
+                  aria-label={"Nonaktifkan notifikasi pada " + device.label}
+                  disabled={isBusy}
                   className={secondaryButton}
                   onClick={() => void state.removeDevice(device.device_key)}
                 >
@@ -266,11 +294,13 @@ const zones = [
 export function NoticePreferences() {
   const { accessToken } = useAuth();
   const [values, setValues] = useState<Preferences | null>(null);
+  const [quietEnabled, setQuietEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ error: boolean; text: string } | null>(
     null,
   );
   const [retry, setRetry] = useState(0);
+
   useEffect(() => {
     if (!accessToken) return;
     const abort = new AbortController();
@@ -281,7 +311,11 @@ export function NoticePreferences() {
       undefined,
       abort.signal,
     )
-      .then(setValues)
+      .then((preferences) => {
+        if (abort.signal.aborted) return;
+        setValues(preferences);
+        setQuietEnabled(preferences.quiet_start !== preferences.quiet_end);
+      })
       .catch(() => {
         if (!abort.signal.aborted)
           setResult({
@@ -291,13 +325,24 @@ export function NoticePreferences() {
       });
     return () => abort.abort();
   }, [accessToken, retry]);
+
   async function save(event: React.FormEvent) {
     event.preventDefault();
     if (!accessToken || !values || saving) return;
+    if (quietEnabled && values.quiet_start === values.quiet_end) {
+      setResult({
+        error: true,
+        text: "Pilih jam mulai dan selesai yang berbeda.",
+      });
+      return;
+    }
     setSaving(true);
     setResult(null);
     try {
-      await notificationRequest(accessToken, "/preferences", "PUT", values);
+      await notificationRequest(accessToken, "/preferences", "PUT", {
+        ...values,
+        quiet_end: quietEnabled ? values.quiet_end : values.quiet_start,
+      });
       setResult({ error: false, text: "Pilihan notifikasi tersimpan." });
     } catch (error) {
       setResult({
@@ -309,17 +354,20 @@ export function NoticePreferences() {
       setSaving(false);
     }
   }
+
   return (
-    <details className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
-      <summary className="cursor-pointer font-semibold text-slate-900">
-        Jenis pemberitahuan dan jam tenang
+    <details className="rounded-xl border border-slate-200 bg-white px-5 py-2 sm:px-6">
+      <summary className="min-h-11 cursor-pointer py-3 font-semibold text-slate-900">
+        Jenis notifikasi dan jam tenang
       </summary>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
-        Atur pemberitahuan yang dikirim ke email dan HP. Semua undangan dan
-        pekerjaan tetap tersedia di AMS.
+      <p className="text-sm leading-6 text-slate-600">
+        Pilih pemberitahuan yang dikirim ke HP dan email Anda.
       </p>
       {values && (
-        <form className="mt-4 space-y-5" onSubmit={(event) => void save(event)}>
+        <form
+          className="mt-4 space-y-4 pb-4"
+          onSubmit={(event) => void save(event)}
+        >
           <fieldset className="grid gap-1 sm:grid-cols-2">
             <legend className="sr-only">Jenis pemberitahuan</legend>
             {preferences.map(([key, label]) => (
@@ -331,69 +379,104 @@ export function NoticePreferences() {
                   type="checkbox"
                   className="h-4 w-4 accent-[#0B2C6B]"
                   checked={values[key]}
-                  onChange={(event) =>
-                    setValues({ ...values, [key]: event.target.checked })
-                  }
+                  onChange={(event) => {
+                    setValues({ ...values, [key]: event.target.checked });
+                    setResult(null);
+                  }}
                 />
                 {label}
               </label>
             ))}
           </fieldset>
-          <fieldset className="grid gap-3 border-t border-slate-200 pt-4 sm:grid-cols-3">
+
+          <fieldset className="border-t border-slate-200 pt-3">
             <legend className="sr-only">Jam tenang</legend>
-            {(
-              [
-                ["quiet_start", "Mulai jam tenang"],
-                ["quiet_end", "Selesai jam tenang"],
-              ] as const
-            ).map(([key, label]) => (
-              <label
-                key={key}
-                className="grid gap-1.5 text-sm font-medium text-slate-800"
-              >
-                {label}
-                <select
-                  className="min-h-11 rounded-lg border border-slate-300 px-3 font-normal"
-                  value={values[key]}
-                  onChange={(event) =>
-                    setValues({ ...values, [key]: Number(event.target.value) })
-                  }
-                >
-                  {Array.from({ length: 24 }, (_, hour) => (
-                    <option key={hour} value={hour}>
-                      {String(hour).padStart(2, "0")}:00
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ))}
-            <label className="grid gap-1.5 text-sm font-medium text-slate-800">
-              Zona waktu
-              <select
-                className="min-h-11 rounded-lg border border-slate-300 px-3 font-normal"
-                value={values.timezone}
-                onChange={(event) =>
-                  setValues({ ...values, timezone: event.target.value })
-                }
-              >
-                {zones.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+            <label className="flex min-h-11 items-center gap-3 text-sm font-medium text-slate-800">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-[#0B2C6B]"
+                checked={quietEnabled}
+                onChange={(event) => {
+                  setQuietEnabled(event.target.checked);
+                  if (
+                    event.target.checked &&
+                    values.quiet_start === values.quiet_end
+                  )
+                    setValues({ ...values, quiet_start: 21, quiet_end: 7 });
+                  setResult(null);
+                }}
+              />
+              Terapkan jam tenang
             </label>
+            {quietEnabled && (
+              <>
+                <p className="mb-3 text-sm leading-6 text-slate-600">
+                  Notifikasi rutin menunggu sampai jam tenang berakhir.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {(
+                    [
+                      ["quiet_start", "Mulai"],
+                      ["quiet_end", "Selesai"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label
+                      key={key}
+                      className="grid gap-1.5 text-sm font-medium text-slate-800"
+                    >
+                      {label}
+                      <select
+                        className="min-h-11 rounded-lg border border-slate-300 px-3 font-normal"
+                        value={values[key]}
+                        onChange={(event) => {
+                          setValues({
+                            ...values,
+                            [key]: Number(event.target.value),
+                          });
+                          setResult(null);
+                        }}
+                      >
+                        {Array.from({ length: 24 }, (_, hour) => (
+                          <option key={hour} value={hour}>
+                            {String(hour).padStart(2, "0")}:00
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                  <label className="grid gap-1.5 text-sm font-medium text-slate-800">
+                    Zona waktu
+                    <select
+                      className="min-h-11 rounded-lg border border-slate-300 px-3 font-normal"
+                      value={values.timezone}
+                      onChange={(event) => {
+                        setValues({ ...values, timezone: event.target.value });
+                        setResult(null);
+                      }}
+                    >
+                      {!zones.some(([value]) => value === values.timezone) && (
+                        <option value={values.timezone}>
+                          {values.timezone}
+                        </option>
+                      )}
+                      {zones.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </>
+            )}
           </fieldset>
-          <p className="text-sm leading-6 text-slate-600">
-            Samakan jam mulai dan selesai untuk mematikan jam tenang.
-          </p>
           <button className={primaryButton} type="submit" disabled={saving}>
             {saving ? "Menyimpan…" : "Simpan pilihan"}
           </button>
         </form>
       )}
       {!values && !result && (
-        <p role="status" className="mt-3 text-sm text-slate-600">
+        <p role="status" className="py-3 text-sm text-slate-600">
           Memuat pilihan…
         </p>
       )}
@@ -401,7 +484,7 @@ export function NoticePreferences() {
         <p
           role={result.error ? "alert" : "status"}
           className={
-            "mt-3 text-sm " +
+            "pb-3 text-sm " +
             (result.error ? "text-red-700" : "text-emerald-800")
           }
         >
@@ -410,7 +493,7 @@ export function NoticePreferences() {
       )}
       {!values && result?.error && (
         <button
-          className={secondaryButton + " mt-3"}
+          className={secondaryButton + " mb-3"}
           type="button"
           onClick={() => {
             setResult(null);

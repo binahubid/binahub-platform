@@ -149,16 +149,18 @@ notificationRoutes.put("/preferences", async (c) => {
     );
   return c.json({ success: true, data: parsed.data });
 });
-notificationRoutes.post("/test", async (c) => {
+notificationRoutes.post("/test", requireRole(["admin"]), async (c) => {
   if (!notificationPushConfig().enabled)
     return c.json({ success: false, error: "Notifikasi HP belum aktif." }, 503);
-  const parsed = notificationDeviceKeySchema.safeParse(await c.req.json());
+  const parsed = notificationDeviceKeySchema.safeParse(
+    await c.req.json().catch(() => null),
+  );
   if (!parsed.success)
     return c.json({ success: false, error: "Perangkat tidak valid." }, 400);
   const user = c.get("user");
   const { data, error } = await getDb().rpc("ams_notification_test", {
     p_user: user.id,
-    p_role: roleFor(user.role),
+    p_role: "admin",
     p_key: parsed.data.deviceKey,
   });
   if (error)
@@ -175,7 +177,7 @@ notificationRoutes.post("/test", async (c) => {
     data: {
       id: data,
       message:
-        "Notifikasi uji masuk antrean. Biasanya diproses pada putaran worker berikutnya.",
+        "Notifikasi uji sedang dikirim. Cek panel notifikasi perangkat ini.",
     },
   });
 });

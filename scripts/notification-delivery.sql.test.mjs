@@ -5,8 +5,9 @@ import { before, after, beforeEach, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 const db = new PGlite(), alice = randomUUID(), bob = randomUUID(), admin = randomUUID(), membership = randomUUID();
 const migration = readFileSync('packages/database/migrations/015_notification_delivery.sql','utf8');
+const immediate = readFileSync('packages/database/migrations/017_notification_immediate.sql','utf8');
 const rpc = async (name,args=[]) => (await db.query(`select ${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) value`,args)).rows[0].value;
-const device = (user=alice,key=randomUUID(),endpoint='https://fcm.googleapis.com/'+randomUUID()) => rpc('ams_notification_device',[user,'associate',key,'Synthetic phone',endpoint,'k','a']);
+const device = (user=alice,key=randomUUID(),endpoint='https://fcm.googleapis.com/'+randomUUID()) => rpc('ams_notification_device',[user,user===admin?'admin':'associate',key,'Synthetic phone',endpoint,'k','a']);
 const notice = async (user=alice,extra={}) => {
   const {rows} = await db.query(`insert into notifications(recipient_id,recipient_role,type,title,message,link,reference_id,created_at)
     values($1,'associate',$2,'Synthetic title','Synthetic message',$3,$4,$5) returning id`,
@@ -23,13 +24,25 @@ before(async()=>{
     create table notifications(id uuid primary key default gen_random_uuid(),recipient_id uuid,recipient_role text,type text,title text,message text,link text,reference_id uuid,read_at timestamptz,created_at timestamptz not null default now());
     create table email_notification_deliveries(id uuid default gen_random_uuid(),notification_id uuid,status text,attempts int,available_at timestamptz,last_error text,updated_at timestamptz,created_at timestamptz,sent_at timestamptz);
     create table event_queue(id uuid default gen_random_uuid(),type text,aggregate_type text,aggregate_id uuid,payload jsonb);
+    create schema ams_scheduler;
+    create function ams_scheduler.notification_cron_status() returns jsonb language sql as $$ select '{}'::jsonb $$;
+    create schema cron;
+    create table cron.job(jobname text,username text,database text,active boolean);
+    create schema vault;
+    create table vault.decrypted_secrets(name text,decrypted_secret text);
+    create schema net;
+    create table net.requests(id bigint generated always as identity,url text,body jsonb);
+    create function net.http_post(url text,headers jsonb,body jsonb,timeout_milliseconds integer)
+    returns bigint language sql as $$ insert into net.requests(url,body) values($1,$3) returning id $$;
     create function enqueue_transformation_event(text,text,uuid,jsonb) returns uuid language sql as $$
       insert into event_queue(type,aggregate_type,aggregate_id,payload) values($1,$2,$3,$4) returning id;$$;`);
   await db.exec(migration);
+  await db.exec(immediate);
 });
 after(()=>db.close());
 beforeEach(async()=>{
   await db.exec('truncate notification_push_deliveries,notification_reminders,notification_devices,notification_preferences,notification_external_sources,notification_worker_runs,email_notification_deliveries,notifications,assignments,assignment_assignees,consultant_team_memberships,associates,auth.users,event_queue cascade');
+  await db.exec("truncate net.requests,cron.job,vault.decrypted_secrets; insert into cron.job values('ams-notification-worker',current_user,current_database(),true); insert into vault.decrypted_secrets values('ams_notification_worker_secret','synthetic-notification-dispatch-secret');");
   for(const [id,role] of [[alice,'associate'],[bob,'associate'],[admin,'admin']]){
     await db.query('insert into auth.users values($1,$2)',[id,{role}]);
     await db.query("insert into associates values($1,'active')",[id]);
@@ -40,7 +53,32 @@ test('only current devices receive new notices; old notices are never broadcast 
   const id=await notice();
   const rows=(await db.query('select * from notification_push_deliveries')).rows;
   assert.equal(rows.length,1);assert.equal(rows[0].notification_id,id);assert.notEqual(rows[0].device_id,bobDevice);
-  await db.exec(migration);assert.equal((await db.query('select count(*)::int n from notification_push_deliveries')).rows[0].n,1);
+  await db.exec(immediate);assert.equal((await db.query('select count(*)::int n from notification_push_deliveries')).rows[0].n,1);
+});
+test('one wake-up per notification, scoped to first delivery and safe beside Cron',async()=>{
+  await device();await device();
+  await notice(bob);
+  const first=await notice();
+  const second=await notice();
+  const requests=(await db.query('select url,body from net.requests order by id')).rows;
+  assert.deepEqual(requests.map(row=>row.body),[{id:first},{id:second}]);
+  assert.equal(new URL(requests[0].url).pathname,'/api/workers/notifications/dispatch');
+  const claimed=(await db.query('select * from ams_notification_claim_new($1,$2,10)',[randomUUID(),second])).rows;
+  assert.equal(claimed.length,2);
+  assert(claimed.every(row=>row.notification_id===second && row.attempts===1));
+  assert.equal((await db.query('select * from ams_notification_claim_new($1,$2,10)',[randomUUID(),second])).rows.length,0);
+  const scheduled=(await db.query('select * from ams_notification_claim($1,10)',[randomUUID()])).rows;
+  assert.equal(scheduled.length,2);assert(scheduled.every(row=>row.notification_id===first));
+});
+test('a rollback discards the wake-up and a paused scheduler preserves the durable queue',async()=>{
+  await device();
+  await db.exec('begin');
+  try { await notice(); } finally { await db.exec('rollback'); }
+  assert.equal((await db.query('select * from net.requests')).rows.length,0);
+  await db.exec('update cron.job set active=false');
+  const id=await notice();
+  assert.equal((await db.query('select * from net.requests')).rows.length,0);
+  assert.equal((await db.query("select * from notification_push_deliveries where notification_id=$1 and status='pending'",[id])).rows.length,1);
 });
 test('a device endpoint cannot be moved to a different account',async()=>{
   const endpoint='https://fcm.googleapis.com/synthetic-endpoint';await device(alice,randomUUID(),endpoint);
@@ -79,13 +117,16 @@ test('external source ingestion is idempotent and ignores out-of-order assignmen
   await rpc('ams_notification_external',[{...event,eventId:randomUUID(),version:3,active:false}]);
   assert.equal(await rpc('ams_notice_current',[result.notificationId]),false);
 });
-test('test notification targets this device only and is rate limited',async()=>{
-  const key=randomUUID();const first=await device(alice,key);await device();
-  const id=await rpc('ams_notification_test',[alice,'associate',key]);
+test('admin test notification targets this device only and is rate limited',async()=>{
+  const key=randomUUID();const first=await device(admin,key);await device(admin);
+  const associateKey=randomUUID();await device(alice,associateKey);
+  await assert.rejects(rpc('ams_notification_test',[alice,'associate',associateKey]),/DEVICE_TEST_FORBIDDEN/);
+  await assert.rejects(rpc('ams_notification_test',[alice,'admin',associateKey]),/DEVICE_TEST_FORBIDDEN/);
+  const id=await rpc('ams_notification_test',[admin,'admin',key]);
   const rows=(await db.query('select * from notification_push_deliveries where notification_id=$1',[id])).rows;
   assert.equal(rows.length,1);assert.equal(rows[0].device_id,first);
-  await assert.rejects(rpc('ams_notification_test',[alice,'associate',key]),/DEVICE_TEST_UNAVAILABLE/);
-  await assert.rejects(rpc('ams_notification_test',[bob,'associate',key]),/DEVICE_TEST_UNAVAILABLE/);
+  await assert.rejects(rpc('ams_notification_test',[admin,'admin',key]),/DEVICE_TEST_UNAVAILABLE/);
+  await assert.rejects(rpc('ams_notification_test',[admin,'admin',associateKey]),/DEVICE_TEST_UNAVAILABLE/);
 });
 test('feed counts before pagination, scopes recipients, and preserves pending actions',async()=>{
   await notice(bob);for(let i=0;i<33;i++)await notice();
@@ -99,6 +140,7 @@ test('anonymous/browser roles cannot read subscriptions or invoke service RPCs',
       await assert.rejects(db.query('select * from notification_devices'),/permission denied/);
       await assert.rejects(rpc('ams_notification_feed',[alice,'associate','all',0]),/permission denied/);
       await assert.rejects(rpc('ams_notification_claim',[randomUUID(),10]),/permission denied/);
+      await assert.rejects(rpc('ams_notification_claim_new',[randomUUID(),randomUUID(),10]),/permission denied/);
     } finally {await db.exec('reset role');}
   }
 });

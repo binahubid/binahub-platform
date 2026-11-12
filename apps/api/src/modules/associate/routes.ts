@@ -1392,11 +1392,15 @@ associateRoutes.put('/preferences', async (c) => {
   const db = getDb();
   
   // Upsert preferences
+  const { locale, emailNotifications, whatsappNotifications, profileVisibility } = validation.data;
   const { data, error } = await db
     .from('associate_preferences')
     .upsert({
       associate_id: user.id,
-      ...validation.data,
+      ...(locale !== undefined && { locale }),
+      ...(emailNotifications !== undefined && { email_notifications: emailNotifications }),
+      ...(whatsappNotifications !== undefined && { whatsapp_notifications: whatsappNotifications }),
+      ...(profileVisibility !== undefined && { profile_visibility: profileVisibility }),
       updated_at: new Date().toISOString()
     }, { onConflict: 'associate_id' })
     .select()

@@ -33,7 +33,7 @@ Untuk AMS, gunakan API yang benar, deteksi dukungan perangkat, dan masukkan pemb
 
 1. Associate masuk ke AMS seperti biasa. Pada beranda tersedia kartu kecil **Akses AMS dari layar utama** dengan tombol **Pasang AMS** dan **Nanti**. Pengguna iPhone mendapat petunjuk pemasangan yang sesuai perangkat.
 2. Setelah konteksnya jelas, tampilkan **Aktifkan notifikasi HP**: "Dapatkan pemberitahuan undangan dan penugasan tanpa harus membuka AMS." Dialog izin sistem hanya dipanggil setelah tombol ditekan.
-3. Pengaturan menampilkan status yang terpisah: pemasangan, izin notifikasi, dan langganan perangkat. Tersedia **Periksa perangkat ini**, **Kirim notifikasi uji**, dan **Nonaktifkan di perangkat ini**. Notifikasi uji hanya dikirim setelah permintaan pengguna.
+3. Pengaturan menampilkan status perangkat dan tindakan yang sesuai. Associate bisa mengaktifkan dan mematikan notifikasi serta memeriksa perangkat lain. Admin dapat mengirim notifikasi uji ke perangkatnya dari **Notifikasi → Pantau pengiriman**.
 4. Ketuk notifikasi undangan untuk membuka perjanjian yang tepat. Ketuk notifikasi pekerjaan untuk menuju pekerjaan terkait melalui AMS dan SSO. Periksa kembali hak akses dan keadaan sumber sebelum menampilkan tujuan.
 5. Pusat notifikasi memiliki **Semua**, **Belum dibaca**, dan **Perlu tindakan**. Membaca pemberitahuan tidak berarti menyetujui perjanjian atau menyelesaikan tugas. Undangan yang sudah ditarik tetap jelas riwayatnya dan tidak menampilkan tindakan yang sudah tidak berlaku.
 6. Badge di dalam AMS mengikuti jumlah belum dibaca dari server. Badge ikon memakai kemampuan sistem HP. Daftar perlu tindakan tetap tersedia walaupun notifikasi HP sudah dihapus.
@@ -122,6 +122,14 @@ Untuk jeda pengiriman terjadwal AMS, jalankan `select ams_scheduler.set_notifica
 ## Uji perangkat setelah rilis
 
 1. Di Android, buka AMS dengan Chrome, masuk ke akun uji, lalu pilih **Pengaturan → Notifikasi HP → Pasang AMS**. Di iPhone, gunakan **Bagikan → Tambah ke Layar Utama** lalu buka AMS dari ikon. [WebKit Web Push](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/).
-2. Pilih **Aktifkan notifikasi HP**, izinkan permintaan sistem, lalu pilih **Kirim notifikasi uji**. Tutup tampilan AMS dan cek panel notifikasi HP. Ketuk pesan untuk kembali ke pusat notifikasi.
+2. Untuk uji perangkat admin, buka **Notifikasi → Pantau pengiriman**. Pilih **Aktifkan notifikasi HP**, beri izin, lalu pilih **Kirim notifikasi uji**. Tutup tampilan AMS dan cek panel notifikasi HP. Ketuk pesan untuk kembali ke pusat notifikasi.
 3. Gunakan satu undangan dan penugasan untuk akun uji yang sudah disiapkan. Buka pemberitahuan saat sesi aktif dan sesudah masuk kembali. Periksa badge, filter **Perlu tindakan**, dan tujuan ke undangan atau pekerjaan terkait.
 4. Alihkan penugasan ke konsultan uji lain dan ubah jadwal. Pastikan penerima sebelumnya tidak mendapat pengingat baru. Di admin, pilih **Notifikasi → Pantau pengiriman** untuk melihat status proses.
+
+## Pengiriman segera setelah perubahan tersimpan
+
+Rilis web dan API AMS serta API BinaHub yang mendukung pengiriman langsung. Di Supabase AMS, jalankan `packages/database/migrations/017_notification_immediate.sql`. Di Supabase App/API BinaHub, jalankan `supabase/migrations/0095_consultant_notification_immediate.sql`.
+
+AMS memanggil worker setelah antrean push tersimpan. Perubahan penugasan dan jadwal App juga langsung diteruskan ke AMS. Kedua pemicu memakai secret Vault dan variabel API yang sudah digunakan oleh worker sebelumnya. Jika panggilan pertama gagal atau pesan menunggu jam tenang, Cron memproses antreannya pada waktu yang sesuai. Mematikan Cron AMS juga menjeda panggilan push langsung. [Dokumentasi pg_net](https://supabase.com/docs/guides/database/extensions/pg_net).
+
+Untuk menguji dari HP admin, buka **Notifikasi → Pantau pengiriman → Notifikasi HP**. Aktifkan notifikasi perangkat itu dan tekan **Kirim notifikasi uji**. Pengiriman langsung tetap dipengaruhi jaringan dan pengaturan perangkat. Uji undangan associate melalui tindakan undangan di akun uji yang disiapkan.

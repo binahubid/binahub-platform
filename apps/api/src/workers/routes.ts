@@ -4,7 +4,8 @@ import { getDb } from '../lib/database.js';
 import { processPendingEvents } from './event-processor.js';
 import type { AppEnv } from '../types/env.js';
 import { timingSafeEqual } from 'node:crypto';
-import { notificationPushConfig, runNotificationWorker } from '../lib/notifications.js';
+import { notificationOpenSchema } from '@ams/shared/validators/notifications';
+import { notificationPushConfig, processPushNotifications, runNotificationWorker } from '../lib/notifications.js';
 
 export const workerRoutes = new Hono<AppEnv>();
 
@@ -33,10 +34,14 @@ async function processCron(c: Context<AppEnv>) {
 workerRoutes.get('/cron', processCron);
 workerRoutes.post('/cron', processCron);
 
+function notificationWorkerAuthorized(authorization: string | undefined) {
+  return authorization?.startsWith('Bearer ') &&
+    validWorkerSecret(authorization, process.env.AMS_NOTIFICATION_WORKER_SECRET);
+}
+
 workerRoutes.post('/notifications', async c => {
   c.header('Cache-Control', 'no-store');
-  const authorization = c.req.header('authorization');
-  if (!authorization?.startsWith('Bearer ') || !validWorkerSecret(authorization, process.env.AMS_NOTIFICATION_WORKER_SECRET))
+  if (!notificationWorkerAuthorized(c.req.header('authorization')))
     return c.json({ success: false, error: 'Worker secret tidak valid' }, 401);
   if (!notificationPushConfig().enabled)
     return c.json({ success: false, error: 'Notifikasi HP belum diaktifkan.' }, 503);
@@ -44,6 +49,23 @@ workerRoutes.post('/notifications', async c => {
   if (email.status === 'rejected' || push.status === 'rejected')
     return c.json({ success: false, error: 'Sebagian antrean notifikasi belum dapat diproses.' }, 503);
   return c.json({ success: true, data: { email: email.value, push: push.value } });
+});
+
+workerRoutes.post('/notifications/dispatch', async c => {
+  c.header('Cache-Control', 'no-store');
+  if (!notificationWorkerAuthorized(c.req.header('authorization')))
+    return c.json({ success: false, error: 'Worker secret tidak valid' }, 401);
+  if (!notificationPushConfig().enabled)
+    return c.json({ success: false, error: 'Notifikasi HP belum diaktifkan.' }, 503);
+
+  const input = notificationOpenSchema.safeParse(await c.req.json().catch(() => null));
+  if (!input.success) return c.json({ success: false, error: 'Pemberitahuan tidak valid.' }, 400);
+  try {
+    const result = await processPushNotifications(10, input.data.id);
+    return c.json({ success: true, data: result });
+  } catch {
+    return c.json({ success: false, error: 'Pengiriman akan diproses melalui antrean.' }, 503);
+  }
 });
 
 // ============================================

@@ -232,7 +232,10 @@ export function AmsNotificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!accessToken) return;
     const refreshVisible = () => {
-      if (document.visibilityState === "visible") void refreshUnread();
+      if (document.visibilityState === "visible") {
+        if ("Notification" in window) setPermission(Notification.permission);
+        void refreshUnread();
+      }
     };
     const incoming = (event: MessageEvent) => {
       if (
@@ -243,11 +246,13 @@ export function AmsNotificationProvider({ children }: { children: ReactNode }) {
     };
     const interval = setInterval(refreshVisible, 60000);
     document.addEventListener("visibilitychange", refreshVisible);
+    window.addEventListener("focus", refreshVisible);
     window.addEventListener("update-notif-count", refreshVisible);
     navigator.serviceWorker?.addEventListener("message", incoming);
     return () => {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", refreshVisible);
+      window.removeEventListener("focus", refreshVisible);
       window.removeEventListener("update-notif-count", refreshVisible);
       navigator.serviceWorker?.removeEventListener("message", incoming);
     };
@@ -363,7 +368,6 @@ export function AmsNotificationProvider({ children }: { children: ReactNode }) {
           else throw e;
         }
         await refresh();
-        setMessage("Notifikasi HP sudah aktif di perangkat ini.");
       }),
     disable: () =>
       act(async () => {
@@ -377,11 +381,10 @@ export function AmsNotificationProvider({ children }: { children: ReactNode }) {
         currentSubscription.current = null;
         setSubscribed(false);
         await refresh();
-        setMessage("Notifikasi perangkat ini sudah dinonaktifkan.");
       }),
     test: () =>
       act(async () => {
-        if (!accessToken) return;
+        if (!accessToken || role !== "admin") return;
         const data = await notificationRequest<{ message: string }>(
           accessToken,
           "/test",
