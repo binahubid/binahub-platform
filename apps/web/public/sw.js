@@ -99,7 +99,7 @@ self.addEventListener("push", (event) => {
             typeof payload.body === "string"
               ? payload.body.slice(0, 180)
               : "Ada pembaruan untuk Anda di AMS.",
-          icon: "/icons/ams-192.png",
+          icon: "/icons/ams-192.png?v=2",
           badge: "/icons/ams-badge.png",
           tag: `ams-${payload.id}`,
           data: { id: payload.id, account: payload.account },

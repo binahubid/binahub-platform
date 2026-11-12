@@ -16,7 +16,7 @@ type Setting = keyof Preferences;
 type Feedback = { setting: Setting; ok: boolean };
 
 export default function SettingsPage() {
-  const { user, accessToken } = useAuth();
+  const { user, accessToken, signOut } = useAuth();
   const [preferences, setPreferences] = useState<Preferences | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -95,7 +95,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <header className="pb-1">
-        <h1 className="text-2xl font-semibold text-slate-900">Pengaturan</h1>
+        <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">Pengaturan</h1>
         <p className="mt-1 text-sm leading-6 text-slate-600">
           Kelola notifikasi dan privasi akun Anda.
         </p>
@@ -177,6 +177,13 @@ export default function SettingsPage() {
             onToggle={() => void toggle("profile_visibility")}
           />
         )}
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="mt-3 min-h-11 text-sm font-semibold text-red-700 hover:underline lg:hidden"
+        >
+          Keluar dari akun
+        </button>
       </section>
     </div>
   );

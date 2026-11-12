@@ -63,12 +63,31 @@ export function ConsultantPortalEntry({navigation=false}:{navigation?:boolean}){
     {error&&<p role="alert" className="px-3 pb-2 text-xs leading-5 text-red-700">{error}</p>}
   </div>:null;
   if(!active&&membership.status!=='invited')return null;
-  return <section className="flex flex-col gap-4 rounded-xl border border-blue-100 bg-white p-5 sm:flex-row sm:items-center sm:justify-between" aria-label="Akses konsultan">
-    <div><h2 className="text-base font-semibold text-[#0B2C6B]">{active?'Portal Konsultan':'Undangan Tim Konsultan BinaHub'}</h2>
-      <p className="mt-1 max-w-xl text-sm leading-6 text-slate-600">{active?'Kelola klien, meeting, proposal, dan tindak lanjut Anda.':'Tinjau perjanjian kerja sama untuk bergabung dan mendapatkan akses portal.'}</p>
-      {error&&<p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
-    </div>
-    {active?<button type="button" onClick={()=>void open()} disabled={opening} className="min-h-11 shrink-0 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#123e84] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60">{opening?'Membuka portal…':'Buka Portal Konsultan'}</button>
-      :<Link href="/dashboard/consultant" className="min-h-11 shrink-0 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#123e84]">Tinjau undangan</Link>}
-  </section>;
+  const rowClass = "flex min-h-16 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-[#0B2C6B] transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:opacity-60";
+  const content = (
+    <>
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#0B2C6B]/10"><PortalIcon /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">
+          {active ? (opening ? 'Membuka portal…' : 'Buka Portal Konsultan') : 'Tinjau undangan Tim Konsultan'}
+        </span>
+        <span className="mt-0.5 block text-xs leading-5 text-slate-600">
+          {active ? 'Jadwal, proposal, dan tindak lanjut' : 'Perjanjian kerja sama dan akses portal'}
+        </span>
+      </span>
+      <svg aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m9 18 6-6-6-6" />
+      </svg>
+    </>
+  );
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white" aria-label="Akses konsultan">
+      {active ? (
+        <button type="button" className={rowClass} disabled={opening} onClick={() => void open()}>{content}</button>
+      ) : (
+        <Link href="/dashboard/consultant" className={rowClass}>{content}</Link>
+      )}
+      {error && <p role="alert" className="px-4 pb-3 text-sm text-red-700">{error}</p>}
+    </section>
+  );
 }

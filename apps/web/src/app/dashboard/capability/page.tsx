@@ -104,18 +104,18 @@ export default function CapabilityPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Capability Assessment</h1>
-        <p className="mt-1 text-sm text-slate-500">Your professional capability scores and development areas</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Kapabilitas</h1>
+        <p className="mt-1 text-sm text-slate-500">Ringkasan keahlian dan area pengembangan Anda.</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Total Skills</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Total keahlian</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totalSkills}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Avg Proficiency</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Rata-rata penguasaan</p>
           <p className="mt-1 text-2xl font-bold text-[#0B2C6B]">{stats.avgProficiency}%</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -133,7 +133,7 @@ export default function CapabilityPage() {
         <div className="space-y-6 lg:col-span-2">
           {/* Radar Chart */}
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900 mb-4">Capability Radar</h2>
+            <h2 className="text-sm font-semibold text-slate-900 mb-4">Peta kapabilitas</h2>
             {capabilityData.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <svg className="h-16 w-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,7 +276,7 @@ export default function CapabilityPage() {
                 <svg className="h-5 w-5 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-                <span className="text-sm font-medium text-slate-700">Development Plan</span>
+                <span className="text-sm font-medium text-slate-700">Rencana pengembangan</span>
               </a>
             </div>
           </div>

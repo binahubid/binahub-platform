@@ -383,14 +383,13 @@ export default function ProfilePage() {
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4 pr-2 sm:pr-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Perbarui Profil Anda</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Lengkapi data diri Anda langkah demi langkah secara profesional</p>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Perbarui profil</h1>
           </div>
           <button
             onClick={() => setIsEditing(false)}
-            className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:border-[#0B2C6B]/30 hover:bg-[#0B2C6B]/5 hover:text-[#0B2C6B] transition-all duration-300"
+            className="group inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-[#0B2C6B] hover:bg-slate-50"
           >
             <svg className="h-4 w-4 text-slate-400 group-hover:text-[#0B2C6B] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -401,10 +400,21 @@ export default function ProfilePage() {
         </div>
 
         {/* 2-Column Editing Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-4 lg:gap-6">
+          <div className="lg:hidden">
+            <label htmlFor="profile-section" className="mb-2 block text-sm font-medium text-slate-700">Bagian profil</label>
+            <select
+              id="profile-section"
+              value={currentStep}
+              onChange={(event) => setCurrentStep(Number(event.target.value))}
+              className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900"
+            >
+              {STEPS.map((step, index) => <option key={step.label} value={index}>{step.label}</option>)}
+            </select>
+          </div>
           
           {/* Sidebar Step Navigator */}
-          <div className="lg:col-span-1 lg:sticky lg:top-24 space-y-4">
+          <div className="hidden space-y-4 lg:sticky lg:top-24 lg:col-span-1 lg:block">
             <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4 px-1.5">Progress Pengisian</p>
               
@@ -458,7 +468,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Form Editor Card */}
-          <div className="lg:col-span-3 rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
+          <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-3">
             {currentStep === 0 && (
               <div>
                 <h2 className="text-base font-bold text-slate-900 mb-1">Unggah Dokumen CV</h2>
@@ -524,32 +534,32 @@ export default function ProfilePage() {
             )}
 
             {/* Form Nav Buttons */}
-            <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100">
+            <div className="mt-6 grid grid-cols-2 items-center gap-3 border-t border-slate-200 pt-4 sm:flex sm:justify-between">
               <button
                 onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
                 disabled={currentStep === 0}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" className="hidden h-4 w-4 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
                 Sebelumnya
               </button>
-              <div className="text-xs text-slate-400 font-medium">Langkah {currentStep + 1} dari {STEPS.length}</div>
+              <div className="col-span-2 row-start-1 text-center text-xs text-slate-600">Langkah {currentStep + 1} dari {STEPS.length}</div>
               {currentStep < STEPS.length - 1 ? (
                 <button
                   onClick={() => { if (currentStep === 1) handleSaveProfile(); else setCurrentStep(currentStep + 1); }}
-                  className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#0B2C6B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#123575]"
                 >
                   Selanjutnya
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg aria-hidden="true" className="hidden h-4 w-4 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
               ) : (
                 <button
                   onClick={() => { showToastNotification('Profil sudah disimpan dengan lengkap!', 'success'); setIsEditing(false); }}
-                  className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-600 hover:to-emerald-700 transition-all"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#0B2C6B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#123575]"
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M5 13l4 4L19 7" />

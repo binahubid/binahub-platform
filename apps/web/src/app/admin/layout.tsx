@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { ToastProvider } from '../../components/ui';
+import { AppBootLogo } from '@/components/ui/app-boot-logo';
 import { usePageVisibility } from '../../hooks/use-page-visibility';
 
 const sidebarSections = [
@@ -244,16 +245,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [user, loading, router, canAccessAdminWorkspace, isReviewer, pathname]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F5F7FA]">
-        <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-      </div>
-    );
-  }
+  if (loading) return <AppBootLogo />;
 
   if (!user || !canAccessAdminWorkspace) return null;
 
@@ -409,7 +401,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {mobileSidebarOpen && (
           <div ref={mobileMenuRef} className="fixed inset-0 z-50 lg:hidden print:hidden" role="dialog" aria-modal="true" aria-label="Navigasi admin">
             <button type="button" aria-label="Tutup menu admin" className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
-            <aside className="absolute left-0 top-0 bottom-0 w-64 flex flex-col bg-[#0B2C6B]">
+            <aside className="absolute inset-y-0 left-0 flex w-[min(20rem,calc(100vw-3rem))] flex-col bg-[#0B2C6B] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
               <div className="flex h-16 items-center justify-between px-6">
                 <div className="flex items-center gap-3">
                   <Image src="/logo.png" alt="BinaHub" width={24} height={24} className="h-6 w-auto" priority />
@@ -459,9 +451,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )}
 
         {/* Main Area */}
-        <div className="flex-1 pl-0 lg:pl-64 print:!pl-0 print:w-full">
+        <div className="min-w-0 flex-1 pl-0 lg:pl-64 print:!pl-0 print:w-full">
           {/* Top Header */}
-          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:px-6 print:hidden">
+          <header className="sticky top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b border-slate-200 bg-white px-3 pt-[env(safe-area-inset-top)] lg:h-16 lg:px-6 lg:pt-0 print:hidden">
             <div className="flex items-center gap-3">
               <button
                 ref={menuTriggerRef}
@@ -476,6 +468,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </svg>
               </button>
 
+              <Image src="/full-logo.png" alt="BinaHub" width={100} height={28} className="h-auto w-[100px] sm:hidden" priority />
               <div className="relative hidden sm:block" ref={searchContainerRef}>
                 <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -636,7 +629,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </header>
 
-          <main id="ams-main-content" tabIndex={-1} className="mx-auto min-w-0 max-w-7xl px-4 lg:px-6 py-8 print:max-w-none print:!p-0">
+          <main id="ams-main-content" tabIndex={-1} className="mx-auto min-w-0 max-w-7xl px-4 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:px-6 lg:py-8 print:max-w-none print:!p-0">
             {children}
           </main>
         </div>

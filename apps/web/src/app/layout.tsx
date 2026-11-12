@@ -22,7 +22,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#0B2C6B",
+  viewportFit: "cover",
+  themeColor: "#ffffff",
 };
 
 export const metadata: Metadata = {
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
   authors: [{ name: "BinaHub" }],
   icons: {
     icon: "/favicon.ico",
-    apple: "/icons/ams-192.png",
+    apple: "/icons/ams-192.png?v=2",
   },
   appleWebApp: { capable: true, title: "BinaHub AMS" },
   openGraph: {

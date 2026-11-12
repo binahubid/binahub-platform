@@ -4,6 +4,7 @@ import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { AppBootLogo } from '@/components/ui/app-boot-logo';
 import { supabase } from '@/lib/supabase-client';
 import { notificationLoginReturn } from '@/lib/notification-client';
 
@@ -17,7 +18,6 @@ function LoginForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [showEmailForm, setShowEmailForm] = useState(false);
 
   const registered = searchParams.get('registered');
   const confirmed = searchParams.get('confirmed');
@@ -38,7 +38,7 @@ function LoginForm() {
     if (signInError) {
       setError(
         signInError.message.includes('Email not confirmed')
-          ? 'Email belum diverifikasi. Cek inbox kamu.'
+          ? 'Email belum diverifikasi. Cek kotak masuk Anda.'
           : signInError.message
       );
       setLoading(false);
@@ -101,30 +101,16 @@ function LoginForm() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white px-5 py-10">
-      {/* Soft background accents */}
-      <div className="pointer-events-none absolute inset-0 bg-grid-slate opacity-50 [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)]" />
-      <div className="pointer-events-none absolute -top-32 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-[#0B2C6B]/8 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-[320px] w-[320px] rounded-full bg-[#D9A441]/8 blur-3xl" />
-
-      <div className="relative w-full max-w-[400px]">
-        {/* Logo */}
-        <Link href="/" className="mb-8 flex items-center justify-center gap-2">
-          <Image src="/logo.png" alt="BinaApps" width={32} height={32} className="rounded-md" priority />
-          <span className="text-lg font-bold tracking-tight text-[#0B2C6B]">BinaApps</span>
+    <main className="flex min-h-[100svh] items-center justify-center bg-white px-5 py-8 sm:bg-slate-50 sm:py-10">
+      <div className="w-full max-w-[420px]">
+        <Link href="/" className="mb-6 inline-flex min-h-11 items-center">
+          <Image src="/full-logo.png" alt="BinaHub" width={120} height={34} className="h-auto w-[120px]" priority />
         </Link>
 
-        {/* Card */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-xl shadow-slate-300/30 backdrop-blur sm:p-7">
-          {/* Header */}
-          <div className="mb-7">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Masuk ke akun Anda
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Selamat datang kembali di BinaApps.
-            </p>
-          </div>
+        <div className="sm:rounded-2xl sm:border sm:border-slate-200 sm:bg-white sm:p-7">
+          <h1 className="mb-6 text-[1.65rem] font-semibold leading-tight tracking-tight text-slate-900">
+            Masuk ke AMS
+          </h1>
 
           {/* Success */}
           {success && (
@@ -138,7 +124,7 @@ function LoginForm() {
 
           {/* Error */}
           {error && (
-            <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3">
+            <div role="alert" className="mb-5 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3">
               <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
@@ -146,11 +132,96 @@ function LoginForm() {
             </div>
           )}
 
-          {/* Google */}
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-slate-700">
+                Email
+              </label>
+              <input
+                id="login-email"
+                name="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="block min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-base text-slate-900 placeholder-slate-400 transition-all focus:border-[#0B2C6B] focus:outline-none focus:ring-2 focus:ring-[#0B2C6B]/10"
+                placeholder="nama@binahub.id"
+                autoComplete="email"
+              />
+            </div>
+            <div>
+              <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-slate-700">
+                Kata sandi
+              </label>
+              <div className="relative">
+                <input
+                  id="login-password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 pr-12 text-base text-slate-900 placeholder-slate-400 transition-all focus:border-[#0B2C6B] focus:outline-none focus:ring-2 focus:ring-[#0B2C6B]/10"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-lg text-slate-600 hover:text-[#0B2C6B]"
+                  aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                >
+                  {showPassword ? (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88L3.42 3.42m6.46 6.46l6.46 6.46M21 21l-3.42-3.42m0 0a9.953 9.953 0 003.42-3.42M3.42 3.42L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end">
+              <Link
+                href="/auth/forgot-password"
+                className="inline-flex min-h-11 items-center text-sm font-medium text-[#0B2C6B] hover:underline"
+              >
+                Lupa kata sandi?
+              </Link>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#123575] disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span>Memproses...</span>
+                </>
+              ) : (
+                'Masuk'
+              )}
+            </button>
+          </form>
+
+          <div aria-hidden="true" className="my-5 flex items-center gap-3 text-xs text-slate-500">
+            <span className="h-px flex-1 bg-slate-200" />
+            atau
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
           <button
             onClick={handleGoogleLogin}
             disabled={googleLoading}
-            className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50"
+            className="flex min-h-12 w-full items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50"
           >
             {googleLoading ? (
               <svg className="h-4 w-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
@@ -165,138 +236,27 @@ function LoginForm() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
             )}
-            <span className="text-sm">{googleLoading ? 'Mengalihkan...' : 'Lanjutkan dengan Google'}</span>
+            <span className="text-sm">{googleLoading ? 'Mengalihkan...' : 'Masuk dengan Google'}</span>
           </button>
 
-          {/* Divider */}
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white/80 px-3 text-xs text-slate-400">atau</span>
-            </div>
-          </div>
-
-          {/* Email login toggle */}
-          <button
-            type="button"
-            onClick={() => setShowEmailForm((v) => !v)}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300"
-          >
-            <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <span>Masuk dengan Email</span>
-            <svg className={`h-4 w-4 text-slate-400 transition-transform ${showEmailForm ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {/* Expandable email form */}
-          <div className={`overflow-hidden transition-all duration-300 ${showEmailForm ? 'mt-4 max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-[#0B2C6B] focus:outline-none focus:ring-2 focus:ring-[#0B2C6B]/10"
-                  placeholder="nama@binahub.id"
-                  autoComplete="email"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 pr-10 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-[#0B2C6B] focus:outline-none focus:ring-2 focus:ring-[#0B2C6B]/10"
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    aria-label="Toggle password"
-                  >
-                    {showPassword ? (
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88L3.42 3.42m6.46 6.46l6.46 6.46M21 21l-3.42-3.42m0 0a9.953 9.953 0 003.42-3.42M3.42 3.42L21 21" />
-                      </svg>
-                    ) : (
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end">
-                <Link
-                  href="/auth/forgot-password"
-                  className="text-xs font-medium text-slate-500 transition-colors hover:text-[#0B2C6B]"
-                >
-                  Lupa password?
-                </Link>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/20 transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-xl hover:shadow-[#0B2C6B]/30 disabled:opacity-50 disabled:shadow-none"
-              >
-                {loading ? (
-                  <>
-                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span>Memproses...</span>
-                  </>
-                ) : (
-                  'Masuk'
-                )}
-              </button>
-            </form>
-          </div>
         </div>
 
         {/* Sign up link */}
         <p className="mt-6 text-center text-sm text-slate-500">
           Belum punya akun?{' '}
-          <Link href="/auth/register" className="font-semibold text-[#0B2C6B] transition-colors hover:text-[#0A255A]">
-            Daftar gratis
+          <Link href="/auth/register" className="inline-flex min-h-11 items-center font-semibold text-[#0B2C6B] hover:underline">
+            Daftar
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }
 
 export default function LoginPage() {
   return (
     <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-white">
-          <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        </div>
-      }
+      fallback={<AppBootLogo />}
     >
       <LoginForm />
     </Suspense>

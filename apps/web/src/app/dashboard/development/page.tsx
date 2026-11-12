@@ -75,8 +75,8 @@ export default function DevelopmentPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Development Plan</h1>
-        <p className="mt-1 text-sm text-slate-500">Your personalized growth roadmap</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Rencana pengembangan</h1>
+        <p className="mt-1 text-sm text-slate-500">Arah dan tindak lanjut pengembangan Anda.</p>
       </div>
 
       {!plan ? (
@@ -85,9 +85,9 @@ export default function DevelopmentPage() {
             <svg className="h-16 w-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
-            <h2 className="mt-4 text-lg font-semibold text-slate-900">No Development Plan Yet</h2>
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">Belum ada rencana pengembangan</h2>
             <p className="mt-2 text-sm text-slate-500 text-center max-w-sm">
-              Complete assignments and assessments to get your personalized development plan.
+              Rencana pengembangan dari tim BinaHub akan muncul di sini.
             </p>
           </div>
         </div>
@@ -95,11 +95,11 @@ export default function DevelopmentPage() {
         <>
           {/* Progress Card */}
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900 mb-4">Capability Progress</h2>
+            <h2 className="text-sm font-semibold text-slate-900 mb-4">Perkembangan kapabilitas</h2>
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">Current</span>
+                  <span className="text-sm text-slate-600">Saat ini</span>
                   <span className="text-sm font-semibold text-slate-900">{plan.current_score}/100</span>
                 </div>
                 <div className="h-3 rounded-full bg-slate-100">

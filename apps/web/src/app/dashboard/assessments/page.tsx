@@ -61,22 +61,22 @@ export default function AssessmentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Assessments</h1>
-        <p className="mt-1 text-sm text-slate-500">Test your skills and earn certifications</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Asesmen</h1>
+        <p className="mt-1 text-sm text-slate-500">Asesmen dan hasil penilaian Anda.</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Total Assessments</p>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+          <p className="break-words text-xs font-medium text-slate-600">Total asesmen</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{assessments.length}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Completed</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+          <p className="break-words text-xs font-medium text-slate-600">Selesai</p>
           <p className="mt-1 text-2xl font-bold text-emerald-600">{completed.length}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Avg Score</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+          <p className="break-words text-xs font-medium text-slate-600">Avg Score</p>
           <p className="mt-1 text-2xl font-bold text-[#0B2C6B]">{avgScore}%</p>
         </div>
       </div>
@@ -88,9 +88,9 @@ export default function AssessmentsPage() {
             <svg className="h-16 w-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
-            <h2 className="mt-4 text-lg font-semibold text-slate-900">No Assessments Yet</h2>
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">Belum ada asesmen</h2>
             <p className="mt-2 text-sm text-slate-500 text-center max-w-sm">
-              Complete assignments and build your profile to unlock skill assessments.
+              Asesmen yang ditugaskan oleh tim BinaHub akan muncul di sini.
             </p>
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function AssessmentsPage() {
                     )}
                     {assessment.completed_at && (
                       <p className="mt-2 text-[11px] text-slate-400">
-                        Completed {new Date(assessment.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        Selesai {new Date(assessment.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     )}
                   </div>

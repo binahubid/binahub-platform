@@ -142,22 +142,19 @@ export function NotificationInbox() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Notifikasi</h1>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            Undangan, penugasan, dan pembaruan pekerjaan Anda.
-          </p>
+          <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">Notifikasi</h1>
         </div>
         <Link
           href="/dashboard/settings#notifikasi-hp"
-          className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-[#0B2C6B] hover:bg-slate-50"
+          className="hidden min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-[#0B2C6B] hover:bg-slate-50 lg:inline-flex"
         >
           Atur notifikasi HP
         </Link>
       </div>
-      <section className="rounded-xl border border-slate-200 bg-white">
-        <div className="flex flex-wrap justify-between gap-1 border-b border-slate-200 px-3 pt-1 sm:px-5">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-3 pt-1 sm:flex sm:flex-wrap sm:justify-between sm:gap-2 sm:px-5">
           <div
-            className="flex flex-wrap gap-3"
+            className="flex flex-wrap gap-x-3 sm:gap-x-4"
             role="group"
             aria-label="Filter notifikasi"
           >
@@ -173,7 +170,7 @@ export function NotificationInbox() {
                     setFilter(key);
                   }}
                   className={
-                    "min-h-11 border-b-2 px-1 text-sm font-medium " +
+                    "min-h-11 border-b-2 px-0.5 text-xs font-semibold sm:px-1 sm:text-sm " +
                     (filter === key
                       ? "border-[#0B2C6B] text-[#0B2C6B]"
                       : "border-transparent text-slate-600 hover:text-[#0B2C6B]")
@@ -195,7 +192,7 @@ export function NotificationInbox() {
               onClick={() => void markRead(unreadIds)}
               className="min-h-11 px-1 text-left text-sm font-semibold text-[#0B2C6B] hover:underline disabled:opacity-60"
             >
-              Tandai halaman dibaca
+              Tandai halaman ini sudah dibaca
             </button>
           )}
         </div>

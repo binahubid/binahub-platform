@@ -136,17 +136,16 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D9A441]">Talent Operations</p>
-          <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="mt-1.5 text-[1.65rem] font-semibold tracking-tight text-slate-900">
             {greeting}, {firstName}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Berikut ringkasan talent operations BinaHub hari ini.
+            Ringkasan associate dan penugasan.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm">
+        <div className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap py-1 text-sm text-slate-600 sm:rounded-lg sm:border sm:border-slate-200 sm:bg-white sm:px-3 sm:py-2">
           <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
@@ -155,7 +154,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 min-[360px]:grid-cols-3 lg:grid-cols-6">
         <StatBox
           label="Associate Aktif"
           value={stats.active.toLocaleString('id-ID')}
@@ -165,7 +164,7 @@ export default function AdminDashboard() {
           iconColor="text-[#0B2C6B]"
         />
         <StatBox
-          label="Pending Review"
+          label="Menunggu tinjauan"
           value={stats.pending_review.toLocaleString('id-ID')}
           sub="Menunggu review"
           icon="clock"
@@ -181,7 +180,7 @@ export default function AdminDashboard() {
           iconColor="text-indigo-600"
         />
         <StatBox
-          label="Profile Lengkap"
+          label="Profil lengkap"
           value={`${completionPct}%`}
           sub={`${stats.incomplete_profiles} belum lengkap`}
           icon="check"
@@ -197,7 +196,7 @@ export default function AdminDashboard() {
           iconColor="text-blue-600"
         />
         <StatBox
-          label="Baru Minggu Ini"
+          label="Baru minggu ini"
           value={stats.new_this_week.toLocaleString('id-ID')}
           sub="Registrasi baru"
           icon="new"
@@ -208,11 +207,11 @@ export default function AdminDashboard() {
 
       {/* Middle Section: 3 columns */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Pending Review Table */}
+        {/* Menunggu tinjauan Table */}
         <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-slate-900">Pending Review</h2>
+              <h2 className="text-sm font-semibold text-slate-900">Menunggu tinjauan</h2>
               {stats.pending_review > 0 && (
                 <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-700">
                   {stats.pending_review}
@@ -321,12 +320,12 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Bottom Section: Capability Chart + Quick Actions */}
+      {/* Bottom Section: Capability Chart + Akses cepat */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Capability Overview */}
+        {/* Ringkasan kapabilitas */}
         <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-sm font-semibold text-slate-900">Capability Overview</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Ringkasan kapabilitas</h2>
           </div>
           {capabilities.length === 0 ? (
             <div className="flex h-[200px] items-center justify-center rounded-lg bg-slate-50">
@@ -351,9 +350,9 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Quick Actions */}
+        {/* Akses cepat */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4">Quick Actions</h2>
+          <h2 className="text-sm font-semibold text-slate-900 mb-4">Akses cepat</h2>
           <div className="space-y-2">
             <QuickAction icon="user-add" label="Tambah Associate Baru" href="/admin/associates" />
             <QuickAction icon="assignment" label="Buat Assignment Baru" href="/admin/assignments" />
@@ -376,15 +375,15 @@ function StatBox({ label, value, sub, icon, iconBg, iconColor }: {
   iconColor: string;
 }) {
   return (
-    <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
-      <div className="flex items-center justify-between">
+    <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+      <div className="hidden items-center justify-between lg:flex">
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg} transition-transform duration-200 group-hover:scale-105`}>
           <StatIcon type={icon} className={`h-5 w-5 ${iconColor}`} />
         </div>
       </div>
-      <p className="mt-3 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+      <p className="text-xl font-semibold tabular-nums tracking-tight text-slate-900 lg:mt-3 lg:text-2xl">{value}</p>
       <p className="text-xs font-medium text-slate-600 mt-0.5">{label}</p>
-      <p className="mt-1 text-[11px] text-slate-400">{sub}</p>
+      <p className="mt-1 text-xs text-slate-600">{sub}</p>
     </div>
   );
 }

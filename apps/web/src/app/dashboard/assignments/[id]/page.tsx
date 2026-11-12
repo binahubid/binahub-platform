@@ -388,16 +388,15 @@ export default function AssignmentDetailPage() {
   return (
     <div className="space-y-5 pb-8">
       <nav className="flex items-center gap-2 text-sm">
-        <Link href="/dashboard/assignments" className="text-slate-400 hover:text-slate-600 transition-colors">Assignments</Link>
+        <Link href="/dashboard/assignments" className="text-slate-400 hover:text-slate-600 transition-colors">Penugasan</Link>
         <span className="text-slate-300">/</span>
         <span className="font-medium text-slate-700 truncate max-w-[220px]">{assignment.title}</span>
       </nav>
 
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#1a4dab] p-6 text-white shadow-lg">
-        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+      <div className="relative overflow-hidden rounded-2xl bg-[#0B2C6B] p-5 text-white sm:p-6">
         <div className="relative">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${assignment.status === 'active' ? 'bg-emerald-400/20 text-emerald-200 ring-1 ring-emerald-400/30' : 'bg-white/10 text-white/60'}`}>
@@ -414,8 +413,8 @@ export default function AssignmentDetailPage() {
               {assignment.description && <p className="mt-3 text-sm text-white/70 leading-relaxed max-w-2xl">{assignment.description}</p>}
             </div>
             {myRole && (
-              <div className="flex-shrink-0 rounded-xl bg-white/10 ring-1 ring-white/20 px-4 py-3 text-center min-w-[110px]">
-                <p className="text-[10px] text-white/50 uppercase tracking-wider font-semibold">Role Anda</p>
+              <div className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm">
+                <p className="text-[10px] text-white/50 uppercase tracking-wider font-semibold">Peran Anda</p>
                 <p className="text-sm font-bold text-white mt-0.5">{myRole}</p>
               </div>
             )}

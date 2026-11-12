@@ -10,22 +10,22 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#0B2C6B",
+    theme_color: "#ffffff",
     icons: [
       {
-        src: "/icons/ams-192.png",
+        src: "/icons/ams-192.png?v=2",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/ams-512.png",
+        src: "/icons/ams-512.png?v=2",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/ams-maskable.png",
+        src: "/icons/ams-maskable.png?v=2",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
