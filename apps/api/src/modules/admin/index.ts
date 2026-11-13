@@ -1002,8 +1002,11 @@ admin.patch('/assignments/:id', async (c) => {
         syncPending = true;
       }
     }
-    const outcomes = await Promise.allSettled((affectedAssignees || []).map((assignee) => syncAssignmentAssignee(assignee.id)));
-    syncPending = syncPending || outcomes.some((outcome) => outcome.status === 'rejected');
+    const recipients = affectedAssignees || [];
+    for (let first = 0; first < recipients.length; first += 8) {
+      const outcomes = await Promise.allSettled(recipients.slice(first, first + 8).map((assignee) => syncAssignmentAssignee(assignee.id)));
+      syncPending = syncPending || outcomes.some((outcome) => outcome.status === 'rejected');
+    }
     if (syncPending) {
       await db.from('assignments').update({ integration_status: 'failed' }).eq('id', id);
     }

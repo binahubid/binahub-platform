@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
-import { assignmentLifecycle, assignmentWorkState } from '../packages/domain/dist/index.js';
+import { assignmentLifecycle, assignmentStatusForApp, assignmentWorkState } from '../packages/domain/dist/index.js';
 
 Object.assign(process.env, {
   NODE_ENV: 'production', SUPABASE_URL: 'https://assignment-fixture.invalid',
@@ -160,6 +160,9 @@ test('lifecycle preserves response history, pauses, revisions, and legacy report
   assert.equal(scheduled.work_status, 'scheduled');
   assert.equal(scheduled.actions.can_start, false);
   assert.equal(scheduled.actions.can_log_progress, false);
+  assert.equal(assignmentStatusForApp({ status: 'completed' }, 'invited'), 'cancelled');
+  assert.equal(assignmentStatusForApp({ status: 'completed' }, 'applied'), 'cancelled');
+  assert.equal(assignmentStatusForApp({ status: 'completed' }, 'reviewed'), 'reviewed');
 });
 
 test('list and home summary agree while preserving declined and ended history', async () => {

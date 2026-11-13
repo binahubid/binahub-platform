@@ -132,6 +132,6 @@ export function assignmentWorkState(assignment: AssignmentRecord, assignee: Assi
 export function assignmentStatusForApp(assignment: AssignmentRecord, participation: string) {
   if (!['invited', 'applied', 'accepted', 'in_progress'].includes(participation)) return participation;
   if (assignment.status === 'cancelled') return 'cancelled';
-  if (assignment.status === 'completed') return 'completed';
+  if (assignment.status === 'completed') return ['invited', 'applied'].includes(participation) ? 'cancelled' : 'completed';
   return participation;
 }
