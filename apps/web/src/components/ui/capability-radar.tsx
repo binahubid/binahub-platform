@@ -102,7 +102,9 @@ export function CapabilityRadar({ data, size = 280 }: { data: CapabilityData[]; 
       const labelR = maxR + 24;
       const x = cx + labelR * Math.cos(angle);
       const y = cy + labelR * Math.sin(angle);
-      ctx.fillText(data[i].label, x, y);
+      const halfLabel = ctx.measureText(data[i].label).width / 2;
+      const labelX = Math.max(halfLabel + 4, Math.min(size - halfLabel - 4, x));
+      ctx.fillText(data[i].label, labelX, y);
     }
   }, [data, size]);
 

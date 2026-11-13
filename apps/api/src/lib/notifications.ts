@@ -10,11 +10,13 @@ import {
 } from "@ams/domain";
 import { getDb } from "./database.js";
 import { postSigned } from "./app-integration.js";
+import { assignmentInvitationIsCurrent } from "./assignment-lifecycle.js";
 
 export type Notice = {
   id: string;
   recipient_id: string;
   recipient_role: string;
+  reference_id?: string | null;
   title: string;
   type: string;
   category?: string;
@@ -59,6 +61,9 @@ export async function noticeIsCurrent(notice: Notice) {
   });
   if (error) throw new Error("NOTIFICATION_CONTEXT_UNAVAILABLE");
   if (!data) return false;
+  if (notice.type === "invitation" && notice.recipient_role === "associate" && notice.link?.startsWith("/dashboard/assignments/")) {
+    return Boolean(notice.reference_id && await assignmentInvitationIsCurrent(notice.reference_id, notice.recipient_id));
+  }
   if (notice.context?.externalSourceId) {
     const result = await postSigned<{ success: true; current: boolean }>(
       "/api/integrations/ams/notification-context",

@@ -263,12 +263,6 @@ export default function CapabilityPage() {
                 </svg>
                 <span className="text-sm font-medium text-slate-700">View Reviews</span>
               </a>
-              <a href="/dashboard/development" className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50 transition-colors">
-                <svg className="h-5 w-5 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                <span className="text-sm font-medium text-slate-700">Rencana pengembangan</span>
-              </a>
             </div>
           </div>
         </div>

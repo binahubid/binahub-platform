@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
-import { useToast } from '../../../components/ui';
+import { ServiceError, useToast } from '../../../components/ui';
+import { assignmentStatusLabel, assignmentStatusTone, formatAssignmentDate, nextAssignmentTransition, type AssignmentLifecycle } from '@/lib/assignment-display';
+import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
 
 type Assignment = {
   id: string;
@@ -12,6 +14,7 @@ type Assignment = {
   client_name: string;
   description: string | null;
   status: string;
+  lifecycle?: AssignmentLifecycle;
   start_date: string | null;
   end_date: string | null;
   needed_roles: string[];
@@ -134,6 +137,12 @@ export default function AdminAssignmentsPage() {
   const { user, accessToken } = useAuth();
   const { toast } = useToast();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  const [filter, setFilter] = useState('all');
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const request = useRef<AbortController | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormType>({ ...EMPTY_FORM, needed_roles: [] });
@@ -155,17 +164,25 @@ export default function AdminAssignmentsPage() {
 
   const fetchAssignments = useCallback(async () => {
     if (!user || !accessToken) return;
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
     try {
-      const resp = await fetch(`${apiUrl}/api/admin/assignments`, { headers });
+      const resp = await fetch(apiUrl + '/api/admin/assignments?limit=50&offset=' + page * 50 + '&view=' + filter, {
+        headers, cache: 'no-store', signal: controller.signal,
+      });
       const d = await resp.json();
-      if (d?.success) setAssignments(d.data || []);
-      else toast('error', d?.error || 'Gagal memuat data');
+      if (controller.signal.aborted) return;
+      if (!resp.ok || !d?.success) throw new Error();
+      setAssignments(d.data || []);
+      setTotal(d.total ?? d.data?.length ?? 0);
+      setLoadError(false);
     } catch {
-      toast('error', 'Gagal terhubung ke server');
+      if (!controller.signal.aborted) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [user, accessToken, apiUrl, headers, toast]);
+  }, [user, accessToken, apiUrl, headers, page, filter]);
 
   const fetchAppPrograms = useCallback(async () => {
     if (!user || !accessToken) return;
@@ -185,7 +202,12 @@ export default function AdminAssignmentsPage() {
     }
   }, [user, accessToken, apiUrl, headers, toast]);
 
-  useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
+  useEffect(() => {
+    setLoading(true);
+    void fetchAssignments();
+    return () => request.current?.abort();
+  }, [fetchAssignments]);
+  useAssignmentRefresh(nextAssignmentTransition(assignments.map((row) => row.lifecycle || {})), fetchAssignments, Boolean(accessToken));
 
   useEffect(() => {
     if (showForm && appPrograms.length === 0) void fetchAppPrograms();
@@ -273,6 +295,8 @@ export default function AdminAssignmentsPage() {
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
+    if (newStatus === 'cancelled' && !confirm('Batalkan penugasan ini? Riwayat dan laporan yang sudah tersimpan tetap tersedia.')) return;
+    setUpdatingId(id);
     try {
       const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}`, {
         method: 'PATCH',
@@ -281,13 +305,15 @@ export default function AdminAssignmentsPage() {
       });
       const d = await resp.json();
       if (d?.success) {
-        toast('success', 'Status assignment diperbarui');
+        toast(d.syncPending ? 'warning' : 'success', d.syncPending ? 'Status tersimpan. Sinkronisasi program masih perlu dicoba ulang.' : 'Status penugasan diperbarui.');
         await fetchAssignments();
       } else {
         toast('error', d?.error || 'Gagal mengubah status');
       }
     } catch {
       toast('error', 'Gagal terhubung ke server');
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -377,32 +403,20 @@ export default function AdminAssignmentsPage() {
     }
   };
 
-  const statusColor = (s: string) => {
-    switch (s) {
-      case 'active': return 'bg-emerald-50 text-emerald-700';
-      case 'draft': return 'bg-slate-100 text-slate-600';
-      case 'completed': return 'bg-blue-50 text-blue-700';
-      case 'cancelled': return 'bg-red-50 text-red-600';
-      default: return 'bg-slate-100 text-slate-600';
-    }
-  };
-
-  const statusLabel: Record<string, string> = {
-    draft: 'Draft',
-    active: 'Aktif',
-    completed: 'Selesai',
-    cancelled: 'Dibatalkan',
-  };
-
-  const renderStatusButtons = (a: Assignment) => {
+  const renderStatusButtons = (row: Assignment) => {
     const buttons: Array<{ label: string; status: string; cls: string }> = [];
-    if (a.status === 'draft') {
-      buttons.push({ label: 'Aktifkan', status: 'active', cls: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' });
-      buttons.push({ label: 'Batalkan', status: 'cancelled', cls: 'bg-red-50 text-red-600 hover:bg-red-100' });
+    const state = row.lifecycle;
+    if (row.status === 'draft' || (row.status === 'paused')) {
+      buttons.push({ label: row.status === 'draft' ? 'Aktifkan' : 'Lanjutkan', status: 'active', cls: 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' });
     }
-    if (a.status === 'active') {
-      buttons.push({ label: 'Tandai selesai', status: 'completed', cls: 'bg-blue-50 text-blue-700 hover:bg-blue-100' });
-      buttons.push({ label: 'Batalkan', status: 'cancelled', cls: 'bg-red-50 text-red-600 hover:bg-red-100' });
+    if (row.status === 'active' && (state?.is_active ?? true)) {
+      buttons.push({ label: 'Jeda', status: 'paused', cls: 'bg-amber-50 text-amber-900 hover:bg-amber-100' });
+    }
+    if (['active', 'paused'].includes(row.status) && (state?.phase === 'ended' || state?.all_reviewed || state?.filled_count === 0)) {
+      buttons.push({ label: 'Tutup penugasan', status: 'completed', cls: 'bg-blue-50 text-blue-800 hover:bg-blue-100' });
+    }
+    if (['draft', 'active', 'paused'].includes(row.status) && state?.phase !== 'completed') {
+      buttons.push({ label: 'Batalkan', status: 'cancelled', cls: 'bg-red-50 text-red-700 hover:bg-red-100' });
     }
     return buttons;
   };
@@ -498,7 +512,29 @@ export default function AdminAssignmentsPage() {
         </div>
       )}
 
-      {loading ? (
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <label className="text-sm font-medium text-slate-700">
+          <span className="mb-1 block">Tampilkan penugasan</span>
+          <select value={filter} onChange={(event) => { setFilter(event.target.value); setPage(0); }} className="min-h-11 rounded-xl border border-slate-300 bg-white px-3">
+            <option value="all">Semua status</option>
+            <option value="active">Aktif</option>
+            <option value="follow_up">Tindak lanjut</option>
+            <option value="history">Riwayat</option>
+            <option value="draft">Draf</option>
+          </select>
+        </label>
+        {total > 50 && (
+          <div className="flex items-center gap-2 text-sm">
+            <button type="button" disabled={page === 0} onClick={() => setPage(page - 1)} className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 disabled:opacity-50">Sebelumnya</button>
+            <span className="tabular-nums">{page + 1} / {Math.ceil(total / 50)}</span>
+            <button type="button" disabled={(page + 1) * 50 >= total} onClick={() => setPage(page + 1)} className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 disabled:opacity-50">Berikutnya</button>
+          </div>
+        )}
+      </div>
+
+      {loadError ? (
+        <ServiceError title="Daftar penugasan belum dapat dimuat" message="Periksa koneksi dan coba lagi." onRetry={fetchAssignments} />
+      ) : loading ? (
         <div className="ams-panel flex min-h-[400px] items-center justify-center">
           <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -543,8 +579,8 @@ export default function AdminAssignmentsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-semibold text-slate-900">{a.title}</p>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusColor(a.status)}`}>
-                          {statusLabel[a.status] || a.status}
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${assignmentStatusTone(a.lifecycle?.phase || a.status)}`}>
+                          {a.lifecycle?.label || assignmentStatusLabel(a.status)}
                         </span>
                         {a.external_program_id && a.external_module_key && (
                           <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
@@ -572,8 +608,8 @@ export default function AdminAssignmentsPage() {
                       <p className="text-xs text-slate-500 mt-1">{a.client_name}</p>
                       {a.description && <p className="text-xs text-slate-400 mt-1 line-clamp-1">{a.description}</p>}
                       <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-500">
-                        {a.start_date && <span>Mulai: {new Date(a.start_date).toLocaleDateString('id-ID')}</span>}
-                        {a.end_date && <span>Selesai: {new Date(a.end_date).toLocaleDateString('id-ID')}</span>}
+                        {a.start_date && <span>Mulai: {formatAssignmentDate(a.start_date)}</span>}
+                        {a.end_date && <span>Selesai: {formatAssignmentDate(a.end_date)}</span>}
                         {a.needed_roles.length > 0 && <span>Role: {a.needed_roles.join(', ')}</span>}
                         {a.mandays && a.mandays > 0 ? <span>Durasi: {a.mandays} Hari</span> : null}
                         {a.compensation && <span>Kompensasi: {a.compensation}</span>}
@@ -593,6 +629,7 @@ export default function AdminAssignmentsPage() {
                       {renderStatusButtons(a).map((btn) => (
                         <button
                           key={btn.status}
+                          disabled={updatingId === a.id}
                           onClick={() => handleStatusChange(a.id, btn.status)}
                           className={`min-h-11 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium ${btn.cls}`}
                         >

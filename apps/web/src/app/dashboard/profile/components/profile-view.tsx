@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Avatar, useToast } from '../../../../components/ui';
 import { useAuth } from '../../../../context/AuthContext';
 import { resolveProtectedFileUrl } from '../../../../components/ui/protected-file';
-import type { AssociateData } from '../types';
+import type { AssociateData, Availability } from '../types';
+import { ProfileBio, ProfileItems } from './profile-disclosure';
 
 type ProfileViewProps = {
   data: AssociateData;
@@ -23,7 +24,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
 
   const p = data.profile;
   const cvDoc = data.documents.find((d) => d.type === 'cv');
-  const av = (Array.isArray(data.availability) ? data.availability[0] : data.availability) || { status: '' };
+  const av: Availability | null | undefined = Array.isArray(data.availability) ? data.availability[0] : data.availability;
   const availabilityLabels: Record<string, string> = {
     open: 'Tersedia', available: 'Tersedia', limited: 'Terbatas', busy: 'Terbatas', unavailable: 'Tidak tersedia',
   };
@@ -75,7 +76,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           <Avatar name={p?.full_name || data.id} src={p?.photo_url} accessToken={accessToken} size="xl" className="sm:!h-20 sm:!w-20" />
           <div className="min-w-0 flex-1">
             <h1 className="break-words text-xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-2xl">{p?.full_name || 'Profil saya'}</h1>
-            {(p?.headline || p?.roles?.length) && <p className="mt-1 break-words text-sm leading-6 text-slate-600">{p.headline || p.roles?.join(' · ')}</p>}
+            {(p?.headline || p?.roles?.length) && <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-slate-600">{p.headline || p.roles?.[0]}</p>}
             <p className="mt-1 text-xs text-slate-600">{profileStatus}</p>
           </div>
         </div>
@@ -109,18 +110,15 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
         </div>
       )}
 
-      {/* Quick Edit Action Button */}
-
-
       {/* ─── Two-Column Layout for Professional Detail ───────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Side: Summary & Sidebar Widgets (1 Column) */}
         <div className="ams-panel divide-y divide-slate-200 self-start overflow-hidden lg:col-span-1">
           {/* Availability Status */}
           {av && (
             <div className="p-4 sm:p-5 space-y-4">
-              <h3 className="text-sm font-semibold text-slate-900">Ketersediaan & Kerja</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Ketersediaan kerja</h3>
               <div className="flex items-center gap-3">
                 <div className={`h-2 w-2 shrink-0 rounded-full ${
                   av.status === 'open' || av.status === 'available' ? 'bg-emerald-500' :
@@ -131,13 +129,17 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                 </span>
               </div>
               {av.work_locations && av.work_locations.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-50">
-                  {av.work_locations.map((loc: string) => (
-                    <span key={loc} className="rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                      {loc}
-                    </span>
-                  ))}
-                </div>
+                <ProfileItems label="Lokasi kerja" items={av.work_locations} limit={3} compact>
+                  {(visible) => (
+                    <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-50">
+                      {visible.map((loc: string) => (
+                        <span key={loc} className="rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                          {loc}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </ProfileItems>
               )}
             </div>
           )}
@@ -167,249 +169,279 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Roles List */}
           {p?.roles && p.roles.length > 0 && (
             <div className="p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Peran Utama</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {p.roles.map((role) => (
-                  <span key={role} className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-1.5 text-xs font-semibold text-[#0B2C6B]">
-                    {role}
-                  </span>
-                ))}
-              </div>
+              <h3 className="text-sm font-semibold text-slate-900">Peran utama</h3>
+              <ProfileItems label="Peran utama" items={p.roles} limit={3} compact>
+                {(visible) => (
+                  <div className="flex flex-wrap gap-1.5">
+                    {visible.map((role) => (
+                      <span key={role} className="max-w-full break-words rounded-lg bg-blue-50 border border-blue-100 px-3 py-1.5 text-xs font-semibold text-[#0B2C6B]">
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </ProfileItems>
             </div>
           )}
 
           {/* Expertises List */}
           {p?.expertises && p.expertises.length > 0 && (
             <div className="p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Bidang Keahlian</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {p.expertises.map((exp) => (
-                  <span key={exp} className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-1.5 text-xs font-semibold text-[#D9A441]">
-                    {exp}
-                  </span>
-                ))}
-              </div>
+              <h3 className="text-sm font-semibold text-slate-900">Bidang keahlian</h3>
+              <ProfileItems label="Bidang keahlian" items={p.expertises} limit={2} compact>
+                {(visible) => (
+                  <div className="flex flex-wrap gap-1.5">
+                    {visible.map((exp) => (
+                      <span key={exp} className="max-w-full break-words rounded-lg bg-amber-50 border border-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900">
+                        {exp}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </ProfileItems>
             </div>
           )}
 
           {/* Skills List */}
           {data.skills.length > 0 && (
             <div className="p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Kompetensi & Keahlian</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {data.skills.map((skill) => (
-                  <span key={skill.id} className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                    {skill.skill_name}
-                    {skill.proficiency && (
-                      <span className="ml-1.5 text-[9px] font-medium text-slate-400 capitalize">
-                        ({skill.proficiency})
+              <h3 className="text-sm font-semibold text-slate-900">Kompetensi dan keahlian</h3>
+              <ProfileItems label="Kompetensi dan keahlian" items={data.skills} limit={3} compact>
+                {(visible) => (
+                  <div className="flex flex-wrap gap-1.5">
+                    {visible.map((skill) => (
+                      <span key={skill.id} className="max-w-full break-words rounded-lg bg-slate-50 border border-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                        {skill.skill_name}
+                        {skill.proficiency && (
+                          <span className="ml-1.5 text-[11px] font-medium text-slate-600 capitalize">
+                            ({skill.proficiency})
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                ))}
-              </div>
+                    ))}
+                  </div>
+                )}
+              </ProfileItems>
             </div>
           )}
 
           {/* Languages List */}
           {data.languages.length > 0 && (
             <div className="p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Penguasaan Bahasa</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {data.languages.map((lang) => (
-                  <span key={lang.id} className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                    {lang.language}
-                    <span className="ml-1.5 text-[9px] font-bold text-[#0B2C6B] uppercase tracking-wider">
-                      ({lang.proficiency})
-                    </span>
-                  </span>
-                ))}
-              </div>
+              <h3 className="text-sm font-semibold text-slate-900">Penguasaan bahasa</h3>
+              <ProfileItems label="Penguasaan bahasa" items={data.languages} limit={3} compact>
+                {(visible) => (
+                  <div className="flex flex-wrap gap-1.5">
+                    {visible.map((lang) => (
+                      <span key={lang.id} className="max-w-full break-words rounded-lg bg-slate-50 border border-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                        {lang.language}
+                        <span className="ml-1.5 text-[9px] font-bold text-[#0B2C6B] uppercase tracking-wider">
+                          ({lang.proficiency})
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </ProfileItems>
             </div>
           )}
         </div>
 
         {/* Right Side: Bio & Interactive Timelines (2 Columns) */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Bio Section */}
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           {p?.bio && (
-            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-50 pb-3 mb-4">
-                Tentang Saya
-              </h3>
-              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                {p.bio}
-              </p>
-            </div>
+            <section className="ams-panel p-4 sm:p-5">
+              <h2 className="mb-2 text-sm font-semibold text-slate-900">Tentang saya</h2>
+              <ProfileBio text={p.bio} />
+            </section>
           )}
 
           {/* Experiences Section */}
           {data.experiences.length > 0 && (
-            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-50 pb-3 mb-6">
-                Pengalaman Kerja
+            <div className="ams-panel min-w-0 p-4 sm:p-5">
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">
+                Pengalaman kerja
               </h3>
-              <div className="relative pl-6 border-l-2 border-slate-100 space-y-8">
-                {data.experiences.map((exp) => (
-                  <div key={exp.id} className="relative group">
-                    {/* Timeline Node Bullet */}
-                    <div className="absolute -left-[31px] top-1.5 h-4 w-4 rounded-full border-2 border-white bg-[#0B2C6B] shadow-sm transition-all duration-300 group-hover:scale-125" />
-                    
-                    <div className="space-y-1">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-[#0B2C6B] transition-colors">
-                          {exp.position}
-                        </h4>
-                        <span className="inline-block rounded bg-slate-50 border border-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 w-fit">
-                          {exp.start_date} — {exp.is_current ? 'Sekarang' : exp.end_date || '-'}
-                        </span>
+              <ProfileItems label="Pengalaman kerja" items={data.experiences} limit={2} details={data.experiences.some((item) => Boolean(item.description?.trim() || item.achievement?.trim()))}>
+                {(visible, expanded) => (
+                  <div className="relative space-y-5 border-l border-slate-200 pl-4">
+                    {visible.map((exp) => (
+                      <div key={exp.id} className="relative group">
+                        {/* Timeline Node Bullet */}
+                        <div className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#0B2C6B] shadow-sm transition-all duration-300 group-hover:scale-125" />
+
+                        <div className="space-y-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <h4 className="break-words text-sm font-semibold text-slate-900">
+                              {exp.position}
+                            </h4>
+                            <span className="inline-block rounded bg-slate-50 border border-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 w-fit">
+                              {exp.start_date} — {exp.is_current ? 'Sekarang' : exp.end_date || '-'}
+                            </span>
+                          </div>
+                          <p className="break-words text-xs font-semibold text-slate-600">{exp.organization}</p>
+                          {exp.industry && (
+                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                              Industri: {exp.industry}
+                            </p>
+                          )}
+                          {expanded && exp.description && (
+                            <p className="mt-2 break-words whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                              {exp.description}
+                            </p>
+                          )}
+                          {expanded && exp.achievement && (
+                            <p className="mt-2 break-words whitespace-pre-wrap text-sm leading-6 text-slate-600">{exp.achievement}</p>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs font-semibold text-slate-600">{exp.organization}</p>
-                      {exp.industry && (
-                        <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                          Industri: {exp.industry}
-                        </p>
-                      )}
-                      {exp.description && (
-                        <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                          {exp.description}
-                        </p>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+              </ProfileItems>
             </div>
           )}
 
           {/* Education Section */}
           {data.educations.length > 0 && (
-            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-50 pb-3 mb-6">
-                Riwayat Pendidikan
+            <div className="ams-panel min-w-0 p-4 sm:p-5">
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">
+                Riwayat pendidikan
               </h3>
-              <div className="relative pl-6 border-l-2 border-slate-100 space-y-8">
-                {data.educations.map((edu) => (
-                  <div key={edu.id} className="relative group">
-                    {/* Timeline Node Bullet */}
-                    <div className="absolute -left-[31px] top-1.5 h-4 w-4 rounded-full border-2 border-white bg-amber-500 shadow-sm transition-all duration-300 group-hover:scale-125" />
-                    
-                    <div className="space-y-1">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                        <h4 className="text-sm font-bold text-slate-900">
-                          {edu.degree}
-                        </h4>
-                        <span className="inline-block rounded bg-slate-50 border border-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 w-fit">
-                          {edu.start_year} — {edu.end_year || 'Sekarang'}
-                        </span>
+              <ProfileItems label="Riwayat pendidikan" items={data.educations} limit={2}>
+                {(visible) => (
+                  <div className="relative space-y-5 border-l border-slate-200 pl-4">
+                    {visible.map((edu) => (
+                      <div key={edu.id} className="relative group">
+                        {/* Timeline Node Bullet */}
+                        <div className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-amber-500 shadow-sm transition-all duration-300 group-hover:scale-125" />
+
+                        <div className="space-y-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <h4 className="break-words text-sm font-semibold text-slate-900">
+                              {edu.degree}
+                            </h4>
+                            <span className="inline-block rounded bg-slate-50 border border-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 w-fit">
+                              {edu.start_year} — {edu.end_year || 'Sekarang'}
+                            </span>
+                          </div>
+                          <p className="break-words text-xs font-semibold text-slate-600">{edu.institution}</p>
+                          {edu.field_of_study && (
+                            <p className="text-xs text-slate-500 italic mt-0.5">
+                              Bidang Studi: {edu.field_of_study}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs font-semibold text-slate-600">{edu.institution}</p>
-                      {edu.field_of_study && (
-                        <p className="text-xs text-slate-500 italic mt-0.5">
-                          Bidang Studi: {edu.field_of_study}
-                        </p>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+              </ProfileItems>
             </div>
           )}
 
           {/* Certifications Section */}
           {data.certifications && data.certifications.length > 0 && (
-            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-50 pb-3 mb-4">
-                Sertifikasi Profesional
+            <div className="ams-panel min-w-0 p-4 sm:p-5">
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">
+                Sertifikasi profesional
               </h3>
-              <div className="space-y-4 pt-2">
-                {data.certifications.map((cert) => (
-                  <div key={cert.id} className="flex items-start justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4 hover:shadow-sm transition-shadow">
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-bold text-slate-900">{cert.name}</h4>
-                      <p className="text-xs text-slate-600 font-medium">{cert.issuing_organization}</p>
-                      {cert.credential_id && (
-                        <p className="text-[10px] text-slate-400 mt-1">ID Kredensial: {cert.credential_id}</p>
-                      )}
-                      {cert.credential_url && (
-                        <div className="mt-3">
-                          <button
-                            type="button"
-                            onClick={() => void openPreview(cert.credential_url!, cert.name)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-100 transition-colors"
-                          >
-                            <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="truncate max-w-[150px] text-[10px]">Lihat Dokumen Sertifikat</span>
-                          </button>
+              <ProfileItems label="Sertifikasi profesional" items={data.certifications} limit={2}>
+                {(visible) => (
+                  <div className="space-y-4 pt-2">
+                    {visible.map((cert) => (
+                      <div key={cert.id} className="flex items-start justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4 hover:shadow-sm transition-shadow">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="break-words text-sm font-semibold text-slate-900">{cert.name}</h4>
+                          <p className="break-words text-xs font-medium text-slate-600">{cert.issuing_organization}</p>
+                          {cert.credential_id && (
+                            <p className="text-[10px] text-slate-400 mt-1">ID Kredensial: {cert.credential_id}</p>
+                          )}
+                          {cert.credential_url && (
+                            <div className="mt-3">
+                              <button
+                                type="button"
+                                onClick={() => void openPreview(cert.credential_url!, cert.name)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-100 transition-colors"
+                              >
+                                <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span className="truncate max-w-[150px] text-[10px]">Lihat Dokumen Sertifikat</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+              </ProfileItems>
             </div>
           )}
 
           {/* Portfolios Section */}
           {data.portfolios && data.portfolios.length > 0 && (
-            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-50 pb-3 mb-4">
-                Portofolio & Hasil Karya
+            <div className="ams-panel min-w-0 p-4 sm:p-5">
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">
+                Portofolio dan hasil karya
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                {data.portfolios.map((port) => {
-                  const { cleanDesc, files } = extractAttachments(port.description);
-                  return (
-                    <div key={port.id} className="ams-panel p-4 hover:shadow-sm transition-shadow flex flex-col justify-between">
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-900 truncate" title={port.title}>{port.title}</h4>
-                        {cleanDesc && (
-                          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed line-clamp-3 whitespace-pre-wrap">{cleanDesc}</p>
-                        )}
-                        
-                        {/* Visual File Attachments Box */}
-                        {files.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Berkas Lampiran</span>
-                            <div className="grid grid-cols-2 gap-2">
-                              {files.map((file, fIdx) => (
-                                <button
-                                  key={fIdx}
-                                  type="button"
-                                  onClick={() => void openPreview(file.url, file.name)}
-                                  className="flex flex-col items-center justify-center p-3 rounded-lg border border-slate-200 bg-slate-50 gap-2 text-center text-[#0B2C6B] hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0B2C6B]/25"
-                                >
-                                  <svg className="h-6 w-6 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                  </svg>
-                                  <span className="truncate max-w-[120px] text-[9px] font-semibold">{file.name}</span>
-                                </button>
-                              ))}
-                            </div>
+              <ProfileItems label="Portofolio" items={data.portfolios} limit={2} details={data.portfolios.some((item) => Boolean(item.description?.trim() || item.link_url))}>
+                {(visible, expanded) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    {visible.map((port) => {
+                      const { cleanDesc, files } = extractAttachments(port.description);
+                      return (
+                        <div key={port.id} className="ams-panel p-4 hover:shadow-sm transition-shadow flex flex-col justify-between">
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-900 break-words">{port.title}</h4>
+                            {expanded && cleanDesc && (
+                              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed break-words whitespace-pre-wrap">{cleanDesc}</p>
+                            )}
+
+                            {/* Visual File Attachments Box */}
+                            {expanded && files.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Berkas Lampiran</span>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {files.map((file, fIdx) => (
+                                    <button
+                                      key={fIdx}
+                                      type="button"
+                                      onClick={() => void openPreview(file.url, file.name)}
+                                      className="flex flex-col items-center justify-center p-3 rounded-lg border border-slate-200 bg-slate-50 gap-2 text-center text-[#0B2C6B] hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0B2C6B]/25"
+                                    >
+                                      <svg className="h-6 w-6 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      <span className="truncate max-w-[120px] text-[9px] font-semibold">{file.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      {port.link_url && (
-                        <div className="mt-3 pt-3 border-t border-slate-100">
-                          <a
-                            href={port.link_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0B2C6B] hover:underline truncate max-w-full"
-                          >
-                            Buka Tautan Portofolio
-                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
+                          {expanded && port.link_url && (
+                            <div className="mt-3 pt-3 border-t border-slate-100">
+                              <a
+                                href={port.link_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0B2C6B] hover:underline truncate max-w-full"
+                              >
+                                Buka Tautan Portofolio
+                                <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </a>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </ProfileItems>
             </div>
           )}
         </div>
@@ -441,7 +473,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-slate-50">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">{activePreviewTitle || 'Pratinjau Dokumen'}</h3>
+                <h3 className="break-words text-sm font-semibold text-slate-900">{activePreviewTitle || 'Pratinjau Dokumen'}</h3>
                 <p className="text-[10px] text-slate-500 mt-0.5">Dokumen terverifikasi BinaHub</p>
               </div>
               <div className="flex items-center gap-3">
@@ -463,7 +495,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                 </button>
               </div>
             </div>
-            
+
             {/* Modal Body */}
             <div className="flex-1 bg-slate-800 flex items-center justify-center relative">
               <iframe

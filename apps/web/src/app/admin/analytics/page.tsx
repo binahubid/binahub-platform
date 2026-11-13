@@ -106,7 +106,13 @@ export default function AnalyticsPage() {
   const growthLabels = growthData?.growth?.map(g => g.label) || [];
 
   // Assignment status data
-  const assignmentStatus = growthData?.assignment_status || { draft: 0, active: 0, completed: 0, cancelled: 0 };
+  const assignmentStatus = growthData?.assignment_status || {};
+  const assignmentGroups = [
+    ['draft', 'Draf'], ['active', 'Aktif'], ['paused', 'Dijeda'],
+    ['follow_up', 'Tindak lanjut laporan'], ['ended', 'Jadwal berakhir'],
+    ['completed', 'Selesai'], ['cancelled', 'Dibatalkan'],
+    ...(assignmentStatus.unknown ? [['unknown', 'Perlu diperiksa']] : []),
+  ];
 
   return (
     <div className="space-y-6">
@@ -195,24 +201,14 @@ export default function AnalyticsPage() {
 
       {/* Assignment Status */}
       <div className="ams-panel p-6">
-        <h2 className="text-base font-semibold text-slate-900 mb-4">Status Assignment</h2>
+        <h2 className="text-base font-semibold text-slate-900 mb-4">Status penugasan</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-lg border border-slate-200 p-4">
-            <p className="text-xs font-medium text-slate-500">Draft</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{assignmentStatus.draft}</p>
-          </div>
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-            <p className="text-xs font-medium text-blue-600">Active</p>
-            <p className="mt-2 text-2xl font-bold text-blue-900">{assignmentStatus.active}</p>
-          </div>
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-xs font-medium text-emerald-600">Completed</p>
-            <p className="mt-2 text-2xl font-bold text-emerald-900">{assignmentStatus.completed}</p>
-          </div>
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-xs font-medium text-red-600">Cancelled</p>
-            <p className="mt-2 text-2xl font-bold text-red-900">{assignmentStatus.cancelled}</p>
-          </div>
+          {assignmentGroups.map(([key, label]) => (
+            <div key={key} className="rounded-lg border border-slate-200 p-4">
+              <p className="text-xs font-medium text-slate-600">{label}</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-[#0B2C6B]">{assignmentStatus[key] || 0}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { getDb } from './database.js';
 import { noticeDeliveryDecision, NotificationDeferred, notificationPushConfig } from './notifications.js';
+import { assignmentInvitationIsCurrent } from './assignment-lifecycle.js';
 
 export async function getAdminRecipientIds(): Promise<string[]> {
   const db = getDb();
@@ -134,6 +135,11 @@ export async function sendQueuedNotificationEmail(deliveryId: string) {
   try {
     const { data: notification } = await db.from('notifications').select('*').eq('id', claimed.notification_id).maybeSingle();
     if (!notification) throw new Error('Notifikasi email tidak memiliki sumber');
+    if (claimed.template_key === 'assignment-invitation' && (!notification.reference_id ||
+        !await assignmentInvitationIsCurrent(notification.reference_id, notification.recipient_id))) {
+      await db.from('email_notification_deliveries').update({ status: 'skipped', updated_at: new Date().toISOString() }).eq('id', deliveryId);
+      return;
+    }
     const newDelivery = ['consultant-work', 'notification-reminder'].includes(claimed.template_key);
     if (newDelivery && (!notificationPushConfig().enabled || Date.now() - new Date(notification.created_at).getTime() > 3 * 86400000)) {
       await db.from('email_notification_deliveries').update({ status: 'skipped', updated_at: new Date().toISOString() }).eq('id', deliveryId);

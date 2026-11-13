@@ -8,6 +8,8 @@ import { ProtectedFileLink } from '../../components/ui/protected-file';
 import { WorkspaceOverview, WorkspaceShortcuts } from '@/components/ui/workspace-overview';
 import { ConsultantPortalEntry } from '@/components/consultant-team-context';
 import { InstallAmsCard } from '@/components/notifications/device-settings';
+import { assignmentStatusLabel, assignmentStatusTone, formatAssignmentDate, nextAssignmentTransition, type AssignmentWork } from '@/lib/assignment-display';
+import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
 
 type ProfileData = {
   full_name: string;
@@ -34,17 +36,15 @@ type Availability = {
   notes?: string | null;
 };
 
-type Assignment = {
+type Assignment = AssignmentWork & {
   id: string;
-  project_name: string;
-  role: string;
-  client?: string;
-  status: 'upcoming' | 'in_progress' | 'completed' | 'planned';
-  deadline: string;
-  start_date?: string;
-  reviewer?: string;
-  reviewer_avatar?: string;
-  progress?: number;
+  title: string;
+  client_name?: string | null;
+  status: string;
+  my_status?: string | null;
+  my_role?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
 };
 
 type Skill = {
@@ -65,6 +65,7 @@ type DashboardData = {
   created_at?: string;
   profile: ProfileData | null;
   assignments: Assignment[];
+  assignments_unavailable: boolean;
   skills: Skill[];
   capability_scores: CapabilityData[];
   experiences?: Array<{ id: string }>;
@@ -83,13 +84,6 @@ function getGreeting() {
   return 'Selamat malam';
 }
 
-
-const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
-  in_progress: { label: 'Berjalan', bg: 'bg-blue-50', text: 'text-blue-700' },
-  planned: { label: 'Direncanakan', bg: 'bg-amber-50', text: 'text-amber-700' },
-  upcoming: { label: 'Mendatang', bg: 'bg-slate-100', text: 'text-slate-600' },
-  completed: { label: 'Selesai', bg: 'bg-emerald-50', text: 'text-emerald-700' },
-};
 
 export default function DashboardPage() {
   const { user, accessToken } = useAuth();
@@ -151,6 +145,7 @@ export default function DashboardPage() {
         created_at: associate.created_at,
         profile: associate.profile || null,
         assignments: associate.assignments || [],
+        assignments_unavailable: Boolean(associate.assignments_unavailable),
         skills: associate.skills || [],
         capability_scores: associate.capability_scores || [],
         experiences: associate.experiences || [],
@@ -209,12 +204,12 @@ export default function DashboardPage() {
 
     // Search assignments
     (data.assignments || []).forEach((a) => {
-      const haystack = `${a.project_name} ${a.role} ${a.client || ''}`.toLowerCase();
+      const haystack = `${a.title} ${a.my_role} ${a.client_name || ''}`.toLowerCase();
       if (haystack.includes(q)) {
         results.push({
           type: 'Assignment',
-          label: a.project_name,
-          sublabel: a.role,
+          label: a.title,
+          sublabel: a.my_role || a.client_name || 'Penugasan',
           href: `/dashboard/assignments/${a.id}`,
         });
       }
@@ -276,7 +271,7 @@ export default function DashboardPage() {
   const hasPortfolio = !!(data?.portfolios && data.portfolios.length > 0);
 
   const capabilityData: CapabilityData[] = data?.skills?.length
-    ? data.skills.map((s) => {
+    ? data.skills.slice(0, 6).map((s) => {
         const levelMap: Record<string, number> = { beginner: 25, intermediate: 50, advanced: 75, expert: 95 };
         const prof = String(s.proficiency || '').toLowerCase();
         return {
@@ -286,8 +281,12 @@ export default function DashboardPage() {
       })
     : [];
 
-  const inProgressAssignments = data?.assignments.filter((a) => a.status === 'in_progress') || [];
-  const otherAssignments = data?.assignments.filter((a) => a.status !== 'in_progress').slice(0, 2) || [];
+  useAssignmentRefresh(nextAssignmentTransition(data?.assignments || []), fetchDashboard, Boolean(accessToken));
+  const myAssignments = data?.assignments.filter((assignment) => assignment.my_status) || [];
+  const inProgressAssignments = myAssignments.filter((assignment) => assignment.work_status === 'in_progress');
+  const needsFollowUp = myAssignments.filter((assignment) => assignment.work_bucket === 'follow_up');
+  const upcomingAssignments = myAssignments.filter((assignment) => assignment.work_bucket === 'active' && assignment.work_status !== 'in_progress');
+  const recentAssignments = [...needsFollowUp, ...inProgressAssignments, ...upcomingAssignments].slice(0, 3);
 
   if (loading) {
     return (
@@ -469,9 +468,9 @@ export default function DashboardPage() {
       <div className="ams-overview-grid">
         <WorkspaceOverview
           heading="Ruang kerja Anda"
-          value={inProgressAssignments.length}
+          value={data.assignments_unavailable ? null : inProgressAssignments.length}
           label="penugasan berjalan"
-          detail={`${data.assignments.filter((assignment) => assignment.status === 'upcoming' || assignment.status === 'planned').length} mendatang · ${data.assignments.filter((assignment) => assignment.status === 'completed').length} selesai`}
+          detail={data.assignments_unavailable ? 'Ringkasan penugasan belum dapat dimuat' : upcomingAssignments.length + ' mendatang · ' + needsFollowUp.length + ' perlu tindak lanjut'}
           href="/dashboard/assignments"
           action="Lihat penugasan"
           completion={completionPercentage}
@@ -479,10 +478,10 @@ export default function DashboardPage() {
           completionHref="/dashboard/profile"
         />
         <WorkspaceShortcuts items={[
-          { label: 'Dokumen', href: '/dashboard/profile?tab=documents', tone: 'blue', icon: 'M9 12h6m-6 4h4M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9l-6-6zm0 0v6h6' },
-          { label: 'Ketersediaan', href: '/dashboard/profile?tab=availability', tone: 'teal', icon: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zm3 12 3 3 5-6' },
-          { label: 'Asesmen', href: '/dashboard/assessments', tone: 'gold', icon: 'M9 5H5v16h14V5h-4m-6-2h6v4H9V3zm-1 9 1 1 2-2m2 1h3m-8 5 1 1 2-2m2 1h3' },
-          { label: 'Pengembangan', href: '/dashboard/development', tone: 'violet', icon: 'M4 20h16M5 16l5-5 4 3 6-9m-5 0h5v5' },
+          { label: 'Dokumen', href: '/dashboard/profile?tab=documents', tone: 'blue', artwork: 'document' },
+          { label: 'Ketersediaan', href: '/dashboard/profile?tab=availability', tone: 'teal', artwork: 'availability' },
+          { label: 'Asesmen', tone: 'gold', artwork: 'assessment' },
+          { label: 'Pengembangan', tone: 'violet', artwork: 'development' },
         ]} />
       </div>
       <ConsultantPortalEntry />
@@ -495,33 +494,23 @@ export default function DashboardPage() {
             Lihat semua
           </Link>
         </div>
-        {data?.assignments.length ? (
+        {recentAssignments.length ? (
           <ul className="divide-y divide-slate-100">
-            {[...inProgressAssignments, ...otherAssignments].map((assignment) => {
-              const status = statusConfig[assignment.status] ?? statusConfig.upcoming;
-              const ongoing = assignment.status === 'in_progress';
-              const date = ongoing ? assignment.deadline : assignment.start_date || assignment.deadline;
+            {recentAssignments.map((assignment) => {
+              const status = assignment.work_status || assignment.my_status || assignment.status;
+              const date = status === 'scheduled' ? assignment.start_date : assignment.end_date || assignment.start_date;
               return (
                 <li key={assignment.id} className="ams-assignment-row">
                   <Link href={`/dashboard/assignments/${assignment.id}`} className="flex min-h-16 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0B2C6B] sm:px-5">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                        <span className={`rounded-full px-2 py-0.5 font-medium ${status.bg} ${status.text}`}>{status.label}</span>
-                        {date && <time className="text-slate-600" dateTime={date}>
-                          {ongoing ? 'Tenggat ' : 'Mulai '}{new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </time>}
+                        <span className={'rounded-full px-2 py-1 font-medium ' + assignmentStatusTone(status)}>
+                          {assignment.work_status_label || assignmentStatusLabel(status)}
+                        </span>
+                        {date && <time className="text-slate-600" dateTime={date}>{formatAssignmentDate(date)}</time>}
                       </div>
-                      <p className="mt-2 break-words text-[15px] font-semibold leading-6 text-slate-900">{assignment.project_name}</p>
-                      <p className="mt-0.5 break-words text-sm text-slate-600">{[assignment.role, assignment.client].filter(Boolean).join(' · ')}</p>
-                      {ongoing && assignment.progress != null && (
-                        <div className="mt-2 flex max-w-60 items-center gap-2">
-                          <progress value={assignment.progress} max={100} aria-label="Kemajuan penugasan" className="h-1.5 min-w-0 flex-1 accent-[#0B2C6B]" />
-                          <span className="text-xs tabular-nums text-slate-600">{assignment.progress}%</span>
-                        </div>
-                      )}
-                      {ongoing && assignment.reviewer && (
-                        <p className="mt-1.5 break-words text-xs text-slate-600">Penilai: {assignment.reviewer}</p>
-                      )}
+                      <p className="mt-2 break-words text-[15px] font-semibold leading-6 text-slate-900">{assignment.title}</p>
+                      <p className="mt-0.5 break-words text-sm text-slate-600">{[assignment.my_role, assignment.client_name].filter(Boolean).join(' · ')}</p>
                     </div>
                     <svg aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m9 18 6-6-6-6" />
@@ -532,7 +521,7 @@ export default function DashboardPage() {
             })}
           </ul>
         ) : (
-          <p className="px-4 py-5 text-sm text-slate-600 sm:px-5">Penugasan baru akan muncul di sini.</p>
+          <p className="px-4 py-5 text-sm text-slate-600 sm:px-5">{data.assignments_unavailable ? 'Penugasan belum dapat dimuat. Coba buka daftar penugasan.' : 'Penugasan aktif dan tindak lanjut Anda akan muncul di sini.'}</p>
         )}
       </section>
 
@@ -541,7 +530,7 @@ export default function DashboardPage() {
           <div className="min-w-0 flex-1">
             <h2 id="profile-summary-heading" className="text-base font-semibold text-slate-900">Profil saya</h2>
             {(data?.profile?.headline || data?.profile?.roles?.length) && (
-              <p className="mt-0.5 break-words text-sm text-slate-600">{data.profile.headline || data.profile.roles?.join(', ')}</p>
+              <p className="mt-0.5 break-words text-sm text-slate-600">{data.profile.headline || data.profile.roles?.[0]}</p>
             )}
           </div>
           <Link href="/dashboard/profile" className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium text-[#0B2C6B] hover:underline">Ubah profil</Link>
@@ -604,7 +593,10 @@ export default function DashboardPage() {
             <Link href="/dashboard/capability" className="inline-flex min-h-11 items-center text-sm font-medium text-[#0B2C6B] hover:underline">Lihat rincian</Link>
           </div>
           {capabilityData.length >= 3 ? (
-            <CapabilityRadar data={capabilityData} size={240} />
+            <>
+              <CapabilityRadar data={capabilityData} size={240} />
+              {data.skills.length > capabilityData.length && <p className="mt-2 text-xs text-slate-600">Menampilkan {capabilityData.length} dari {data.skills.length} keahlian.</p>}
+            </>
           ) : data?.skills.length ? (
             <dl className="divide-y divide-slate-200">
               {data.skills.map((skill) => (
@@ -620,11 +612,9 @@ export default function DashboardPage() {
             <p className="py-3 text-sm leading-6 text-slate-600">Tambahkan keahlian pada profil Anda untuk melihat ringkasannya.</p>
           )}
         </section>
-        <section className="ams-panel self-start overflow-hidden" aria-label="Pengembangan dan evaluasi">
+        <section className="ams-panel self-start overflow-hidden" aria-label="Evaluasi">
           {[
             {href:'/dashboard/reviews',label:'Evaluasi saya'},
-            {href:'/dashboard/assessments',label:'Asesmen'},
-            {href:'/dashboard/development',label:'Rencana pengembangan'},
           ].map((item) => (
             <Link key={item.href} href={item.href} className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-200 px-4 text-sm font-medium text-slate-900 last:border-b-0 hover:bg-slate-50 sm:px-5">
               {item.label}

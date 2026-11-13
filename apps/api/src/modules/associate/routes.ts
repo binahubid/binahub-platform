@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { authMiddleware, requireRole } from '../auth/middleware/auth.js';
 import { getDb } from '../../lib/database.js';
+import { assignmentWorkState } from '@ams/domain';
+import { assignmentReadModel, loadAssignmentTeams, loadAssociateAssignments } from '../../lib/assignment-lifecycle.js';
 import { generateUniqueSlug, ensureUniqueSlug, isValidSlug } from '@ams/shared/utils/slug';
 import {
   createAssociateSchema,
@@ -211,45 +213,10 @@ associateRoutes.get('/me', async (c) => {
     .eq('associate_id', user.id)
     .order('created_at', { ascending: false });
 
-  // Fetch assignments with my participation status
-  const { data: allAssignments } = await db
-    .from('assignments')
-    .select('*')
-    .eq('status', 'active')
-    .limit(100)
-    .order('created_at', { ascending: false });
-
-  const { data: myAssignments } = await db
-    .from('assignment_assignees')
-    .select('assignment_id, status, role, notes, invited_at, accepted_at')
-    .eq('associate_id', user.id);
-
-  const assigneeMap: Record<string, { status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }> = {};
-  for (const a of (myAssignments || []) as Array<{ assignment_id: string; status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }>) {
-    assigneeMap[a.assignment_id] = { status: a.status, role: a.role, notes: a.notes, invited_at: a.invited_at, accepted_at: a.accepted_at };
-  }
-
-  const assignmentsWithStatus = (allAssignments || []).map((a: Record<string, unknown>) => ({
-    ...a,
-    my_status: assigneeMap[a.id as string]?.status || null,
-    my_role: assigneeMap[a.id as string]?.role || null,
-    my_notes: assigneeMap[a.id as string]?.notes || null,
-    my_invited_at: assigneeMap[a.id as string]?.invited_at || null,
-  }));
-
-  // Fetch assessments
-  const { data: assessments } = await db
-    .from('associate_assessments')
-    .select('*')
-    .eq('associate_id', user.id)
-    .order('created_at', { ascending: false });
-
-  // Fetch development plan
-  const { data: developmentPlan } = await db
-    .from('associate_development_plans')
-    .select('*')
-    .eq('associate_id', user.id)
-    .single();
+  const assignmentsWithStatus = await loadAssociateAssignments(db, user.id).catch((error) => {
+    console.error('Associate assignment summary unavailable', { error: error instanceof Error ? error.message : 'unknown' });
+    return null;
+  });
 
   // Filter out soft-deleted documents & map field names to frontend types
   const mappedDocuments = ((associate.documents || []) as any[])
@@ -272,7 +239,7 @@ associateRoutes.get('/me', async (c) => {
       }
     : associate;
 
-  return c.json({ success: true, data: { ...filteredAssociate, reviews: reviews || [], assignments: assignmentsWithStatus, assessments: assessments || [], development_plan: developmentPlan || null } });
+  return c.json({ success: true, data: { ...filteredAssociate, reviews: reviews || [], assignments: assignmentsWithStatus || [], assignments_unavailable: assignmentsWithStatus === null } });
 });
 
 // Financial details are intentionally isolated from profile/public/CV responses.
@@ -1486,60 +1453,9 @@ associateRoutes.get('/assignments', async (c) => {
     return c.json({ success: false, error: 'Associate tidak ditemukan' }, 404);
   }
 
-  const { data: myInvitations, error: inviteError } = await db
-    .from('assignment_assignees')
-    .select('assignment_id, status, role, notes, invited_at, accepted_at')
-    .eq('associate_id', associate.id);
-
-  if (inviteError) {
-    return c.json({ success: false, error: inviteError.message }, 500);
-  }
-
-  const invitedIds = (myInvitations || []).map((inv: { assignment_id: string }) => inv.assignment_id);
-
-  const { data: activeAssignments, error: activeError } = await db
-    .from('assignments')
-    .select('*')
-    .eq('status', 'active')
-    .eq('source_system', 'ams')
-    .limit(100)
-    .order('created_at', { ascending: false });
-
-  if (activeError) {
-    return c.json({ success: false, error: 'Gagal memuat penugasan' }, 500);
-  }
-
-  let invitedAssignments: Record<string, unknown>[] = [];
-  if (invitedIds.length > 0) {
-    const { data, error } = await db
-      .from('assignments')
-      .select('*')
-      .in('id', invitedIds)
-      .limit(100)
-      .order('created_at', { ascending: false });
-    if (error) return c.json({ success: false, error: 'Gagal memuat riwayat penugasan' }, 500);
-    invitedAssignments = (data || []) as Record<string, unknown>[];
-  }
-
-  const assigneeMap: Record<string, { status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }> = {};
-  for (const a of (myInvitations || []) as Array<{ assignment_id: string; status: string; role: string | null; notes: string | null; invited_at: string; accepted_at: string | null }>) {
-    assigneeMap[a.assignment_id] = { status: a.status, role: a.role, notes: a.notes, invited_at: a.invited_at, accepted_at: a.accepted_at };
-  }
-
-  const uniqueAssignments = new Map<string, Record<string, unknown>>();
-  for (const assignment of [...((activeAssignments || []) as Record<string, unknown>[]), ...invitedAssignments]) {
-    uniqueAssignments.set(assignment.id as string, assignment);
-  }
-
-  const result = Array.from(uniqueAssignments.values()).map((a: Record<string, unknown>) => ({
-    ...withoutIntegrationInternals(a),
-    my_status: assigneeMap[a.id as string]?.status || null,
-    my_role: assigneeMap[a.id as string]?.role || null,
-    my_notes: assigneeMap[a.id as string]?.notes || null,
-    my_invited_at: assigneeMap[a.id as string]?.invited_at || null,
-  }));
-
-  return c.json({ success: true, data: result });
+  const assignments = await loadAssociateAssignments(db, associate.id);
+  c.header('Cache-Control', 'no-store');
+  return c.json({ success: true, data: assignments });
 });
 
 associateRoutes.get('/assignments/:id', async (c) => {
@@ -1567,43 +1483,29 @@ associateRoutes.get('/assignments/:id', async (c) => {
     return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
   }
 
-  const { data: myAssignment } = await db
+  const { data: myAssignment, error: participantError } = await db
     .from('assignment_assignees')
     .select('id, assignment_id, associate_id, status, role, notes, invited_at, accepted_at, completed_at, evidence_url, evidence_notes, evidence_submitted_at, evidence_reviewed_at, evidence_reviewer_notes, compensation_amount, compensation_currency, compensation_basis, compensation_notes, compensation_updated_at, transport_amount, preparation_amount, invitation_expires_at')
     .eq('assignment_id', assignmentId)
     .eq('associate_id', associate.id)
-    .single();
+    .maybeSingle();
+  if (participantError) throw new Error('Assignment membership could not be read');
 
-  const isProgramAssignment = Boolean(assignment.external_program_id && assignment.external_module_key);
-  if (!myAssignment && (assignment.status !== 'active' || isProgramAssignment)) {
-    return c.json({ success: false, error: 'Anda tidak memiliki akses ke assignment ini' }, 403);
+  const teams = await loadAssignmentTeams(db, [assignmentId]);
+  const model = assignmentReadModel(assignment, myAssignment, teams.get(assignmentId) || []);
+  if (!myAssignment && (assignment.source_system !== 'ams' || model.work_status !== 'available')) {
+    return c.json({ success: false, error: 'Penugasan ini tidak tersedia untuk Anda.' }, 403);
   }
 
-  const { data: assignees } = await db
-    .from('assignment_assignees')
-    .select('status, role')
-    .eq('assignment_id', assignmentId);
-
-  const acceptedCount = (assignees || []).filter((a: { status: string }) => ['accepted', 'in_progress', 'completed', 'reviewed'].includes(a.status)).length;
-
+  const { count: totalAssignees, error: countError } = await db.from('assignment_assignees')
+    .select('id', { count: 'exact', head: true }).eq('assignment_id', assignmentId);
+  if (countError) throw new Error('Assignment participant count could not be read');
+  c.header('Cache-Control', 'no-store');
   return c.json({
     success: true,
-    data: {
-      ...withoutIntegrationInternals(assignment as Record<string, unknown>),
-      my_assignment: (myAssignment || null) as Record<string, unknown> | null,
-      accepted_count: acceptedCount,
-      total_assignees: (assignees || []).length,
-    },
+    data: { ...model, my_assignment: myAssignment || null, accepted_count: model.lifecycle.filled_count, total_assignees: totalAssignees || 0 },
   });
 });
-
-function withoutIntegrationInternals(row: Record<string, unknown>) {
-  const safe = { ...row };
-  delete safe.external_scope;
-  delete safe.external_reference;
-  delete safe.integration_status;
-  return safe;
-}
 
 associateRoutes.post('/assignments/:id/apply', async (c) => {
   const user = c.get('user') as AuthUser;
@@ -1631,7 +1533,7 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
 
   const { data: assignment } = await db
     .from('assignments')
-    .select('id, title, created_by, status, source_system, external_program_id, external_module_key')
+    .select('id, title, created_by, status, start_date, end_date, needed_count, source_system, external_program_id, external_module_key')
     .eq('id', assignmentId)
     .single();
 
@@ -1639,11 +1541,12 @@ associateRoutes.post('/assignments/:id/apply', async (c) => {
     return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
   }
 
-  if ((assignment as { status: string }).status !== 'active') {
-    return c.json({ success: false, error: 'Assignment sudah tidak menerima pendaftar' }, 400);
+  if (assignment.external_program_id || assignment.source_system !== 'ams') {
+    return c.json({ success: false, error: 'Penugasan ini hanya tersedia melalui undangan.' }, 403);
   }
-  if (assignment.external_program_id && assignment.external_module_key) {
-    return c.json({ success: false, error: 'Assignment program hanya tersedia untuk associate yang diundang' }, 403);
+  const teams = await loadAssignmentTeams(db, [assignmentId]);
+  if (!assignmentWorkState(assignment, null, teams.get(assignmentId)).actions.can_apply) {
+    return c.json({ success: false, error: 'Pendaftaran penugasan sudah ditutup.' }, 409);
   }
 
   const { data: existing } = await db
@@ -1733,7 +1636,7 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
   // 1. Fetch current assignee state to validate state machine transition and get metadata
   const { data: currentAssignee, error: fetchError } = await db
     .from('assignment_assignees')
-    .select('status, invited_by, invitation_expires_at, compensation_amount, compensation_currency, compensation_basis')
+    .select('status, invited_by, accepted_at, invitation_expires_at, compensation_amount, compensation_currency, compensation_basis, evidence_url, evidence_notes, evidence_submitted_at, evidence_reviewed_at, evidence_reviewer_notes, updated_at')
     .eq('assignment_id', assignmentId)
     .eq('associate_id', associate.id)
     .maybeSingle();
@@ -1743,49 +1646,26 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
   }
 
   const currentStatus = currentAssignee.status;
+  const { data: assignment, error: assignmentError } = await db.from('assignments')
+    .select('id,title,created_by,status,start_date,end_date,needed_count,external_program_id,external_module_key')
+    .eq('id', assignmentId).maybeSingle();
+  if (assignmentError || !assignment) return c.json({ success: false, error: 'Penugasan tidak tersedia.' }, 404);
 
-  const transitionMap: Record<string, string[]> = {
-    invited: ['accepted', 'declined'],
-    accepted: ['in_progress', 'withdrawn'],
-    in_progress: ['completed', 'withdrawn'],
-    completed: [], // Completed (Laporan Dikirim) cannot be modified by the associate; awaits admin review
-    reviewed: [], // Reviewed (Disetujui) is a terminal state
-    declined: [], // Declined is a terminal state
-    withdrawn: [], // Withdrawn is a terminal state
+  const teams = await loadAssignmentTeams(db, [assignmentId]);
+  const { actions, work_status_label } = assignmentWorkState(assignment, currentAssignee, teams.get(assignmentId));
+  const allowed = {
+    accepted: actions.can_accept, declined: actions.can_decline, in_progress: actions.can_start,
+    completed: actions.can_submit_report, withdrawn: actions.can_withdraw,
   };
-
-  const allowedNext = transitionMap[currentStatus] || [];
-  if (!allowedNext.includes(status)) {
-    return c.json({ 
-      success: false, 
-      error: `Transisi status tidak valid dari '${currentStatus}' ke '${status}'` 
-    }, 400);
+  if (!allowed[status as keyof typeof allowed]) {
+    return c.json({ success: false, error: `Tindakan belum tersedia saat status penugasan Anda ${work_status_label.toLowerCase()}.` }, 409);
   }
-
-  if (status === 'accepted' && currentAssignee.invitation_expires_at && new Date(currentAssignee.invitation_expires_at).getTime() <= Date.now()) {
-    return c.json({ success: false, error: 'Batas respons undangan telah lewat. Hubungi admin jika masih berminat.' }, 409);
+  if (status === 'completed' && !safeEvidenceNotes && !evidence_url) {
+    return c.json({ success: false, error: 'Isi ringkasan atau lampirkan berkas laporan sebelum mengirim.' }, 400);
   }
-  if (status === 'accepted') {
-    const { data: offeredAssignment } = await db.from('assignments').select('external_program_id').eq('id', assignmentId).maybeSingle();
-    const requiresFixedOffer = Boolean(currentAssignee.invitation_expires_at || offeredAssignment?.external_program_id);
-    if (requiresFixedOffer && (currentAssignee.compensation_amount === null || Number(currentAssignee.compensation_amount) <= 0 || !currentAssignee.compensation_currency || !currentAssignee.compensation_basis)) {
+  if (status === 'accepted' && (currentAssignee.invitation_expires_at || assignment.external_program_id)) {
+    if (!(Number(currentAssignee.compensation_amount) > 0) || !currentAssignee.compensation_currency || !currentAssignee.compensation_basis) {
       return c.json({ success: false, error: 'Rincian fee belum ditetapkan. Hubungi admin sebelum menerima undangan.' }, 409);
-    }
-  }
-
-  // Extra guard: associate cannot start working (in_progress) if the assignment is not yet active
-  if (status === 'in_progress') {
-    const { data: assignmentCheck } = await db
-      .from('assignments')
-      .select('status')
-      .eq('id', assignmentId)
-      .single();
-
-    if (!assignmentCheck || assignmentCheck.status !== 'active') {
-      return c.json({ 
-        success: false, 
-        error: 'Proyek belum diaktifkan oleh admin. Tombol mulai bekerja hanya tersedia saat proyek berstatus aktif.' 
-      }, 403);
     }
   }
 
@@ -1808,6 +1688,7 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     .eq('assignment_id', assignmentId)
     .eq('associate_id', associate.id)
     .eq('status', currentStatus)
+    .eq('updated_at', currentAssignee.updated_at)
     .select()
     .maybeSingle();
 
@@ -1826,13 +1707,6 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
     p_aggregate_id: assignmentId,
     p_payload: { assignee_id: data.id },
   });
-
-  // 2. Fetch assignment info and associate profile to construct notification
-  const { data: assignment } = await db
-    .from('assignments')
-    .select('title, created_by, source_system, external_program_id, external_module_key')
-    .eq('id', assignmentId)
-    .single();
 
   if (assignment?.external_program_id && assignment.external_module_key) {
     try {
@@ -1900,13 +1774,29 @@ associateRoutes.patch('/assignments/:id/status', async (c) => {
 
 associateRoutes.post('/app-access', rateLimit({ windowMs: 60 * 1000, max: 10 }), async (c) => {
   const user = c.get('user') as AuthUser;
-  const body = await c.req.json().catch(() => ({})) as { nextPath?: unknown };
-  const nextPath = typeof body.nextPath === 'string' && body.nextPath.startsWith('/') && !body.nextPath.startsWith('//')
-    ? body.nextPath.slice(0, 300)
-    : undefined;
+  const body = await c.req.json().catch(() => ({})) as { assignmentId?: unknown; nextPath?: unknown };
+  if (body.assignmentId !== undefined && (typeof body.assignmentId !== 'string' || !new RegExp(`^${UUID_PATTERN}$`, 'i').test(body.assignmentId))) {
+    return c.json({ success: false, error: 'Buka kembali penugasan untuk masuk ke ruang kerja program.' }, 400);
+  }
 
   try {
-    const access = await requestAppAccessLink(user.id, nextPath);
+    const db = getDb();
+    let assignmentId = body.assignmentId as string | undefined;
+    // Existing tabs use nextPath until the web deployment has refreshed.
+    if (!assignmentId && (body.nextPath === undefined || body.nextPath === '/fasilitator/tbos')) {
+      const own = await loadAssociateAssignments(db, user.id);
+      assignmentId = own.find((row) => row.external_module_key === 'tbos' && row.external_program_id && row.actions.can_log_progress)?.id;
+    }
+    if (!assignmentId) return c.json({ success: false, error: 'Buka penugasan yang sedang berjalan untuk masuk ke ruang kerja program.' }, 409);
+    const [{ data: assignment }, { data: member }] = await Promise.all([
+      db.from('assignments').select('status,start_date,end_date,external_program_id,external_module_key').eq('id', assignmentId).maybeSingle(),
+      db.from('assignment_assignees').select('status').eq('assignment_id', assignmentId).eq('associate_id', user.id).maybeSingle(),
+    ]);
+    if (!assignment?.external_program_id || assignment.external_module_key !== 'tbos'
+        || !member || !assignmentWorkState(assignment, member).actions.can_log_progress) {
+      return c.json({ success: false, error: 'Ruang kerja program tersedia saat penugasan Anda berjalan.' }, 409);
+    }
+    const access = await requestAppAccessLink(user.id, '/fasilitator/tbos');
     return c.json({ success: true, data: { url: access.url, expires_at: access.expiresAt } });
   } catch (error) {
     console.error('Create APP access link failed:', error);
@@ -2152,8 +2042,10 @@ associateRoutes.post('/assignments/:id/progress-log', async (c) => {
     return c.json({ success: false, error: 'Anda tidak terdaftar di assignment ini' }, 404);
   }
 
-  if (assignee.status !== 'in_progress') {
-    return c.json({ success: false, error: 'Anda hanya bisa mengirim log progres untuk assignment yang sedang berjalan (in_progress)' }, 400);
+  const { data: assignment } = await db.from('assignments')
+    .select('status,start_date,end_date').eq('id', assignmentId).maybeSingle();
+  if (!assignment || !assignmentWorkState(assignment, assignee).actions.can_log_progress) {
+    return c.json({ success: false, error: 'Catatan progres hanya dapat ditambahkan saat penugasan berjalan.' }, 409);
   }
 
   // 3. Insert progress log

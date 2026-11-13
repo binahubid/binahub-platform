@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { authMiddleware, requireRole } from '../auth/middleware/auth.js';
 import { getDb } from '../../lib/database.js';
+import { assignmentLifecycle, assignmentWorkState, hasAssignmentReport } from '@ams/domain';
+import { adminAssignmentReadModel, assignmentPhaseCounts, loadAssignmentTeams, queueAssignmentSync } from '../../lib/assignment-lifecycle.js';
 import { rankCandidates } from '@ams/ai';
 import type { ParsedCV } from '@ams/ai';
 import { importCVSchema } from '@ams/shared/validators/associate';
@@ -12,7 +14,7 @@ import { createAppProject, enableAppProjectModule, listAppPrograms, syncAssignme
 const admin = new Hono<AppEnv>();
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ASSIGNMENT_STATUSES = ['draft', 'active', 'completed', 'cancelled'] as const;
+const ASSIGNMENT_STATUSES = ['draft', 'active', 'paused', 'completed', 'cancelled'] as const;
 const ASSIGNEE_STATUSES = ['invited', 'applied', 'accepted', 'declined', 'in_progress', 'completed', 'reviewed', 'withdrawn'] as const;
 const CV_APPLY_FIELDS = [
   'fullName',
@@ -56,7 +58,7 @@ function optionalIsoDate(value: unknown): string | null | undefined {
   if (value === null || value === '') return null;
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
   const parsed = new Date(`${value}T00:00:00.000Z`);
-  return Number.isNaN(parsed.getTime()) ? undefined : value;
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value ? undefined : value;
 }
 
 function normalizedRoles(value: unknown): string[] | null {
@@ -184,7 +186,8 @@ admin.get('/stats', async (c) => {
   const { count: pendingReportsCount } = await db
     .from('assignment_assignees')
     .select('*', { count: 'exact', head: true })
-    .eq('status', 'completed');
+    .eq('status', 'completed')
+    .or('evidence_submitted_at.not.is.null,evidence_url.not.is.null,evidence_notes.not.is.null');
 
   const pendingReports = pendingReportsCount || 0;
 
@@ -652,16 +655,52 @@ admin.get('/activities', async (c) => {
 });
 
 admin.get('/assignments', async (c) => {
-  const { status, limit = '50', offset = '0' } = c.req.query();
+  const { status, view, limit = '50', offset = '0' } = c.req.query();
   const db = getDb();
   const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 50, 1), 100);
   const safeOffset = Math.max(Number.parseInt(offset, 10) || 0, 0);
+  const now = Date.now();
+  c.header('Cache-Control', 'no-store');
+  if (view && !['all', 'active', 'follow_up', 'history', 'draft'].includes(view)) {
+    return c.json({ success: false, error: 'Filter penugasan tidak valid.' }, 400);
+  }
+  if (view && view !== 'all') {
+    const matches: ReturnType<typeof adminAssignmentReadModel>[] = [];
+    let total = 0;
+    for (let from = 0; ; from += 100) {
+      let candidates = db.from('assignments').select('*').order('created_at', { ascending: false }).order('id').range(from, from + 99);
+      if (view === 'draft') candidates = candidates.eq('status', 'draft');
+      else if (view === 'active') candidates = candidates.eq('status', 'active');
+      else if (view === 'follow_up') candidates = candidates.in('status', ['active', 'paused']);
+      else candidates = candidates.not('status', 'in', '(draft,paused)');
+      const { data, error } = await candidates;
+      if (error) throw new Error('Assignment pipeline could not be read');
+      const rows = data || [];
+      const teams = await loadAssignmentTeams(db, rows.filter((row) => row.status === 'active').map((row) => row.id));
+      for (const row of rows) {
+        const model = adminAssignmentReadModel(row, teams.get(row.id) || [], now);
+        if (model.lifecycle.group !== view) continue;
+        if (total >= safeOffset && matches.length < safeLimit) matches.push(model);
+        total++;
+      }
+      if (rows.length < 100) break;
+    }
+    if (matches.some((row) => row.status === 'paused')) {
+      const teams = await loadAssignmentTeams(db, matches.filter((row) => row.status === 'paused').map((row) => String(row.id)));
+      for (let index = 0; index < matches.length; index++) {
+        const row = matches[index];
+        if (row.status === 'paused') matches[index] = adminAssignmentReadModel(row, teams.get(String(row.id)) || [], now);
+      }
+    }
+    return c.json({ success: true, data: matches, total });
+  }
 
   let query = db
     .from('assignments')
     .select('*', { count: 'exact' })
     .range(safeOffset, safeOffset + safeLimit - 1)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .order('id');
 
   if (status) {
     query = query.eq('status', status);
@@ -673,7 +712,9 @@ admin.get('/assignments', async (c) => {
     return c.json({ success: false, error: error.message }, 500);
   }
 
-  return c.json({ success: true, data: data || [], total: count || 0 });
+  const rows = data || [];
+  const teams = await loadAssignmentTeams(db, rows.map((row) => row.id));
+  return c.json({ success: true, data: rows.map((row) => adminAssignmentReadModel(row, teams.get(row.id) || [], now)), total: count || 0 });
 });
 
 admin.get('/app-programs', async (c) => {
@@ -795,7 +836,7 @@ admin.post('/assignments', async (c) => {
       .select('id, source_system')
       .eq('external_program_id', linkedProgram.id)
       .eq('external_module_key', linkedModule.key)
-      .in('status', ['draft', 'active'])
+      .in('status', ['draft', 'active', 'paused'])
       .limit(1)
       .maybeSingle();
     if (duplicate) {
@@ -850,7 +891,7 @@ admin.patch('/assignments/:id', async (c) => {
   const body = await c.req.json();
   const db = getDb();
 
-  const { data: existingAssignment } = await db.from('assignments').select('status, start_date, end_date, external_program_id, external_module_key').eq('id', id).maybeSingle();
+  const { data: existingAssignment } = await db.from('assignments').select('status,start_date,end_date,needed_count,external_program_id,external_module_key,updated_at').eq('id', id).maybeSingle();
   if (!existingAssignment) return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
 
   const editableFields = ['title', 'client_name', 'description', 'start_date', 'end_date', 'needed_roles', 'needed_count', 'mandays', 'compensation'];
@@ -862,7 +903,8 @@ admin.patch('/assignments/:id', async (c) => {
     if (!ASSIGNMENT_STATUSES.includes(body.status)) return c.json({ success: false, error: 'Status assignment tidak valid' }, 400);
     const transitions: Record<string, string[]> = {
       draft: ['draft', 'active', 'cancelled'],
-      active: ['active', 'completed', 'cancelled'],
+      active: ['active', 'paused', 'completed', 'cancelled'],
+      paused: ['active', 'paused', 'completed', 'cancelled'],
       completed: ['completed'],
       cancelled: ['cancelled'],
     };
@@ -901,6 +943,16 @@ admin.patch('/assignments/:id', async (c) => {
   if (nextStartDate && nextEndDate && nextEndDate < nextStartDate) {
     return c.json({ success: false, error: 'Tanggal selesai tidak boleh sebelum tanggal mulai' }, 400);
   }
+  const nextAssignment = { ...existingAssignment, status: body.status ?? existingAssignment.status, start_date: nextStartDate, end_date: nextEndDate };
+  const teams = await loadAssignmentTeams(db, [id]);
+  const team = teams.get(id) || [];
+  const lifecycle = assignmentLifecycle(nextAssignment, team);
+  if (body.status === 'active' && existingAssignment.status === 'draft' && lifecycle.ended) {
+    return c.json({ success: false, error: 'Jadwal sudah berakhir. Perbarui tanggal sebelum mengaktifkan penugasan.' }, 409);
+  }
+  if (body.status === 'completed' && team.some((member) => member.status !== 'reviewed')) {
+    return c.json({ success: false, error: 'Selesaikan peninjauan laporan tim sebelum menutup penugasan.' }, 409);
+  }
 
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (safeTitle !== undefined) updateData.title = safeTitle;
@@ -918,8 +970,9 @@ admin.patch('/assignments/:id', async (c) => {
     .from('assignments')
     .update(updateData)
     .eq('id', id)
+    .eq('updated_at', existingAssignment.updated_at)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     if (error.message.includes('Jumlah kebutuhan tidak boleh lebih kecil')) {
@@ -927,7 +980,9 @@ admin.patch('/assignments/:id', async (c) => {
     }
     return c.json({ success: false, error: error.message }, 500);
   }
+  if (!data) return c.json({ success: false, error: 'Data penugasan sudah berubah. Muat ulang halaman.' }, 409);
 
+  let syncPending = false;
   if (
     Boolean(existingAssignment.external_program_id && existingAssignment.external_module_key)
     && body.status !== undefined
@@ -941,29 +996,20 @@ admin.patch('/assignments/:id', async (c) => {
     if (assigneesError) return c.json({ success: false, error: 'Gagal membaca penerima assignment' }, 500);
 
     for (const assignee of affectedAssignees || []) {
-      const { error: updateError } = await db.from('assignment_assignees').update({
-        status: body.status,
-        updated_at: new Date().toISOString(),
-      }).eq('id', assignee.id);
-      if (updateError) return c.json({ success: false, error: 'Gagal menyelaraskan status penerima assignment' }, 500);
-      await db.rpc('enqueue_transformation_event', {
-        p_type: 'AssignmentAssigneeChanged',
-        p_aggregate_type: 'assignment',
-        p_aggregate_id: id,
-        p_payload: { assignee_id: assignee.id },
-      });
       try {
-        await syncAssignmentAssignee(assignee.id);
-      } catch (syncError) {
-        console.error('Immediate assignment reconciliation failed; queued for retry', {
-          assigneeId: assignee.id,
-          error: syncError instanceof Error ? syncError.message : 'unknown_error',
-        });
+        await queueAssignmentSync(db, id, assignee.id);
+      } catch {
+        syncPending = true;
       }
+    }
+    const outcomes = await Promise.allSettled((affectedAssignees || []).map((assignee) => syncAssignmentAssignee(assignee.id)));
+    syncPending = syncPending || outcomes.some((outcome) => outcome.status === 'rejected');
+    if (syncPending) {
+      await db.from('assignments').update({ integration_status: 'failed' }).eq('id', id);
     }
   }
 
-  return c.json({ success: true, data });
+  return c.json({ success: true, data: adminAssignmentReadModel(data, team), syncPending });
 });
 
 admin.post('/assignments/:id/sync-app', async (c) => {
@@ -1138,7 +1184,7 @@ admin.post('/assignments/:id/invite', async (c) => {
 
   const { data: assignment } = await db
     .from('assignments')
-    .select('id, title, status, needed_roles, needed_count, external_program_id, external_module_key')
+    .select('id, title, status, start_date, end_date, needed_roles, needed_count, external_program_id, external_module_key')
     .eq('id', assignmentId)
     .single();
 
@@ -1146,14 +1192,17 @@ admin.post('/assignments/:id/invite', async (c) => {
     return c.json({ success: false, error: 'Assignment tidak ditemukan' }, 404);
   }
 
-  if (assignment.status !== 'active') {
-    return c.json({ success: false, error: 'Assignment harus berstatus aktif sebelum dapat mengundang associate. Aktifkan proyek terlebih dahulu.' }, 400);
+  const teams = await loadAssignmentTeams(db, [assignmentId]);
+  const lifecycle = assignmentLifecycle(assignment, teams.get(assignmentId));
+  if (!lifecycle.is_active) {
+    return c.json({ success: false, error: 'Undangan baru hanya tersedia untuk penugasan aktif.' }, 409);
   }
 
-  const { data: existing } = await db
+  const { data: existing, error: existingError } = await db
     .from('assignment_assignees')
     .select('associate_id')
     .eq('assignment_id', assignmentId);
+  if (existingError) throw new Error('Existing assignment invitations could not be read');
 
   const existingIds = (existing || []).map((e: { associate_id: string }) => e.associate_id);
   const { data: activeAssociates } = await db.from('associates').select('id').in('id', requestedIds).eq('status', 'active');
@@ -1288,7 +1337,7 @@ admin.get('/assignments/:id/assignees', async (c) => {
   }
 
   if (!assignees || assignees.length === 0) {
-    return c.json({ success: true, data: [] });
+    return c.json({ success: true, data: [], assignment: adminAssignmentReadModel(assignment, []) });
   }
 
   // 3. Extract associate IDs to batch-fetch profiles
@@ -1313,18 +1362,21 @@ admin.get('/assignments/:id/assignees', async (c) => {
   const associateMap = new Map(associates.map((a: any) => [a.id, a]));
   const profileMap = new Map(profiles.map((p: any) => [p.associate_id, p]));
 
+  const now = Date.now();
   const mappedData = assignees.map((row: any) => {
     const assoc = associateMap.get(row.associate_id) || null;
     const prof = profileMap.get(row.associate_id) || null;
 
     return {
       ...row,
+      ...assignmentWorkState(assignment, row, assignees, now),
       associate: assoc,
       profile: prof
     };
   });
 
-  return c.json({ success: true, data: mappedData });
+  c.header('Cache-Control', 'no-store');
+  return c.json({ success: true, data: mappedData, assignment: adminAssignmentReadModel(assignment, assignees, now) });
 });
 
 admin.patch('/assignments/:id/assignees/:aid', async (c) => {
@@ -1353,7 +1405,7 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
 
   const { data: currentAssignee } = await db
     .from('assignment_assignees')
-    .select('status, invitation_expires_at')
+    .select('status,accepted_at,invitation_expires_at,evidence_url,evidence_notes,evidence_submitted_at,evidence_reviewed_at,evidence_reviewer_notes,updated_at')
     .eq('id', assigneeId)
     .eq('assignment_id', assignmentId)
     .maybeSingle();
@@ -1369,31 +1421,48 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
     return c.json({ success: false, error: 'Fee pada undangan yang telah dikirim tidak dapat diubah diam-diam. Batalkan lalu buat penawaran baru.' }, 409);
   }
 
-  if (status !== undefined && status !== currentAssignee.status) {
+  const { data: assignment, error: assignmentError } = await db.from('assignments')
+    .select('id,title,status,start_date,end_date,needed_count,external_program_id,external_module_key')
+    .eq('id', assignmentId).maybeSingle();
+  if (assignmentError || !assignment) return c.json({ success: false, error: 'Penugasan tidak tersedia.' }, 404);
+
+  const statusChanged = status !== undefined && status !== currentAssignee.status;
+  const revisionRequested = currentAssignee.status === 'completed' && status === 'in_progress';
+  if (statusChanged) {
     const transitions: Record<string, string[]> = {
-      invited: ['accepted', 'declined'],
-      applied: ['accepted', 'declined'],
+      invited: ['declined', 'withdrawn'],
+      applied: ['accepted', 'declined', 'withdrawn'],
       accepted: ['in_progress', 'withdrawn'],
-      in_progress: ['completed', 'withdrawn'],
+      in_progress: ['withdrawn'],
       completed: ['reviewed', 'in_progress'],
-      reviewed: [],
-      declined: [],
-      withdrawn: [],
     };
     if (!transitions[currentAssignee.status]?.includes(status)) {
-      return c.json({ success: false, error: `Status tidak dapat diubah dari ${currentAssignee.status} ke ${status}` }, 409);
+      return c.json({ success: false, error: 'Perubahan tahap penugasan ini tidak tersedia.' }, 409);
+    }
+    const teams = await loadAssignmentTeams(db, [assignmentId]);
+    const { lifecycle, actions } = assignmentWorkState(assignment, currentAssignee, teams.get(assignmentId));
+    if ((status === 'accepted' && (!lifecycle.is_active || lifecycle.filled_count >= assignment.needed_count)) ||
+        (status === 'in_progress' && !revisionRequested && !actions.can_start)) {
+      return c.json({ success: false, error: 'Periksa jadwal penugasan, ketersediaan posisi, dan tahap associate.' }, 409);
+    }
+    if (revisionRequested || status === 'reviewed') {
+      if (['cancelled', 'draft', 'paused'].includes(lifecycle.phase) || !hasAssignmentReport(currentAssignee)) {
+        return c.json({ success: false, error: 'Laporan yang sudah dikirim dapat ditinjau saat penugasan tidak dijeda atau dibatalkan.' }, 409);
+      }
+      if (revisionRequested && !safeReviewerNotes?.trim()) {
+        return c.json({ success: false, error: 'Tuliskan bagian laporan yang perlu diperbaiki.' }, 400);
+      }
     }
   }
 
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (status) {
+  if (statusChanged) {
     updateData.status = status;
     if (status === 'accepted') updateData.accepted_at = new Date().toISOString();
-    if (status === 'completed') updateData.completed_at = new Date().toISOString();
   }
   if (role !== undefined) updateData.role = safeRole;
   if (notes !== undefined) updateData.notes = safeNotes;
-  if (evidence_reviewer_notes !== undefined) {
+  if (statusChanged && (revisionRequested || status === 'reviewed')) {
     updateData.evidence_reviewer_notes = safeReviewerNotes;
     updateData.evidence_reviewed_at = new Date().toISOString();
   }
@@ -1411,10 +1480,10 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
     .from('assignment_assignees')
     .update(updateData)
     .eq('id', assigneeId)
-    .eq('assignment_id', assignmentId);
-  const { data, error } = parsedCompensation?.success
-    ? await updateAssigneeQuery.in('status', ['invited', 'applied']).select().maybeSingle()
-    : await updateAssigneeQuery.select().maybeSingle();
+    .eq('assignment_id', assignmentId)
+    .eq('status', currentAssignee.status)
+    .eq('updated_at', currentAssignee.updated_at);
+  const { data, error } = await updateAssigneeQuery.select().maybeSingle();
 
   if (error) {
     console.error('Failed to update assignment assignee', {
@@ -1438,10 +1507,10 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
         error: 'Kompensasi terkunci karena status assignment telah berubah. Muat ulang halaman untuk melihat status terbaru.',
       }, 409);
     }
-    return c.json({ success: false, error: 'Assignee tidak ditemukan' }, 404);
+    return c.json({ success: false, error: 'Data associate sudah berubah. Muat ulang halaman.' }, 409);
   }
 
-  const integrationRelevantChange = status !== undefined || role !== undefined;
+  const integrationRelevantChange = statusChanged || role !== undefined;
   if (integrationRelevantChange) {
     await db.rpc('enqueue_transformation_event', {
       p_type: 'AssignmentAssigneeChanged',
@@ -1451,12 +1520,6 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
     });
   }
 
-  // Insert notification for the associate when assignment is reviewed or status changes
-  const { data: assignment } = await db
-    .from('assignments')
-    .select('title, external_program_id, external_module_key')
-    .eq('id', assignmentId)
-    .single();
   const assignmentTitle = assignment?.title || 'Assignment';
   
   let notifTitle = '';
@@ -1467,11 +1530,15 @@ admin.patch('/assignments/:id/assignees/:aid', async (c) => {
     notifTitle = 'Kompensasi assignment diperbarui';
     notifMsg = `Rincian kompensasi untuk assignment "${assignmentTitle}" telah diperbarui. Periksa detail assignment sebelum menerima undangan.`;
     notifType = 'assignment_compensation_updated';
-  } else if (status === 'reviewed') {
+  } else if (statusChanged && currentAssignee.status === 'applied' && ['accepted', 'declined'].includes(status)) {
+    notifTitle = status === 'accepted' ? 'Lamaran penugasan diterima' : 'Lamaran penugasan ditolak';
+    notifMsg = `Keputusan untuk lamaran Anda pada penugasan "${assignmentTitle}" sudah tersedia.`;
+    notifType = status === 'accepted' ? 'application_accepted' : 'application_declined';
+  } else if (statusChanged && status === 'reviewed') {
     notifTitle = `Laporan Disetujui! 🎉`;
     notifMsg = `Laporan Anda untuk assignment "${assignmentTitle}" telah disetujui oleh admin.`;
     notifType = 'reviewed';
-  } else if (evidence_reviewer_notes !== undefined || status === 'in_progress') {
+  } else if (statusChanged && revisionRequested) {
     notifTitle = `Revisi Diperlukan ⚠️`;
     notifMsg = `Admin meminta revisi untuk laporan assignment "${assignmentTitle}". Catatan: "${evidence_reviewer_notes || notes || ''}"`;
     notifType = 'revision_requested';
@@ -1517,26 +1584,25 @@ admin.delete('/assignments/:id/assignees/:aid', async (c) => {
 
   const [{ data: assignment }, { data: assignee }] = await Promise.all([
     db.from('assignments').select('external_program_id, external_module_key').eq('id', assignmentId).maybeSingle(),
-    db.from('assignment_assignees').select('id').eq('id', assigneeId).eq('assignment_id', assignmentId).maybeSingle(),
+    db.from('assignment_assignees').select('id,status,updated_at').eq('id', assigneeId).eq('assignment_id', assignmentId).maybeSingle(),
   ]);
   if (!assignment || !assignee) return c.json({ success: false, error: 'Assignee tidak ditemukan' }, 404);
 
+  if (['declined', 'cancelled', 'completed', 'reviewed', 'withdrawn'].includes(assignee.status)) {
+    return c.json({ success: false, error: 'Penugasan associate sudah tercatat dalam riwayat atau peninjauan.' }, 409);
+  }
+  const { data: removed, error } = await db.from('assignment_assignees')
+    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+    .eq('id', assigneeId).eq('assignment_id', assignmentId)
+    .eq('status', assignee.status).eq('updated_at', assignee.updated_at).select('id').maybeSingle();
+  if (error) return c.json({ success: false, error: 'Penugasan associate belum dapat dibatalkan.' }, 500);
+  if (!removed) return c.json({ success: false, error: 'Data associate sudah berubah. Muat ulang halaman.' }, 409);
+
   if (assignment.external_program_id && assignment.external_module_key) {
-    const { error: updateError } = await db
-      .from('assignment_assignees')
-      .update({ status: 'withdrawn', updated_at: new Date().toISOString() })
-      .eq('id', assigneeId)
-      .eq('assignment_id', assignmentId);
-    if (updateError) return c.json({ success: false, error: 'Akses associate tidak dapat dicabut' }, 500);
-    await db.rpc('enqueue_transformation_event', {
-      p_type: 'AssignmentAssigneeChanged',
-      p_aggregate_type: 'assignment',
-      p_aggregate_id: assignmentId,
-      p_payload: { assignee_id: assigneeId },
-    });
     try {
+      await queueAssignmentSync(db, assignmentId, assigneeId);
       await syncAssignmentAssignee(assigneeId);
-      return c.json({ success: true, message: 'Associate dicabut dari program dan akses APP dinonaktifkan' });
+      return c.json({ success: true, message: 'Penugasan dibatalkan dan akses program dicabut.' });
     } catch (syncError) {
       console.error('Immediate assignment access revocation failed; queued for retry', {
         assigneeId,
@@ -1547,17 +1613,7 @@ admin.delete('/assignments/:id/assignees/:aid', async (c) => {
     }
   }
 
-  const { error } = await db
-    .from('assignment_assignees')
-    .delete()
-    .eq('id', assigneeId)
-    .eq('assignment_id', assignmentId);
-
-  if (error) {
-    return c.json({ success: false, error: error.message }, 500);
-  }
-
-  return c.json({ success: true, message: 'Assignee dihapus dari assignment' });
+  return c.json({ success: true, message: 'Penugasan associate dibatalkan.' });
 });
 
 admin.get('/users', async (c) => {
@@ -1615,7 +1671,7 @@ admin.get('/reports/summary', async (c) => {
   const { count: pendingAssociates } = await db.from('associates').select('*', { count: 'exact', head: true }).eq('status', 'pending_review');
   const { count: totalDocuments } = await db.from('associate_documents').select('*', { count: 'exact', head: true });
   const { count: totalAssignments } = await db.from('assignments').select('*', { count: 'exact', head: true });
-  const { count: activeAssignments } = await db.from('assignments').select('*', { count: 'exact', head: true }).eq('status', 'active');
+  const assignmentCounts = await assignmentPhaseCounts(db);
   const { count: totalReviews } = await db.from('associate_reviews').select('*', { count: 'exact', head: true });
   const { count: totalSkills } = await db.from('associate_skills').select('*', { count: 'exact', head: true });
 
@@ -1662,7 +1718,7 @@ admin.get('/reports/summary', async (c) => {
       incomplete_profiles: incompleteProfiles,
       total_documents: totalDocuments || 0,
       total_assignments: totalAssignments || 0,
-      active_assignments: activeAssignments || 0,
+      active_assignments: assignmentCounts.active,
       total_reviews: totalReviews || 0,
       total_skills: totalSkills || 0,
       top_skills: topSkills,
@@ -1750,17 +1806,7 @@ admin.get('/growth', async (c) => {
     };
   });
 
-  // Assignment status distribution
-  const { data: assignments } = await db
-    .from('assignments')
-    .select('status');
-
-  const statusCounts: Record<string, number> = { draft: 0, active: 0, completed: 0, cancelled: 0 };
-  for (const row of (assignments || []) as { status: string }[]) {
-    if (row.status in statusCounts) {
-      statusCounts[row.status]++;
-    }
-  }
+  const statusCounts = await assignmentPhaseCounts(db);
 
   return c.json({
     success: true,

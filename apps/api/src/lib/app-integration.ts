@@ -1,4 +1,5 @@
 import { createHmac, randomUUID } from 'node:crypto';
+import { assignmentStatusForApp } from '@ams/domain';
 import { getDb } from './database.js';
 
 type AssociateIdentity = {
@@ -142,7 +143,7 @@ export async function syncAssignmentAssignee(assigneeId: string, eventId: string
 
   const { data: assignment } = await db
     .from('assignments')
-    .select('id, external_program_id, external_module_key, external_scope')
+    .select('id, status, updated_at, external_program_id, external_module_key, external_scope')
     .eq('id', assignee.assignment_id)
     .maybeSingle();
   if (!assignment) throw new Error('Assignment tidak ditemukan');
@@ -150,22 +151,25 @@ export async function syncAssignmentAssignee(assigneeId: string, eventId: string
     return { success: true, skipped: true, reason: 'assignment_not_linked' };
   }
   const associate = await getAssociateIdentity(assignee.associate_id);
+  const status = assignmentStatusForApp(assignment, assignee.status);
+  const assigneeTimestamp = normalizeIntegrationTimestamp(assignee.updated_at);
+  const occurredAt = status === assignee.status ? assigneeTimestamp
+    : [assigneeTimestamp, normalizeIntegrationTimestamp(assignment.updated_at)].sort()[1];
 
   await db.from('assignments').update({
     integration_status: 'pending',
-    updated_at: new Date().toISOString(),
   }).eq('id', assignment.id);
 
   try {
     const result = await postSigned('/api/integrations/ams/assignments', {
       eventId,
       eventType: 'assignment.changed',
-      occurredAt: normalizeIntegrationTimestamp(assignee.updated_at),
+      occurredAt,
       associate,
       assignment: {
         id: assignment.id,
         assigneeId: assignee.id,
-        status: assignee.status,
+        status,
         role: assignee.role || (assignment.external_module_key === 'lep' ? 'Pembicara' : 'Observer'),
         externalProgramId: assignment.external_program_id,
         moduleKey: assignment.external_module_key,
@@ -175,13 +179,11 @@ export async function syncAssignmentAssignee(assigneeId: string, eventId: string
 
     await db.from('assignments').update({
       integration_status: 'synced',
-      updated_at: new Date().toISOString(),
     }).eq('id', assignment.id);
     return result;
   } catch (error) {
     await db.from('assignments').update({
       integration_status: 'failed',
-      updated_at: new Date().toISOString(),
     }).eq('id', assignment.id);
     throw error;
   }

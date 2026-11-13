@@ -16,7 +16,7 @@
     "test:pdf": "node --test scripts/cv-print.contract.mjs",
     "test:validation": "pnpm --filter @ams/shared build && pnpm --filter @ams/validation build && node --test scripts/validation-contract.test.mjs",
     "test:dependencies": "node --test tools/dependency-contract.test.mjs",
-    "test:api:contract": "node --test scripts/api-contract.test.mjs",
+    "test:api:contract": "node --test scripts/api-contract.test.mjs scripts/assignment-lifecycle.api.test.mjs",
     "test:notifications": "node --test scripts/notification-delivery.sql.test.mjs scripts/notification-scheduler.sql.test.mjs",
     "admin:cv-enrich": "node scripts/ams-cv-enrichment-interactive.mjs",
     "typecheck": "turbo typecheck",

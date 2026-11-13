@@ -4,6 +4,21 @@ Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
 ## [Unreleased] - 2026-11-13
 
+- Ringkas bagian profil dengan pratinjau, jumlah item tersembunyi, serta tombol
+  perluas/ringkas. Buat delapan ikon ImageGen untuk beranda/navigasi dan empat
+  latar terpisah dalam WebP. Asesmen serta Pengembangan associate menjadi
+  Segera hadir dengan akses halaman diarahkan ke beranda.
+- Satukan status penugasan berdasarkan jadwal WIB, respons associate, dan
+  peninjauan laporan. Pisahkan aktif, tindak lanjut, dan riwayat di daftar.
+  Tambahkan jeda/lanjutkan, pertahankan riwayat pembatalan, dan izinkan laporan
+  akhir setelah pelaksanaan berakhir. Undangan kedaluwarsa keluar dari antrean.
+- Terapkan aturan yang sama pada tombol dan API, ringkasan admin/associate,
+  statistik, dan konteks notifikasi. Data lama tanpa bukti laporan tidak
+  ditampilkan sebagai laporan yang sudah dikirim.
+- Verifikasi 16 kontrak API/domain serta UI data sintetis di layar 320, 390,
+  dan 1366 piksel. Periksa perluas profil, filter, pelaporan setelah jadwal,
+  jeda/lanjutkan, aset gambar, dan overflow. Perubahan ini memakai skema yang
+  tersedia.
 - Perbarui beranda associate dan admin dengan ringkasan pekerjaan, kelengkapan
   profil, serta pintasan yang langsung membuka bagian terkait. Gunakan gaya
   kartu bersama pada halaman kerja, profil, evaluasi, dan pengaturan.

@@ -1,17 +1,21 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
-import { Avatar, useToast } from '../../../../components/ui';
+import { Avatar, ServiceError, useToast } from '../../../../components/ui';
 import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
+import { assignmentStatusLabel, assignmentStatusTone, formatAssignmentDate, nextAssignmentTransition, type AssignmentLifecycle, type AssignmentWork } from '@/lib/assignment-display';
+import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
+
 type Assignment = {
   id: string;
   title: string;
   client_name: string;
   description: string | null;
   status: string;
+  lifecycle?: AssignmentLifecycle;
   start_date: string | null;
   end_date: string | null;
   needed_roles: string[];
@@ -24,7 +28,7 @@ type Assignment = {
   integration_status?: 'not_linked' | 'pending' | 'synced' | 'failed';
 };
 
-type Assignee = {
+type Assignee = AssignmentWork & {
   id: string;
   assignment_id: string;
   associate_id: string;
@@ -112,17 +116,7 @@ function formatCompensationOverride(assignee: Assignee) {
   }).format(amount)} ${compensationBasisLabels[assignee.compensation_basis]}`;
 }
 
-const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
-  invited: { label: 'Diundang', bg: 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20', text: '' },
-  applied: { label: 'Melamar', bg: 'bg-blue-500/10 text-blue-700 ring-1 ring-blue-500/20', text: '' },
-  accepted: { label: 'Diterima', bg: 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20', text: '' },
-  declined: { label: 'Ditolak', bg: 'bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20', text: '' },
-  in_progress: { label: 'Berjalan', bg: 'bg-indigo-500/10 text-indigo-700 ring-1 ring-indigo-500/20', text: '' },
-  completed: { label: 'Laporan Dikirim', bg: 'bg-blue-500/10 text-blue-800 ring-1 ring-blue-500/20', text: '' },
-  reviewed: { label: 'Disetujui', bg: 'bg-emerald-500/10 text-emerald-800 ring-1 ring-emerald-500/20', text: '' },
-  withdrawn: { label: 'Mundur', bg: 'bg-slate-100 text-slate-400', text: '' },
-  cancelled: { label: 'Dibatalkan', bg: 'bg-slate-100 text-slate-500', text: '' },
-};
+
 
 const parseEvidence = (notes: string | null | undefined) => {
   if (!notes) return { photos: [] as string[], report: '' };
@@ -145,7 +139,8 @@ const timelineSteps = [
   { key: 'reviewed', label: 'Disetujui' }
 ];
 
-const getStepIndex = (status: string) => {
+const getStepIndex = (status: string, workStatus?: string) => {
+  if (workStatus === 'awaiting_report' && status === 'completed') return 2;
   if (status === 'invited') return 0;
   if (status === 'accepted') return 1;
   if (status === 'in_progress') return 2;
@@ -161,6 +156,9 @@ export default function AssignmentDetailPage() {
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const teamRequest = useRef<AbortController | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [availableAssociates, setAvailableAssociates] = useState<AvailableAssociate[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -171,7 +169,7 @@ export default function AssignmentDetailPage() {
   const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({});
   const [compensationEditor, setCompensationEditor] = useState<CompensationEditor | null>(null);
   const [savingCompensation, setSavingCompensation] = useState(false);
-  
+
   // AI Recommendations State
   const [recommendations, setRecommendations] = useState<Array<{ associate_id: string; score: number; reasoning: string }>>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
@@ -225,39 +223,31 @@ export default function AssignmentDetailPage() {
 
   const fetchAssignees = useCallback(async () => {
     if (!accessToken) return;
+    teamRequest.current?.abort();
+    const controller = new AbortController();
+    teamRequest.current = controller;
     try {
-      const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}/assignees`, { headers: getHeaders() });
-      const data = await resp.json();
-      if (data.success) {
-        setAssignees(data.data || []);
-      }
-    } catch (e) {
-      console.error('Failed to fetch assignees:', e);
+      const response = await fetch(apiUrl + '/api/admin/assignments/' + id + '/assignees', {
+        headers: getHeaders(), signal: controller.signal, cache: 'no-store',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error();
+      if (controller.signal.aborted) return;
+      setAssignees(result.data || []);
+      setAssignment(result.assignment || null);
+      setLoadError(false);
+    } catch {
+      if (!controller.signal.aborted) setLoadError(true);
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [apiUrl, id, accessToken, getHeaders]);
 
   useEffect(() => {
-    if (!user || !accessToken) return;
-    const fetchAll = async () => {
-      try {
-        const h = getHeaders();
-        const [asgnRes, assigneesRes] = await Promise.all([
-          fetch(`${apiUrl}/api/admin/assignments`, { headers: h }),
-          fetch(`${apiUrl}/api/admin/assignments/${id}/assignees`, { headers: h }),
-        ]);
-        const [asgnJson, assigneesJson] = await Promise.all([asgnRes.json(), assigneesRes.json()]);
-        const found = (asgnJson.data || []).find((a: Assignment) => a.id === id);
-        if (found) setAssignment(found);
-        if (assigneesJson.success) setAssignees(assigneesJson.data || []);
-      } catch (e) {
-        console.error('Failed to fetch:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAll();
-  }, [user, accessToken, apiUrl, id, getHeaders]);
-
+    if (user && accessToken) void fetchAssignees();
+    return () => teamRequest.current?.abort();
+  }, [user, accessToken, fetchAssignees]);
+  useAssignmentRefresh(nextAssignmentTransition([assignment?.lifecycle || {}, ...assignees]), fetchAssignees, Boolean(accessToken));
 
   const fetchAvailableAssociates = useCallback(async () => {
     if (!accessToken) return;
@@ -421,8 +411,41 @@ export default function AssignmentDetailPage() {
     }
   };
 
+  const handleAssignmentStatus = async (status: string) => {
+    if (updatingStatus) return;
+    if (status === 'cancelled' && !confirm('Batalkan penugasan ini? Riwayat associate tetap tersedia.')) return;
+    setUpdatingStatus(true);
+    try {
+      const response = await fetch(apiUrl + '/api/admin/assignments/' + id, {
+        method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ status }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Status penugasan belum dapat diperbarui.');
+      toast(result.syncPending ? 'warning' : 'success', result.syncPending ? 'Status tersimpan. Sinkronisasi program masih perlu dicoba ulang.' : 'Status penugasan diperbarui.');
+      await fetchAssignees();
+    } catch (error) {
+      toast('error', error instanceof Error ? error.message : 'Status penugasan belum dapat diperbarui.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const reviewApplication = async (assigneeId: string, status: 'accepted' | 'declined') => {
+    try {
+      const response = await fetch(apiUrl + '/api/admin/assignments/' + id + '/assignees/' + assigneeId, {
+        method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ status }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Keputusan belum tersimpan.');
+      toast('success', status === 'accepted' ? 'Lamaran diterima.' : 'Lamaran ditolak.');
+      await fetchAssignees();
+    } catch (error) {
+      toast('error', error instanceof Error ? error.message : 'Keputusan belum tersimpan.');
+    }
+  };
+
   const handleReviewEvidence = async (assigneeId: string, targetStatus: 'reviewed' | 'in_progress') => {
-    const notes = revisionNotes[assigneeId] || '';
+    const notes = (revisionNotes[assigneeId] || '').trim();
     if (targetStatus === 'in_progress' && !notes) {
       toast('warning', 'Tuliskan catatan revisi sebelum meminta revisi');
       return;
@@ -456,7 +479,7 @@ export default function AssignmentDetailPage() {
     const isAppOffer = Boolean(assignment?.external_program_id && assignment.external_module_key);
     if (!confirm(isAppOffer
       ? 'Batalkan penawaran ini dan cabut akses APP? Tindakan ini tidak mengubah fee secara diam-diam. Kirim penawaran baru setelah pembatalan selesai.'
-      : 'Hapus associate dari assignment ini?')) return;
+      : 'Keluarkan associate dari penugasan ini? Riwayatnya tetap tersedia.')) return;
     try {
       const resp = await fetch(`${apiUrl}/api/admin/assignments/${id}/assignees/${assignee.id}`, {
         method: 'DELETE',
@@ -485,6 +508,8 @@ export default function AssignmentDetailPage() {
     );
   }
 
+  if (loadError) return <ServiceError title="Penugasan belum dapat dimuat" message="Periksa koneksi dan coba lagi." onRetry={fetchAssignees} />;
+
   if (!assignment) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center">
@@ -494,6 +519,22 @@ export default function AssignmentDetailPage() {
     );
   }
 
+  const lifecycle = assignment.lifecycle;
+  const phase = lifecycle?.phase || assignment.status;
+  const canInvite = lifecycle?.is_active ?? assignment.status === 'active';
+  const hasVacancy = (lifecycle?.filled_count ?? 0) < assignment.needed_count;
+  const canReview = !['draft', 'paused', 'cancelled'].includes(phase);
+  const changeStatus = assignment.status === 'draft' ? ['active', 'Aktifkan']
+    : assignment.status === 'paused' ? ['active', 'Lanjutkan']
+    : lifecycle?.is_active ? ['paused', 'Jeda'] : null;
+  const canClose = ['active', 'paused'].includes(assignment.status) && (lifecycle?.phase === 'ended' || lifecycle?.all_reviewed || lifecycle?.filled_count === 0);
+  const canCancel = ['draft', 'active', 'paused'].includes(assignment.status) && phase !== 'completed';
+  const groups = [
+    { label: 'Menunggu respons', count: assignees.filter((row) => ['invited', 'applied'].includes(row.work_status || row.status)).length },
+    { label: 'Tim terisi', count: lifecycle?.filled_count ?? 0 },
+    { label: 'Tindak lanjut laporan', count: assignees.filter((row) => ['awaiting_report', 'under_review', 'revision_required'].includes(row.work_status || '')).length },
+    { label: 'Selesai', count: assignees.filter((row) => row.status === 'reviewed').length },
+  ];
   const filteredAssociates = availableAssociates.filter((a) => {
     const term = searchTerm.toLowerCase();
     if (!term) return true;
@@ -527,69 +568,47 @@ export default function AssignmentDetailPage() {
         <span className="font-medium text-slate-900">{assignment.title}</span>
       </nav>
 
-      <div className="ams-panel p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{assignment.title}</h1>
-            <p className="mt-1 text-sm text-slate-500">{assignment.client_name}</p>
-            {assignment.description && <p className="mt-3 text-sm text-slate-600">{assignment.description}</p>}
-            <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-              <span className={`rounded-full px-2.5 py-1 font-bold ${assignment.status === 'active' ? 'bg-emerald-50 text-emerald-700' : assignment.status === 'draft' ? 'bg-slate-100 text-slate-600' : 'bg-red-50 text-red-600'}`}>
-                {assignment.status}
-              </span>
-              {assignment.external_program_id && assignment.external_module_key && (
-                <span className="rounded-full bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700">
-                  Terhubung APP · {assignment.external_module_key.toUpperCase()}
-                </span>
-              )}
-              {assignment.start_date && <span>Mulai: {new Date(assignment.start_date).toLocaleDateString('id-ID')}</span>}
-              {assignment.end_date && <span>Selesai: {new Date(assignment.end_date).toLocaleDateString('id-ID')}</span>}
-              {assignment.needed_roles.length > 0 && <span>Role: {assignment.needed_roles.join(', ')}</span>}
-              <span>Slot diterima: {assignees.filter((person) => ['accepted', 'in_progress', 'completed', 'reviewed'].includes(person.status)).length}/{assignment.needed_count}</span>
+      <section className="ams-panel space-y-4 p-4 sm:p-6">
+        <div>
+          <span className={'inline-flex rounded-full px-2.5 py-1 text-xs font-medium ' + assignmentStatusTone(phase)}>
+            {lifecycle?.label || assignmentStatusLabel(phase)}
+          </span>
+          <h1 className="mt-2 text-2xl font-semibold text-slate-900">{assignment.title}</h1>
+          <p className="mt-1 break-words text-sm text-slate-600">{assignment.client_name}</p>
+          {assignment.description && <p className="mt-3 break-words text-sm leading-6 text-slate-600">{assignment.description}</p>}
+          <p className="mt-3 text-xs leading-5 text-slate-600">
+            {[...new Set([assignment.start_date, assignment.end_date].map(formatAssignmentDate).filter(Boolean))].join(' – ') || 'Jadwal belum ditentukan'}
+            {assignment.needed_roles.length > 0 && ' · ' + assignment.needed_roles.join(', ')}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-4">
+          {groups.map((group) => (
+            <div key={group.label}>
+              <p className="text-lg font-semibold tabular-nums text-slate-900">{group.count}</p>
+              <p className="text-xs text-slate-600">{group.label}</p>
             </div>
-          </div>
-          <button
-            onClick={() => {
-              if (assignment.status !== 'active') {
-                toast('error', 'Aktifkan proyek terlebih dahulu sebelum mengundang associate.');
-                return;
-              }
-              if (!showInvite) {
-                fetchAvailableAssociates();
-                fetchRecommendations();
-              }
+          ))}
+        </div>
+        {phase === 'draft' && <p className="text-sm text-slate-600">Aktifkan penugasan sebelum mengirim undangan.</p>}
+        {phase === 'paused' && <p className="text-sm text-slate-600">Undangan, pencatatan, dan pengiriman laporan ditahan sampai penugasan dilanjutkan.</p>}
+        {lifecycle?.ended && ['ended', 'awaiting_report', 'under_review'].includes(phase) && (
+          <p className="text-sm text-slate-600">Jadwal pelaksanaan sudah lewat. Associate masih dapat mengirim laporan yang belum selesai.</p>
+        )}
+        {lifecycle?.schedule_incomplete && lifecycle.is_active && <p className="text-sm text-slate-600">Lengkapi tanggal mulai dan selesai agar status mengikuti jadwal.</p>}
+        <div className="flex flex-wrap gap-2">
+          {canInvite && (
+            <button type="button" onClick={() => {
               setShowInvite(!showInvite);
-              setSelectedIds([]);
-              setInviteCompensations({});
-            }}
-            disabled={assignment.status !== 'active'}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors ${
-              assignment.status === 'active'
-                ? 'bg-[#0B2C6B] hover:bg-[#0A255A]'
-                : 'bg-slate-300 cursor-not-allowed'
-            }`}
-            title={assignment.status !== 'active' ? 'Aktifkan proyek terlebih dahulu' : 'Undang Associate'}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {assignment.status !== 'active' ? 'Proyek Belum Aktif' : 'Undang Associate'}
-          </button>
+              if (!showInvite) { void fetchAvailableAssociates(); void fetchRecommendations(); }
+            }} className="min-h-11 rounded-xl bg-[#0B2C6B] px-4 text-sm font-semibold text-white hover:bg-[#123575]">Undang associate</button>
+          )}
+          {changeStatus && <button type="button" disabled={updatingStatus} onClick={() => void handleAssignmentStatus(changeStatus[0])} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-[#0B2C6B] disabled:opacity-50">{changeStatus[1]}</button>}
+          {canClose && <button type="button" disabled={updatingStatus} onClick={() => void handleAssignmentStatus('completed')} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-[#0B2C6B] disabled:opacity-50">Tutup penugasan</button>}
+          {canCancel && <button type="button" disabled={updatingStatus} onClick={() => void handleAssignmentStatus('cancelled')} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-50">Batalkan</button>}
         </div>
-      </div>
+      </section>
 
-      {/* Draft Warning Banner */}
-      {assignment.status === 'draft' && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
-          <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-          <div>
-            <p className="text-sm font-semibold text-amber-800">Proyek masih berstatus Draft</p>
-            <p className="text-xs text-amber-700 mt-0.5">Ubah status proyek menjadi <strong>Active</strong> terlebih dahulu sebelum mengundang associate. Undangan tidak dapat dikirim saat proyek masih draft, dan associate yang sudah diundang tidak dapat memulai pekerjaan sampai proyek diaktifkan.</p>
-          </div>
-        </div>
-      )}
-
-      {showInvite && (
+      {showInvite && canInvite && (
         <div className="ams-panel p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -754,7 +773,7 @@ export default function AssignmentDetailPage() {
 
       <div className="ams-panel">
         <div className="border-b border-slate-200 px-6 py-4">
-          <h2 className="text-base font-semibold text-slate-900">Tim Assignment ({assignees.length})</h2>
+          <h2 className="text-base font-semibold text-slate-900">Tim penugasan ({assignees.length})</h2>
         </div>
         {assignees.length === 0 ? (
           <div className="flex min-h-[200px] flex-col items-center justify-center">
@@ -764,7 +783,8 @@ export default function AssignmentDetailPage() {
         ) : (
           <div className="divide-y divide-slate-100">
             {assignees.map((a) => {
-              const config = statusConfig[a.status] || statusConfig.invited;
+              const workStatus = a.work_status || a.status;
+              const workLabel = a.work_status_label || assignmentStatusLabel(workStatus);
               const { photos, report } = parseEvidence(a.evidence_notes);
               const compensationOverride = formatCompensationOverride(a);
               const compensationLocked = !['invited', 'applied'].includes(a.status) || Boolean(a.invitation_expires_at);
@@ -778,8 +798,8 @@ export default function AssignmentDetailPage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-semibold text-slate-900">{a.profile?.full_name || a.associate?.email}</p>
-                          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${config.bg} ${config.text}`}>
-                            {config.label}
+                          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${assignmentStatusTone(workStatus)}`}>
+                            {workLabel}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500">{a.associate?.email}</p>
@@ -794,15 +814,11 @@ export default function AssignmentDetailPage() {
                       >
                         Lihat Profil
                       </Link>
-                      <button
-                        onClick={() => handleRemove(a)}
-                        aria-label={assignment?.external_program_id ? 'Batalkan penawaran' : 'Hapus associate'}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors border border-slate-100 hover:border-red-100"
-                      >
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
-                        </svg>
-                      </button>
+                      {['invited', 'applied', 'accepted', 'in_progress'].includes(a.status) && !['cancelled', 'completed'].includes(phase) && (
+                        <button type="button" onClick={() => void handleRemove(a)} className="min-h-11 rounded-lg px-3 text-xs font-medium text-rose-800 hover:bg-rose-50">
+                          Batalkan penugasan
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -816,9 +832,9 @@ export default function AssignmentDetailPage() {
                           </span>
                         </div>
                         <p className="mt-1 text-sm font-bold text-slate-900">{compensationOverride || assignment.compensation || 'Belum ditetapkan'}</p>
-                        {a.transport_amount !== null && <p className="mt-1 text-xs text-slate-600">Transportasi: Rp {Number(a.transport_amount).toLocaleString('id-ID')}</p>}
-                        {a.preparation_amount !== null && <p className="text-xs text-slate-600">Persiapan: Rp {Number(a.preparation_amount).toLocaleString('id-ID')}</p>}
-                        {a.compensation_amount !== null && <p className="mt-1 text-xs font-bold text-slate-900">Total fee: Rp {(Number(a.compensation_amount) + Number(a.transport_amount || 0) + Number(a.preparation_amount || 0)).toLocaleString('id-ID')}</p>}
+                        {a.transport_amount != null && <p className="mt-1 text-xs text-slate-600">Transportasi: Rp {Number(a.transport_amount).toLocaleString('id-ID')}</p>}
+                        {a.preparation_amount != null && <p className="text-xs text-slate-600">Persiapan: Rp {Number(a.preparation_amount).toLocaleString('id-ID')}</p>}
+                        {a.compensation_amount != null && <p className="mt-1 text-xs font-bold text-slate-900">Total fee: Rp {(Number(a.compensation_amount) + Number(a.transport_amount || 0) + Number(a.preparation_amount || 0)).toLocaleString('id-ID')}</p>}
                         {a.status === 'invited' && a.compensation_amount === null && a.invitation_expires_at && <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-900">Penawaran lama ini belum memiliki fee. Jangan minta associate menerimanya. Batalkan penawaran dengan tombol di atas, lalu kirim penawaran baru dengan rincian fee lengkap.</p>}
                         {a.invitation_expires_at && <p className="mt-1 text-xs text-slate-600">Batas respons: {new Date(a.invitation_expires_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' })} WIB</p>}
                         {a.compensation_notes && <p className="mt-1 text-xs leading-5 text-slate-500">{a.compensation_notes}</p>}
@@ -883,7 +899,8 @@ export default function AssignmentDetailPage() {
                   </div>
 
                   {/* Progress Stepper & Milestone Timestamps */}
-                  <div className="ml-0 sm:ml-13 bg-slate-50/30 rounded-xl border border-slate-100 p-4 space-y-4">
+                  {getStepIndex(a.status, a.work_status) >= 0 && a.work_bucket !== 'history' && (
+                    <div className="ml-0 sm:ml-13 bg-slate-50/30 rounded-xl border border-slate-100 p-4 space-y-4">
                     {/* Stepper Header */}
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -896,34 +913,34 @@ export default function AssignmentDetailPage() {
                     <div className="relative flex items-center justify-between w-full pt-2 px-2">
                       {/* Connection Line */}
                       <div className="absolute top-[18px] left-[5%] right-[5%] h-0.5 bg-slate-200 -z-0">
-                        <div 
+                        <div
                           className="h-full bg-indigo-600 transition-all duration-300"
-                          style={{ width: `${(getStepIndex(a.status) / (timelineSteps.length - 1)) * 100}%` }}
+                          style={{ width: `${(getStepIndex(a.status, a.work_status) / (timelineSteps.length - 1)) * 100}%` }}
                         />
                       </div>
 
                       {/* Stepper Nodes */}
                       {timelineSteps.map((step, idx) => {
-                        const currentIdx = getStepIndex(a.status);
+                        const currentIdx = getStepIndex(a.status, a.work_status);
                         const isCompleted = idx < currentIdx;
                         const isActive = idx === currentIdx;
-                        
+
                         return (
                           <div key={step.key} className="flex flex-col items-center relative z-10">
                             {/* Node Circle */}
-                            <div 
+                            <div
                               className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors border ${
-                                isCompleted 
-                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
-                                  : isActive 
-                                    ? 'bg-white border-indigo-600 text-indigo-600 ring-4 ring-indigo-50 shadow-sm' 
+                                isCompleted
+                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                                  : isActive
+                                    ? 'bg-white border-indigo-600 text-indigo-600 ring-4 ring-indigo-50 shadow-sm'
                                     : 'bg-slate-100 border-slate-200 text-slate-400'
                               }`}
                             >
                               {isCompleted ? '✓' : idx + 1}
                             </div>
                             {/* Node Label */}
-                            <span 
+                            <span
                               className={`text-[9px] font-bold mt-1.5 transition-colors ${
                                 isActive ? 'text-indigo-600 font-extrabold' : isCompleted ? 'text-slate-700' : 'text-slate-400'
                               }`}
@@ -947,7 +964,7 @@ export default function AssignmentDetailPage() {
                       </div>
                       <div>
                         <span className="text-slate-400 block text-[9px] font-extrabold uppercase">3. Mulai Kerja</span>
-                        <span>{a.status === 'in_progress' || getStepIndex(a.status) > 2 ? 'Sedang Berjalan' : 'Belum Mulai'}</span>
+                        <span>{workLabel}</span>
                       </div>
                       <div>
                         <span className="text-slate-400 block text-[9px] font-extrabold uppercase">4. Kirim Laporan</span>
@@ -955,6 +972,13 @@ export default function AssignmentDetailPage() {
                       </div>
                     </div>
                   </div>
+                  )}
+                  {workStatus === 'applied' && (
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={!canInvite || !hasVacancy} onClick={() => void reviewApplication(a.id, 'accepted')} className="min-h-11 rounded-xl bg-blue-50 px-3 text-sm font-semibold text-[#0B2C6B] disabled:opacity-50">Terima lamaran</button>
+                      <button type="button" onClick={() => void reviewApplication(a.id, 'declined')} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-rose-800 hover:bg-rose-50">Tolak lamaran</button>
+                    </div>
+                  )}
                   {/* Submission Evidence Panel */}
                   {(a.evidence_submitted_at || photos.length > 0 || report || a.evidence_url || (assigneeProgressLogs[a.associate_id] && assigneeProgressLogs[a.associate_id].length > 0)) && (
                     <div className="ml-0 sm:ml-13 rounded-xl border border-slate-200 bg-slate-50/50 p-5 space-y-4 shadow-inner">
@@ -984,7 +1008,7 @@ export default function AssignmentDetailPage() {
                                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-1 pt-1">
                                     {log.photo_urls.map((photoUrl: string, pIdx: number) => (
                                       <ProtectedFileLink
-                                        key={pIdx} 
+                                        key={pIdx}
                                         href={photoUrl}
                                         accessToken={accessToken}
                                         onOpenError={(message) => toast('error', message)}
@@ -1050,7 +1074,7 @@ export default function AssignmentDetailPage() {
                       )}
 
                       {/* Admin Review Console */}
-                      {a.status === 'completed' && (
+                      {workStatus === 'under_review' && canReview && (
                         <div className="pt-4 border-t border-slate-200 space-y-3">
                           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Penilaian / Feedback Review Admin</label>
                           <textarea

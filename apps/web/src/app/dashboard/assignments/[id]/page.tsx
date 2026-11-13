@@ -4,9 +4,12 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
-import { useToast } from '../../../../components/ui';
+import { ServiceError, useToast } from '../../../../components/ui';
 import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
-type AssignmentDetail = {
+import { assignmentStatusLabel, formatAssignmentDate, type AssignmentWork } from '@/lib/assignment-display';
+import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
+
+type AssignmentDetail = AssignmentWork & {
   id: string;
   title: string;
   client_name: string;
@@ -49,9 +52,9 @@ type AssignmentDetail = {
 const WORKFLOW_STEPS = [
   { key: 'invited',     label: 'Diundang',       icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
   { key: 'accepted',    label: 'Diterima',        icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { key: 'in_progress', label: 'Berjalan',        icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-  { key: 'completed',   label: 'Laporan Dikirim', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-  { key: 'reviewed',    label: 'Review Admin',    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+  { key: 'in_progress', label: 'Pelaksanaan',        icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+  { key: 'completed',   label: 'Laporan dikirim', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  { key: 'reviewed',    label: 'Disetujui',    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
 ];
 
 const statusLabel: Record<string, string> = {
@@ -65,17 +68,14 @@ const statusLabel: Record<string, string> = {
 
 function getStepIndex(status: string | undefined): number {
   if (!status) return -1;
-  if (status === 'invited' || status === 'declined') return 0;
+  if (status === 'invited' || status === 'applied') return 0;
   if (status === 'accepted') return 1;
   if (status === 'in_progress') return 2;
   if (status === 'completed') return 3;
-  return 4;
+  return status === 'reviewed' ? 4 : -1;
 }
 
-function fmtDate(d: string | null | undefined) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-}
+const fmtDate = (value?: string | null) => formatAssignmentDate(value) || '—';
 
 function fmtCurrency(val: string | null | undefined) {
   if (!val) return '—';
@@ -121,6 +121,9 @@ export default function AssignmentDetailPage() {
   const [applyRole, setApplyRole] = useState('');
 
   const [showAgreementModal, setShowAgreementModal] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const draftLoaded = useRef<string | null>(null);
+  const detailRequest = useRef<AbortController | null>(null);
   const [agreementChecked, setAgreementChecked] = useState(false);
 
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -155,29 +158,41 @@ export default function AssignmentDetailPage() {
     } catch { /* ignore */ }
   }, [accessToken, id, apiUrl]);
 
-  const fetchDetail = useCallback(async () => {
+  const fetchDetail = useCallback(async (resetDraft = false) => {
+    if (!accessToken) return;
+    detailRequest.current?.abort();
+    const controller = new AbortController();
+    detailRequest.current = controller;
     try {
-      const resp = await fetch(`${apiUrl}/api/associate/assignments/${id}`, { headers });
-      const data = await resp.json();
-      if (data.success) {
-        setAssignment(data.data);
-        if (data.data?.my_assignment) {
-          setEvidenceNotes(data.data.my_assignment.evidence_notes || '');
-          setEvidenceUrl(data.data.my_assignment.evidence_url || '');
-        }
+      const response = await fetch(apiUrl + '/api/associate/assignments/' + id, {
+        headers, signal: controller.signal, cache: 'no-store',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Periksa koneksi dan coba lagi.');
+      if (controller.signal.aborted) return;
+      setAssignment(result.data);
+      setLoadError('');
+      const member = result.data.my_assignment;
+      if (member && (resetDraft || draftLoaded.current !== member.id)) {
+        draftLoaded.current = member.id;
+        setEvidenceNotes(member.evidence_notes || '');
+        setEvidenceUrl(member.evidence_url || '');
       }
-    } catch (e) {
-      console.error('Failed to fetch assignment:', e);
+    } catch (error) {
+      if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : 'Periksa koneksi dan coba lagi.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [apiUrl, id, headers]);
+  }, [accessToken, apiUrl, id, headers]);
 
+  const refreshDetail = useCallback(() => { void fetchDetail(); }, [fetchDetail]);
   useEffect(() => {
     if (!accessToken) return;
-    fetchDetail();
-    fetchProgressLogs();
-  }, [accessToken, fetchDetail, fetchProgressLogs]);
+    refreshDetail();
+    void fetchProgressLogs();
+    return () => detailRequest.current?.abort();
+  }, [accessToken, refreshDetail, fetchProgressLogs]);
+  useAssignmentRefresh(assignment?.next_transition_at, refreshDetail, Boolean(accessToken));
 
   const handleProgressLogSubmit = async () => {
     if (!newLogNotes.trim()) {
@@ -278,11 +293,10 @@ export default function AssignmentDetailPage() {
     if (!assignment?.external_program_id || assignment.external_module_key !== 'tbos') return;
     setOpeningProgram(true);
     try {
-      const nextPath = '/fasilitator/tbos';
       const response = await fetch(`${apiUrl}/api/associate/app-access`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ nextPath }),
+        body: JSON.stringify({ assignmentId: assignment.id }),
       });
       const result = await response.json();
       if (!response.ok || !result.success || !result.data?.url) {
@@ -346,8 +360,8 @@ export default function AssignmentDetailPage() {
       });
       const data = await resp.json();
       if (data.success) {
-        toast('success', 'Laporan berhasil dikirim! Menunggu review admin.');
-        fetchDetail();
+        toast('success', 'Laporan dikirim untuk ditinjau admin.');
+        void fetchDetail(true);
       } else {
         toast('error', data.error || 'Gagal mengirim laporan');
       }
@@ -369,21 +383,40 @@ export default function AssignmentDetailPage() {
     );
   }
 
+  if (loadError) {
+    return <ServiceError title="Detail penugasan belum dapat dibuka" message={loadError} onRetry={refreshDetail} />;
+  }
   if (!assignment) return null;
 
   const my = assignment.my_assignment;
   const myStatus = my?.status;
-  const stepIndex = getStepIndex(myStatus);
   const myRole = my?.role || assignment.needed_roles?.[0] || null;
-  const isDeclined = myStatus === 'declined';
+  const workStatus = assignment.work_status || myStatus || assignment.status;
+  const statusText = assignment.work_status_label || assignmentStatusLabel(workStatus);
   const compensation = effectiveCompensation(assignment);
-
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const startDate = assignment.start_date
-    ? (() => { const d = new Date(assignment.start_date!); d.setHours(0,0,0,0); return d; })()
-    : null;
-  const assignmentIsActive = assignment.status === 'active';
-  const canStart = myStatus === 'accepted' && assignmentIsActive && (!startDate || today >= startDate);
+  const actions = assignment.actions;
+  const canStart = actions?.can_start ?? false;
+  const canLog = actions?.can_log_progress ?? false;
+  const canReport = actions?.can_submit_report ?? false;
+  const hasReport = Boolean(my?.evidence_submitted_at || my?.evidence_url || my?.evidence_notes?.trim());
+  const stepIndex = getStepIndex(myStatus === 'completed' && !hasReport ? 'in_progress' : myStatus);
+  const canApply = actions?.can_apply ?? false;
+  const canAccept = actions?.can_accept ?? false;
+  const canDecline = actions?.can_decline ?? false;
+  const showPendingOffer = myStatus === 'invited' && workStatus === 'invited';
+  const showWork = canLog || canReport;
+  const selectedTab = canLog ? activeTab : 'report';
+  const statusHelp: Record<string, string> = {
+    declined: 'Anda sudah menolak undangan ini.',
+    expired: 'Batas respons atau jadwal penugasan sudah berakhir.',
+    closed: 'Pendaftaran untuk penugasan ini sudah ditutup.',
+    withdrawn: 'Pengunduran diri Anda telah tercatat.',
+    cancelled: 'Admin membatalkan penugasan ini.',
+    paused: 'Admin menjeda penugasan. Tindakan tersedia kembali setelah penugasan dilanjutkan.',
+    awaiting_report: 'Kirim laporan akhir agar admin dapat meninjau pekerjaan Anda.',
+    applied: 'Admin akan meninjau pendaftaran Anda.',
+    draft: 'Admin masih menyiapkan penugasan ini.',
+  };
 
   return (
     <div className="space-y-5 pb-8">
@@ -399,14 +432,7 @@ export default function AssignmentDetailPage() {
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${assignment.status === 'active' ? 'bg-emerald-400/20 text-emerald-200 ring-1 ring-emerald-400/30' : 'bg-white/10 text-white/60'}`}>
-                  {assignment.status === 'active' ? 'Aktif' : assignment.status}
-                </span>
-                {myStatus && !isDeclined && (
-                  <span className="inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-400/20 text-amber-200 ring-1 ring-amber-400/30">
-                    {myStatus === 'invited' ? 'Diundang' : myStatus === 'accepted' ? 'Diterima' : myStatus === 'in_progress' ? 'Berjalan' : myStatus === 'completed' ? 'Laporan Dikirim' : myStatus === 'reviewed' ? 'Disetujui' : myStatus}
-                  </span>
-                )}
+                <span className="inline-flex rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">{statusText}</span>
               </div>
               <h1 className="text-2xl font-bold text-white leading-tight">{assignment.title}</h1>
               <p className="text-white/60 text-sm mt-0.5">{assignment.client_name}</p>
@@ -449,9 +475,9 @@ export default function AssignmentDetailPage() {
       </div>
 
       {/* Stepper */}
-      {my && !isDeclined && (
+      {my && stepIndex >= 0 && !['cancelled', 'declined', 'expired', 'closed', 'withdrawn', 'draft'].includes(workStatus) && (
         <div className="ams-panel p-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-5">Alur Penugasan</p>
+          <h2 className="mb-5 text-sm font-semibold text-slate-900">Alur penugasan</h2>
           <div className="relative flex items-start justify-between">
             <div className="absolute top-4 left-8 right-8 h-0.5 bg-slate-100" />
             {WORKFLOW_STEPS.map((step, idx) => {
@@ -476,19 +502,14 @@ export default function AssignmentDetailPage() {
         </div>
       )}
 
-      {isDeclined && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
-          <svg className="h-10 w-10 text-red-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <p className="font-semibold text-red-700">Anda menolak undangan ini</p>
-          <p className="text-xs text-red-400 mt-1">Hubungi admin jika ingin mengajukan kembali</p>
-        </div>
+      {statusHelp[workStatus] && (
+        <p className="ams-panel px-4 py-3 text-sm leading-6 text-slate-700">{statusHelp[workStatus]}</p>
       )}
 
-      {!my && assignmentIsActive && (
+      {!my && canApply && (
         <section className="ams-panel p-6" aria-labelledby="apply-heading">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-2xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#B76E00]">Kesempatan terbuka</p>
               <h2 id="apply-heading" className="mt-1 text-lg font-semibold text-slate-900">Daftar untuk penugasan ini</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 Pendaftaran akan masuk ke antrean admin. Anda belum dianggap bergabung sampai admin menerima pendaftaran.
@@ -520,9 +541,9 @@ export default function AssignmentDetailPage() {
         </section>
       )}
 
-      {my && !isDeclined && (
+      {my && (showPendingOffer || (myStatus === 'accepted' && !showWork && (canStart || workStatus === 'scheduled')) || showWork || (myStatus === 'completed' && hasReport) || myStatus === 'reviewed') && (
         <div className="ams-panel overflow-hidden">
-          {myStatus === 'invited' && (
+          {showPendingOffer && (
             <div className="p-6 space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
@@ -544,53 +565,29 @@ export default function AssignmentDetailPage() {
               {my.invitation_expires_at && <p className="text-sm font-semibold text-slate-700">Jawab paling lambat {new Date(my.invitation_expires_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short' })} WIB.</p>}
               {compensation ? <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{compensation.breakdown.map((line) => <p key={line}>{line}</p>)}<p className="mt-2 border-t border-slate-200 pt-2 font-bold">Total: {compensation.label}</p></div> : <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Rincian fee belum tersedia. Hubungi admin sebelum menerima undangan ini.</p>}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button onClick={() => setShowAgreementModal(true)} disabled={acting || !compensation || Boolean(my.invitation_expires_at && new Date(my.invitation_expires_at).getTime() <= Date.now()) || assignment.accepted_count >= assignment.needed_count} className="w-full sm:flex-1 rounded-xl bg-[#0B2C6B] py-3 text-sm font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-sm text-center">{!compensation ? 'Menunggu Rincian Fee' : my.invitation_expires_at && new Date(my.invitation_expires_at).getTime() <= Date.now() ? 'Batas Respons Terlewat' : assignment.accepted_count >= assignment.needed_count ? 'Posisi Sudah Terisi' : 'Terima Undangan'}</button>
-                <button onClick={() => handleStatusUpdate('declined')} disabled={acting} className="w-full sm:w-32 rounded-xl border border-red-200 bg-red-50/50 py-3 text-sm font-semibold text-red-600 hover:bg-red-100/70 disabled:opacity-50 transition-colors text-center">Tolak</button>
+                <button onClick={() => setShowAgreementModal(true)} disabled={acting || !compensation || !canAccept} className="w-full rounded-xl bg-[#0B2C6B] py-3 text-sm font-semibold text-white hover:bg-[#0A255A] disabled:opacity-50 sm:flex-1">{!compensation ? 'Menunggu rincian fee' : !canAccept ? 'Posisi sudah terisi' : 'Terima undangan'}</button>
+                <button onClick={() => handleStatusUpdate('declined')} disabled={acting || !canDecline} className="w-full sm:w-32 rounded-xl border border-red-200 bg-red-50/50 py-3 text-sm font-semibold text-red-600 hover:bg-red-100/70 disabled:opacity-50 transition-colors text-center">Tolak</button>
               </div>
             </div>
           )}
 
-          {myStatus === 'accepted' && (
-            <div className="p-6 space-y-5">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center">
-                  <svg className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">Undangan Diterima</h2>
-                  <p className="text-sm text-slate-500 mt-0.5">
-                    {!assignmentIsActive
-                      ? 'Proyek belum diaktifkan oleh admin.'
-                      : canStart
-                      ? 'Proyek sudah bisa dimulai sekarang.'
-                      : `Pekerjaan dimulai pada ${fmtDate(assignment.start_date)}.`}
-                  </p>
-                </div>
-              </div>
-              {!assignmentIsActive && (
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
-                  <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  <div>
-                    <p className="text-sm font-semibold text-amber-800">Proyek belum aktif</p>
-                    <p className="text-xs text-amber-700 mt-0.5">Tombol mulai bekerja akan tersedia setelah admin mengaktifkan proyek ini. Pantau status proyek secara berkala.</p>
-                  </div>
-                </div>
+          {myStatus === 'accepted' && !showWork && (canStart || workStatus === 'scheduled') && (
+            <section className="space-y-3 p-4 sm:p-6">
+              <h2 className="text-base font-semibold text-slate-900">Undangan diterima</h2>
+              <p className="text-sm leading-6 text-slate-600">
+                {canStart ? 'Anda dapat mulai bekerja sekarang.' : 'Pekerjaan dimulai pada ' + fmtDate(assignment.start_date) + '.'}
+              </p>
+              {canStart && (
+                <button type="button" onClick={() => handleStatusUpdate('in_progress')} disabled={acting} className="inline-flex min-h-11 items-center rounded-xl bg-[#0B2C6B] px-4 text-sm font-semibold text-white hover:bg-[#123575] disabled:opacity-50">
+                  {acting ? 'Memproses…' : 'Mulai bekerja'}
+                </button>
               )}
-              {assignmentIsActive && !canStart && startDate && (
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 flex items-center gap-3">
-                  <svg className="h-5 w-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <p className="text-sm text-slate-600">Tombol mulai aktif pada <strong>{fmtDate(assignment.start_date)}</strong></p>
-                </div>
-              )}
-              <button onClick={() => handleStatusUpdate('in_progress')} disabled={acting || !canStart} className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm">
-                {acting ? 'Memproses...' : !assignmentIsActive ? 'Menunggu Proyek Diaktifkan' : canStart ? 'Mulai Kerja Sekarang' : `Mulai Kerja (${fmtDate(assignment.start_date)})`}
-              </button>
-            </div>
+            </section>
           )}
 
-          {myStatus === 'in_progress' && (
+          {showWork && (
             <div className="divide-y divide-slate-100">
-              {assignment.external_program_id && assignment.external_module_key === 'tbos' && (
+              {canLog && assignment.external_program_id && assignment.external_module_key === 'tbos' && (
                 <div className="bg-blue-50/70 p-5">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -609,7 +606,7 @@ export default function AssignmentDetailPage() {
                   </div>
                 </div>
               )}
-              {my.evidence_reviewer_notes && (
+              {workStatus === 'revision_required' && my.evidence_reviewer_notes && (
                 <div className="p-4 bg-amber-50">
                   <div className="flex gap-3">
                     <svg className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
@@ -618,34 +615,23 @@ export default function AssignmentDetailPage() {
                 </div>
               )}
 
-              {/* Tab Navigation Bar */}
-              <div className="border-b border-slate-200 bg-white">
-                <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
-                  <button
-                    onClick={() => setActiveTab('log')}
-                    className={`border-b-2 py-4 px-1 text-xs font-bold uppercase tracking-wider transition-all ${
-                      activeTab === 'log'
-                        ? 'border-[#0B2C6B] text-[#0B2C6B]'
-                        : 'border-transparent text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    Log Aktivitas Harian
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('report')}
-                    className={`border-b-2 py-4 px-1 text-xs font-bold uppercase tracking-wider transition-all ${
-                      activeTab === 'report'
-                        ? 'border-[#0B2C6B] text-[#0B2C6B]'
-                        : 'border-transparent text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    Kirim Laporan Akhir
-                  </button>
-                </nav>
-              </div>
+              {canLog && canReport && (
+                <div className="px-4 sm:px-6">
+                  <nav className="flex gap-4" aria-label="Pencatatan penugasan">
+                    <button type="button" aria-pressed={activeTab === 'log'} onClick={() => setActiveTab('log')}
+                      className={'min-h-11 border-b-2 px-1 text-sm font-medium ' + (activeTab === 'log' ? 'border-[#0B2C6B] text-[#0B2C6B]' : 'border-transparent text-slate-600')}>
+                      Catatan kegiatan
+                    </button>
+                    <button type="button" aria-pressed={activeTab === 'report'} onClick={() => setActiveTab('report')}
+                      className={'min-h-11 border-b-2 px-1 text-sm font-medium ' + (activeTab === 'report' ? 'border-[#0B2C6B] text-[#0B2C6B]' : 'border-transparent text-slate-600')}>
+                      Laporan akhir
+                    </button>
+                  </nav>
+                </div>
+              )}
 
               {/* TAB 1: Log Aktivitas Harian/Lapangan */}
-              {activeTab === 'log' && (
+              {canLog && selectedTab === 'log' && (
                 <div className="p-6 space-y-6">
                   <div>
                     <h2 className="text-base font-bold text-slate-900">Log Aktivitas & Progres Lapangan</h2>
@@ -655,12 +641,12 @@ export default function AssignmentDetailPage() {
                   <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Catatan Kegiatan / Hambatan</label>
-                      <textarea 
-                        value={newLogNotes} 
-                        onChange={(e) => setNewLogNotes(e.target.value)} 
-                        placeholder="Contoh: Hari ini melakukan survey lokasi A, kendala cuaca hujan deras..." 
-                        rows={3} 
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm" 
+                      <textarea
+                        value={newLogNotes}
+                        onChange={(e) => setNewLogNotes(e.target.value)}
+                        placeholder="Contoh: Hari ini melakukan survey lokasi A, kendala cuaca hujan deras..."
+                        rows={3}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm"
                       />
                     </div>
 
@@ -690,8 +676,8 @@ export default function AssignmentDetailPage() {
                     </div>
 
                     <div className="pt-2 flex justify-end">
-                      <button 
-                        onClick={handleProgressLogSubmit} 
+                      <button
+                        onClick={handleProgressLogSubmit}
                         disabled={submittingLog || uploadingFile}
                         className="px-5 py-2.5 rounded-xl bg-[#0B2C6B] text-xs font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-md flex items-center gap-1.5"
                       >
@@ -725,12 +711,12 @@ export default function AssignmentDetailPage() {
                                       <span>{new Date(log.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
                                     <p className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{log.notes}</p>
-                                    
+
                                     {log.photo_urls && Array.isArray(log.photo_urls) && log.photo_urls.length > 0 && (
                                       <div className="mt-2 grid grid-cols-4 sm:grid-cols-6 gap-2">
                                         {log.photo_urls.map((photoUrl: string, pIdx: number) => (
                                           <ProtectedFileLink
-                                            key={pIdx} 
+                                            key={pIdx}
                                             href={photoUrl}
                                             accessToken={accessToken}
                                             onOpenError={(message) => toast('error', message)}
@@ -754,22 +740,22 @@ export default function AssignmentDetailPage() {
               )}
 
               {/* TAB 2: Kirim Laporan Akhir (Final Submission) */}
-              {activeTab === 'report' && (
+              {canReport && selectedTab === 'report' && (
                 <div className="p-6 bg-slate-50/30 space-y-5">
                   <div>
                     <h2 className="text-base font-bold text-slate-900">Kirim Laporan Akhir</h2>
-                    <p className="text-xs text-slate-500 mt-1">Lakukan langkah ini HANYA jika seluruh pekerjaan telah selesai. Status penugasan akan berubah menjadi <strong>Laporan Dikirim (Completed)</strong> dan menunggu persetujuan admin.</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">Kirim setelah pekerjaan selesai. Admin akan meninjau laporan Anda.</p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Kesimpulan / Laporan Akhir</label>
-                      <textarea 
-                        value={evidenceNotes} 
-                        onChange={(e) => setEvidenceNotes(e.target.value)} 
-                        placeholder="Tuliskan di sini ringkasan akhir hasil pekerjaan Anda untuk diserahkan ke admin..." 
-                        rows={4} 
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm" 
+                      <textarea
+                        value={evidenceNotes}
+                        onChange={(e) => setEvidenceNotes(e.target.value)}
+                        placeholder="Tuliskan di sini ringkasan akhir hasil pekerjaan Anda untuk diserahkan ke admin..."
+                        rows={4}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm"
                       />
                     </div>
 
@@ -806,7 +792,7 @@ export default function AssignmentDetailPage() {
                     <div className="pt-2">
                       <button onClick={submitFinalReport} disabled={acting || uploadingFile} className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                        Kirim Laporan & Selesai Bekerja
+                        Kirim laporan untuk ditinjau
                       </button>
                     </div>
                   </div>
@@ -815,7 +801,7 @@ export default function AssignmentDetailPage() {
             </div>
           )}
 
-          {myStatus === 'completed' && (
+          {myStatus === 'completed' && hasReport && (
             <div className="p-6 space-y-5">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center">
@@ -849,11 +835,11 @@ export default function AssignmentDetailPage() {
           {myStatus === 'reviewed' && (
             <div className="p-6 space-y-5">
               <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center shadow-md animate-pulse">
+                <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center shadow-md">
                   <svg className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Pekerjaan Selesai & Disetujui! ✅</h2>
+                  <h2 className="text-base font-bold text-slate-900">Laporan disetujui</h2>
                   <p className="text-sm text-slate-500 mt-0.5">Admin telah meninjau dan menyetujui laporan akhir Anda. Terima kasih atas kontribusi Anda!</p>
                   {my.evidence_reviewed_at && <p className="text-xs text-slate-400 mt-1">Disetujui: {new Date(my.evidence_reviewed_at).toLocaleString('id-ID')}</p>}
                 </div>
@@ -873,7 +859,7 @@ export default function AssignmentDetailPage() {
         </div>
       )}
 
-      {showAgreementModal && (
+      {showAgreementModal && canAccept && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="relative w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl border border-slate-200 flex flex-col max-h-[85vh]">
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-[#0B2C6B] to-[#1a4dab]">

@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { teamCheckSchema, teamEmailSchema } from '@ams/shared/validators/consultant-team';
-import { activeConsultantMembership } from '@ams/domain';
+import { activeConsultantMembership, assignmentLifecycle, assignmentWorkState } from '@ams/domain';
 import { getTeamMembership } from '../../lib/consultant-team.js';
 import { appAssignmentRequestSchema, appAssociateSearchSchema } from '@ams/shared/validators/integration';
 import { getDb } from '../../lib/database.js';
@@ -168,25 +168,35 @@ integration.post('/assignments', async (c) => {
     return c.json({ success: true, duplicate: true, data: { assignmentId: existing.id, assignees: assignees || [] } });
   }
 
+  if (assignmentLifecycle({ status: 'active', start_date: input.startDate, end_date: input.endDate }).ended) {
+    return c.json({ success: false, error: 'Jadwal program sudah berakhir. Perbarui jadwal sebelum mengirim undangan.' }, 409);
+  }
   const requestedIds = [...new Set(input.associateIds)];
   const { data: activeAssociates } = await db.from('associates').select('id').in('id', requestedIds).eq('status', 'active');
   if ((activeAssociates || []).length !== requestedIds.length) return c.json({ success: false, error: 'Satu atau lebih associate belum aktif' }, 409);
 
-  const { data: relatedAssignments } = await db
+  const { data: relatedAssignments, error: relatedError } = await db
     .from('assignments')
-    .select('id')
+    .select('id,status,start_date,end_date,needed_count')
     .eq('source_system', 'app-binahub')
     .eq('external_program_id', input.program.id)
     .eq('external_module_key', input.program.moduleKey)
-    .eq('status', 'active');
+    .in('status', ['active', 'paused']);
+  if (relatedError) throw new Error('Related assignments could not be read');
   if ((relatedAssignments || []).length > 0) {
     const relatedIds = relatedAssignments!.map((assignment) => assignment.id);
-    const { data: existingAssignees } = await db
+    const { data: priorAssignees, error: priorError } = await db
       .from('assignment_assignees')
-      .select('id, assignment_id, associate_id, status, compensation_amount, transport_amount, preparation_amount')
+      .select('id, assignment_id, associate_id, status, invitation_expires_at, accepted_at, evidence_submitted_at, evidence_url, evidence_notes, compensation_amount, transport_amount, preparation_amount')
       .in('assignment_id', relatedIds)
       .in('associate_id', requestedIds)
-      .not('status', 'in', '(declined,withdrawn)');
+      .not('status', 'in', '(declined,withdrawn,cancelled)');
+    if (priorError) throw new Error('Related assignment offers could not be read');
+    const relatedById = new Map(relatedAssignments!.map((row) => [row.id, row]));
+    const existingAssignees = (priorAssignees || []).filter((member) => {
+      const assignment = relatedById.get(member.assignment_id);
+      return assignment && assignmentWorkState(assignment, member).work_bucket !== 'history';
+    });
     const duplicateAssignment = relatedAssignments!.find((assignment) => {
       const assigned = new Set((existingAssignees || [])
         .filter((assignee) => assignee.assignment_id === assignment.id)
