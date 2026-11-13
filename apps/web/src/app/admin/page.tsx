@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import { ServiceError } from '../../components/ui';
+import { WorkspaceOverview, WorkspaceShortcuts } from '@/components/ui/workspace-overview';
 
 type Stats = {
   total: number;
@@ -153,52 +154,47 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-3 min-[360px]:grid-cols-3 lg:grid-cols-6">
-        <StatBox
-          label="Associate Aktif"
-          value={stats.active.toLocaleString('id-ID')}
-          sub={`${stats.total} total`}
-          icon="users"
-          iconBg="bg-[#0B2C6B]/10"
-          iconColor="text-[#0B2C6B]"
+      <div className="ams-overview-grid">
+        <WorkspaceOverview
+          heading="Ruang kerja admin"
+          value={stats.pending_review}
+          label="profil perlu ditinjau"
+          detail={`${stats.active} associate aktif · ${stats.total} terdaftar`}
+          href="/admin/reviews"
+          action="Tinjau profil"
+          completion={completionPct}
+          completionLabel="Profil lengkap"
+          completionHref="/admin/associates"
         />
+        <WorkspaceShortcuts items={[
+          { label: 'Associate', href: '/admin/associates', tone: 'blue', icon: 'M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2m20 0v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+          { label: 'Penugasan', href: '/admin/assignments', tone: 'teal', icon: 'M3 12h18M8 6V3h8v3M3 6h18v15H3V6zm7 6v3h4v-3' },
+          { label: 'Tim konsultan', href: '/admin/consultant-team', tone: 'gold', icon: 'M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2m20-1v-2a4 4 0 00-3-3.87M18 7v6m-3-3h6M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+          { label: 'Notifikasi', href: '/admin/notifications', tone: 'violet', icon: 'M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-9 12a3 3 0 006 0' },
+        ]} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
         <StatBox
-          label="Menunggu tinjauan"
-          value={stats.pending_review.toLocaleString('id-ID')}
-          sub="Menunggu review"
-          icon="clock"
-          iconBg="bg-amber-100"
-          iconColor="text-amber-600"
-        />
-        <StatBox
-          label="Laporan Baru"
+          label="Laporan"
           value={(stats.pending_reports || 0).toLocaleString('id-ID')}
-          sub="Tugas perlu review"
+          sub="Perlu ditinjau"
           icon="document"
           iconBg="bg-indigo-50"
           iconColor="text-indigo-600"
         />
         <StatBox
-          label="Profil lengkap"
-          value={`${completionPct}%`}
-          sub={`${stats.incomplete_profiles} belum lengkap`}
-          icon="check"
-          iconBg="bg-emerald-100"
-          iconColor="text-emerald-600"
-        />
-        <StatBox
-          label="CV Diupload"
+          label="Dokumen"
           value={stats.total_documents.toLocaleString('id-ID')}
-          sub={`${stats.cv_uploaded_today} hari ini`}
+          sub={`${stats.cv_uploaded_today} CV hari ini`}
           icon="upload"
           iconBg="bg-blue-100"
           iconColor="text-blue-600"
         />
         <StatBox
-          label="Baru minggu ini"
+          label="Associate baru"
           value={stats.new_this_week.toLocaleString('id-ID')}
-          sub="Registrasi baru"
+          sub="Minggu ini"
           icon="new"
           iconBg="bg-purple-100"
           iconColor="text-purple-600"
@@ -208,7 +204,7 @@ export default function AdminDashboard() {
       {/* Middle Section: 3 columns */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Menunggu tinjauan Table */}
-        <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="ams-panel lg:col-span-2 overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-slate-900">Menunggu tinjauan</h2>
@@ -278,7 +274,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Right Column: Activity */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="ams-panel">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <h2 className="text-sm font-semibold text-slate-900">Aktivitas Terbaru</h2>
             <Link href="/admin/activity" className="flex items-center gap-1 text-xs font-medium text-[#0B2C6B] hover:underline">
@@ -323,7 +319,7 @@ export default function AdminDashboard() {
       {/* Bottom Section: Capability Chart + Akses cepat */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Ringkasan kapabilitas */}
-        <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="ams-panel lg:col-span-2 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-sm font-semibold text-slate-900">Ringkasan kapabilitas</h2>
           </div>
@@ -351,14 +347,11 @@ export default function AdminDashboard() {
         </div>
 
         {/* Akses cepat */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4">Akses cepat</h2>
+        <div className="ams-panel p-5">
+          <h2 className="text-sm font-semibold text-slate-900 mb-4">Administrasi</h2>
           <div className="space-y-2">
-            <QuickAction icon="user-add" label="Tambah Associate Baru" href="/admin/associates" />
-            <QuickAction icon="assignment" label="Buat Assignment Baru" href="/admin/assignments" />
-            <QuickAction icon="import" label="Import Associates (CSV)" href="/admin/associates" />
-            <QuickAction icon="report" label="Generate Report" href="/admin/reports" />
-            <QuickAction icon="reviewer" label="Kelola Reviewer" href="/admin/users" />
+            <QuickAction icon="report" label="Laporan associate" href="/admin/reports" />
+            <QuickAction icon="reviewer" label="Pengguna dan peninjau" href="/admin/users" />
           </div>
         </div>
       </div>
@@ -375,7 +368,7 @@ function StatBox({ label, value, sub, icon, iconBg, iconColor }: {
   iconColor: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+    <div className="ams-panel p-3 sm:p-4">
       <div className="hidden items-center justify-between lg:flex">
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg} transition-transform duration-200 group-hover:scale-105`}>
           <StatIcon type={icon} className={`h-5 w-5 ${iconColor}`} />

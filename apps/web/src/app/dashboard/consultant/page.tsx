@@ -26,8 +26,8 @@ export default function ConsultantMembershipPage(){
       <p className="mt-2 text-sm leading-6 text-slate-600">Keanggotaan dan perjanjian kerja sama Anda sebagai konsultan.</p></header>
     {(problem||error)&&<div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{problem||error}<button type="button" onClick={()=>void reload()} className="ml-3 underline">Muat ulang</button></div>}
     {feedback&&<p role="status" className="rounded-lg bg-blue-50 p-4 text-sm text-[#0B2C6B]">{feedback}</p>}
-    {loading?<p role="status" className="py-6 text-sm text-slate-600">Memuat keanggotaan konsultan…</p>:!m?<section className="rounded-xl border border-slate-200 bg-white p-6"><p className="text-sm leading-6 text-slate-600">Undangan konsultan belum tersedia untuk akun ini. Hubungi admin BinaHub jika Anda sudah menerima pemberitahuan.</p><Link href="/dashboard" className="mt-4 inline-block text-sm font-medium text-[#0B2C6B] underline">Kembali ke beranda AMS</Link></section>
-      :<section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-7">
+    {loading?<p role="status" className="py-6 text-sm text-slate-600">Memuat keanggotaan konsultan…</p>:!m?<section className="ams-panel p-6"><p className="text-sm leading-6 text-slate-600">Undangan konsultan belum tersedia untuk akun ini. Hubungi admin BinaHub jika Anda sudah menerima pemberitahuan.</p><Link href="/dashboard" className="mt-4 inline-block text-sm font-medium text-[#0B2C6B] underline">Kembali ke beranda AMS</Link></section>
+      :<section className="ams-panel p-5 sm:p-7">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-5">
           <h2 className="text-lg font-semibold text-slate-900">Perjanjian kerja sama konsultan</h2>
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-[#0B2C6B]">{teamLabels[m.status]}</span>

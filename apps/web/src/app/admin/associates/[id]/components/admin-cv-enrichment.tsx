@@ -334,7 +334,7 @@ export function AdminCVEnrichment({
       )}
 
       {parsed && (
-        <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ams-panel mt-5 p-4">
           <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">

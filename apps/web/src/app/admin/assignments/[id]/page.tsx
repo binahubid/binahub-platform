@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../context/AuthContext';
-import { useToast } from '../../../../components/ui';
+import { Avatar, useToast } from '../../../../components/ui';
 import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
 type Assignment = {
   id: string;
@@ -527,7 +527,7 @@ export default function AssignmentDetailPage() {
         <span className="font-medium text-slate-900">{assignment.title}</span>
       </nav>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="ams-panel p-6">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">{assignment.title}</h1>
@@ -590,7 +590,7 @@ export default function AssignmentDetailPage() {
       )}
 
       {showInvite && (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="ams-panel p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Pilih Associate untuk Diundang</h3>
@@ -752,7 +752,7 @@ export default function AssignmentDetailPage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="ams-panel">
         <div className="border-b border-slate-200 px-6 py-4">
           <h2 className="text-base font-semibold text-slate-900">Tim Assignment ({assignees.length})</h2>
         </div>
@@ -768,24 +768,13 @@ export default function AssignmentDetailPage() {
               const { photos, report } = parseEvidence(a.evidence_notes);
               const compensationOverride = formatCompensationOverride(a);
               const compensationLocked = !['invited', 'applied'].includes(a.status) || Boolean(a.invitation_expires_at);
-              const avatarSrc = a.profile?.photo_url 
-                ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(a.profile.photo_url)}` 
-                : undefined;
 
               return (
                 <div key={a.id} className="px-6 py-5 hover:bg-slate-50/50 transition-colors space-y-4">
                   {/* Top Header Card */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 overflow-hidden rounded-full bg-[#0B2C6B] flex-shrink-0 border border-slate-200">
-                        {avatarSrc ? (
-                          <ProtectedFileImage src={avatarSrc} accessToken={accessToken} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
-                            {(a.profile?.full_name || a.associate?.email || '?').charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
+                      <Avatar src={a.profile?.photo_url} name={a.profile?.full_name || a.associate?.email} accessToken={accessToken} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-semibold text-slate-900">{a.profile?.full_name || a.associate?.email}</p>
@@ -817,7 +806,7 @@ export default function AssignmentDetailPage() {
                     </div>
                   </div>
 
-                  <div className="ml-0 rounded-xl border border-slate-200 bg-white p-4 sm:ml-13">
+                  <div className="ams-panel ml-0 p-4 sm:ml-13">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">

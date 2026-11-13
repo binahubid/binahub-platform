@@ -66,38 +66,38 @@ type ProtectedFileImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> 
 };
 
 export function ProtectedFileImage({ src, accessToken, fallback = null, alt = '', ...props }: ProtectedFileImageProps) {
-  const [resolvedUrl, setResolvedUrl] = useState<string>('');
-  const [failed, setFailed] = useState(false);
+  const [result, setResult] = useState<{ source: string; token: string; url: string; failed?: boolean } | null>(null);
+  const current = result?.source === src && result.token === accessToken ? result : null;
 
   useEffect(() => {
     let active = true;
-    setFailed(false);
-
     if (!accessToken) {
-      setResolvedUrl('');
       return () => { active = false; };
     }
 
     resolveProtectedFileUrl(src, accessToken)
       .then((url) => {
-        if (active) setResolvedUrl(url);
+        if (active) setResult({ source: src, token: accessToken, url });
       })
       .catch(() => {
-        if (active) setFailed(true);
+        if (active) setResult({ source: src, token: accessToken, url: '', failed: true });
       });
 
     return () => { active = false; };
   }, [src, accessToken]);
 
-  if (failed) return <>{fallback}</>;
-  if (!resolvedUrl) {
+  if (current?.failed) return <>{fallback}</>;
+  if (!current?.url) {
     return <span className={props.className} aria-label="Memuat berkas" role="status" />;
   }
 
   // Signed storage URLs are intentionally rendered with a native image: their
   // short lifetime makes Next's persistent image optimizer cache unsuitable.
   // eslint-disable-next-line @next/next/no-img-element
-  return <img {...props} src={resolvedUrl} alt={alt} />;
+  return <img {...props} src={current.url} alt={alt} onError={(event) => {
+    if (accessToken) setResult({ source: src, token: accessToken, url: '', failed: true });
+    props.onError?.(event);
+  }} />;
 }
 
 type ProtectedFileLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {

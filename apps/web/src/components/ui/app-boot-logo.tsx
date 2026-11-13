@@ -4,12 +4,12 @@ export function AppBootLogo() {
   return (
     <div role="status" className="grid min-h-[100svh] place-items-center">
       <Image
-        src="/full-logo.png"
+        src="/intro2.png"
         alt=""
-        width={158}
-        height={45}
+        width={1280}
+        height={640}
         priority
-        className="h-auto w-[158px]"
+        className="h-auto w-[min(76vw,300px)]"
       />
       <span className="sr-only">Membuka BinaHub AMS…</span>
     </div>

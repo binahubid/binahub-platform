@@ -132,15 +132,15 @@ export default function TasksPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ams-panel p-4">
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Total</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{total}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ams-panel p-4">
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Pending</p>
           <p className="mt-1 text-2xl font-bold text-amber-600">{pendingCount}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ams-panel p-4">
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Completed</p>
           <p className="mt-1 text-2xl font-bold text-emerald-600">{completedCount}</p>
         </div>
@@ -189,7 +189,7 @@ export default function TasksPage() {
 
       {/* Task List */}
       {filtered.length === 0 ? (
-        <div className="flex min-h-[200px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[200px] flex-col items-center justify-center">
           <svg className="h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>

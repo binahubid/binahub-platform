@@ -64,7 +64,7 @@ export default function AdminActivityPage() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="ams-panel">
         {loading ? (
           <div className="flex min-h-[400px] items-center justify-center">
             <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">

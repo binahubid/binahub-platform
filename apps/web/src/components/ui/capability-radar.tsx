@@ -22,8 +22,6 @@ export function CapabilityRadar({ data, size = 280 }: { data: CapabilityData[]; 
     const dpr = window.devicePixelRatio || 1;
     canvas.width = size * dpr;
     canvas.height = size * dpr;
-    canvas.style.width = `${size}px`;
-    canvas.style.height = `${size}px`;
     ctx.scale(dpr, dpr);
 
     const cx = size / 2;
@@ -120,8 +118,8 @@ export function CapabilityRadar({ data, size = 280 }: { data: CapabilityData[]; 
   }
 
   return (
-    <div className="flex justify-center">
-      <canvas ref={canvasRef} style={{ width: size, height: size }} />
+    <div className="flex w-full min-w-0 justify-center">
+      <canvas ref={canvasRef} role="img" aria-label="Grafik ringkasan kapabilitas" style={{ width: '100%', maxWidth: size, height: 'auto', aspectRatio: '1' }} />
     </div>
   );
 }

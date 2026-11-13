@@ -450,7 +450,7 @@ export default function AssignmentDetailPage() {
 
       {/* Stepper */}
       {my && !isDeclined && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="ams-panel p-5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-5">Alur Penugasan</p>
           <div className="relative flex items-start justify-between">
             <div className="absolute top-4 left-8 right-8 h-0.5 bg-slate-100" />
@@ -485,7 +485,7 @@ export default function AssignmentDetailPage() {
       )}
 
       {!my && assignmentIsActive && (
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm" aria-labelledby="apply-heading">
+        <section className="ams-panel p-6" aria-labelledby="apply-heading">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-2xl">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#B76E00]">Kesempatan terbuka</p>
@@ -521,7 +521,7 @@ export default function AssignmentDetailPage() {
       )}
 
       {my && !isDeclined && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="ams-panel overflow-hidden">
           {myStatus === 'invited' && (
             <div className="p-6 space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

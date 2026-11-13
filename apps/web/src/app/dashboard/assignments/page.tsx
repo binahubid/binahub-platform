@@ -113,7 +113,7 @@ export default function AssignmentsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-10 text-center">
+        <div className="ams-panel px-5 py-10 text-center">
           <p className="text-sm font-semibold text-slate-900">Belum ada penugasan{filter === 'active' ? ' aktif' : filter === 'completed' ? ' yang selesai' : ''}.</p>
           {filter !== 'all' && stats.total > 0 && (
             <button type="button" onClick={() => setFilter('all')} className="mt-1 min-h-11 text-sm font-semibold text-[#0B2C6B] hover:underline">
@@ -122,7 +122,7 @@ export default function AssignmentsPage() {
           )}
         </div>
       ) : (
-        <ul className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <ul className="ams-panel divide-y divide-slate-200 overflow-hidden">
           {filtered.map((assignment) => {
             const program = statusConfig[assignment.status] ?? statusConfig.draft;
             const participation = assignment.my_status ? myStatusConfig[assignment.my_status] : undefined;

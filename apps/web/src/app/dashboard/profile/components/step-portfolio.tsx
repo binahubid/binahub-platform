@@ -180,7 +180,7 @@ export function StepPortfolio({ portfolios, associateId, apiUrl, accessToken, on
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {portfolios.map((port) => (
-              <div key={port.id} className="rounded-xl border border-slate-200 bg-white p-4 hover:shadow-sm transition-shadow flex flex-col justify-between">
+              <div key={port.id} className="ams-panel p-4 hover:shadow-sm transition-shadow flex flex-col justify-between">
                 <div>
                   <div className="flex items-start justify-between gap-4">
                     <h4 className="text-sm font-bold text-slate-900 truncate" title={port.title}>{port.title}</h4>

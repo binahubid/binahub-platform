@@ -114,14 +114,14 @@ export default function AdminReportsPage() {
       </div>
 
       {loading ? (
-        <div className="flex min-h-[400px] items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[400px] items-center justify-center">
           <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
       ) : !data ? (
-        <div className="flex min-h-[400px] items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[400px] items-center justify-center">
           <p className="text-sm text-slate-500">Gagal memuat data</p>
         </div>
       ) : (
@@ -143,7 +143,7 @@ export default function AdminReportsPage() {
           {/* Charts Row */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Top Skills */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="ams-panel p-5">
               <h2 className="text-sm font-semibold text-slate-900 mb-4">Top Skills</h2>
               {data.top_skills.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-8">Belum ada data skill</p>
@@ -163,7 +163,7 @@ export default function AdminReportsPage() {
             </div>
 
             {/* Top Cities */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="ams-panel p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-slate-900">Top Lokasi</h2>
                 {data.unknown_city_count > 0 && (
@@ -195,7 +195,7 @@ export default function AdminReportsPage() {
 
 function ReportCard({ label, value, sub, color }: { label: string; value: number; sub: string; color: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="ams-panel p-5">
       <div className={`inline-flex rounded-lg px-2 py-1 text-xs font-semibold ${color}`}>
         {value}
       </div>

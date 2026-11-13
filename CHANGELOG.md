@@ -2,6 +2,21 @@
 
 Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
 
+## [Unreleased] - 2026-11-13
+
+- Perbarui beranda associate dan admin dengan ringkasan pekerjaan, kelengkapan
+  profil, serta pintasan yang langsung membuka bagian terkait. Gunakan gaya
+  kartu bersama pada halaman kerja, profil, evaluasi, dan pengaturan.
+- Satukan bingkai foto profil agar proporsional dan tidak mengikuti tinggi
+  intrinsik foto. Foto privat memakai URL bertanda tangan dan gambar yang
+  gagal dimuat kembali ke inisial; sumber lama tidak muncul saat foto berubah.
+- Logo pembuka kedua menggunakan aset asli BinaHub dengan tagline. Sesuaikan
+  navigasi bawah mobile, keterbacaan pintasan, dan posisi umpan balik formulir.
+- Grafik kapabilitas mengikuti lebar kartu dan hanya tampil dengan sedikitnya
+  tiga keahlian. Ringkasan dengan sedikit keahlian tetap tersedia sebagai daftar.
+- Verifikasi menggunakan data sintetis pada lebar 320, 390, 768, dan 1366 piksel;
+  tidak ada perubahan SQL, environment, peran, atau proses pengiriman notifikasi.
+
 ## [0.11.5] - 2026-11-04
 
 - Web0.10.5 menerapkan perapihan Unslop pada shell admin/associate dan komponen

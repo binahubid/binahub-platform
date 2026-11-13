@@ -4,7 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { CapabilityRadar, ProfileStrength, Avatar, ServiceError } from '../../components/ui';
-import { ProtectedFileImage, ProtectedFileLink } from '../../components/ui/protected-file';
+import { ProtectedFileLink } from '../../components/ui/protected-file';
+import { WorkspaceOverview, WorkspaceShortcuts } from '@/components/ui/workspace-overview';
+import { ConsultantPortalEntry } from '@/components/consultant-team-context';
+import { InstallAmsCard } from '@/components/notifications/device-settings';
 
 type ProfileData = {
   full_name: string;
@@ -72,19 +75,12 @@ type DashboardData = {
   availability: Availability | null;
 };
 
-const getPhotoUrl = (path: string | null | undefined) => {
-  if (!path) return undefined;
-  if (path.startsWith('http') || path.startsWith('data:')) return path;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
-};
-
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Selamat Pagi';
-  if (hour < 15) return 'Selamat Siang';
-  if (hour < 18) return 'Selamat Sore';
-  return 'Selamat Malam';
+  if (hour < 12) return 'Selamat pagi';
+  if (hour < 15) return 'Selamat siang';
+  if (hour < 18) return 'Selamat sore';
+  return 'Selamat malam';
 }
 
 
@@ -295,11 +291,14 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
+      <div role="status" className="space-y-5">
+        <span className="sr-only">Memuat beranda…</span>
+        <div aria-hidden="true" className="h-14 w-40 rounded-2xl bg-slate-200/70" />
+        <div aria-hidden="true" className="ams-overview-grid">
+          <div className="h-56 rounded-3xl bg-slate-200/70" />
+          <div className="h-28 rounded-3xl bg-slate-200/50 md:h-56" />
+        </div>
+        <div aria-hidden="true" className="ams-panel h-44" />
       </div>
     );
   }
@@ -317,7 +316,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-5 relative">
+    <div className="ams-dashboard space-y-5 relative">
       {/* Floating feedback toast */}
       {toast && (
         <div role="status" className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-50 flex lg:bottom-5 items-center gap-2 rounded-xl px-4 py-3 shadow-lg border text-xs font-semibold text-white bg-slate-900 border-slate-800">
@@ -334,14 +333,15 @@ export default function DashboardPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
+          <p className="mb-1 text-sm text-slate-600">{getGreeting()},</p>
           <h1 className="text-[1.65rem] font-semibold leading-tight tracking-tight text-slate-900 sm:text-3xl">
-            {getGreeting()}, {data?.profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}
+            {data.profile?.preferred_name || data.profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}
           </h1>
         </div>
-        <div className="hidden items-center gap-4 lg:flex">
+        <div className="flex shrink-0 items-center gap-5">
           {/* Search */}
-          <div className={`relative hidden sm:block transition-all`} ref={searchDropdownRef}>
+          <div className="relative hidden lg:block" ref={searchDropdownRef}>
             <div className={`relative ${searchFocused ? 'w-80' : 'w-64'} transition-all`}>
               <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -352,7 +352,8 @@ export default function DashboardPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                placeholder="Cari sesuatu..."
+                aria-label="Cari penugasan atau keahlian"
+                placeholder="Cari penugasan atau keahlian"
                 className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-12 text-sm text-slate-900 outline-none transition-colors focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B]/20"
               />
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
@@ -398,6 +399,9 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+          <Link href="/dashboard/profile" aria-label="Buka profil saya" className="rounded-full ring-4 ring-white shadow-sm">
+            <Avatar name={data.profile?.full_name} src={data.profile?.photo_url} accessToken={accessToken} size="lg" />
+          </Link>
         </div>
       </div>
 
@@ -432,7 +436,7 @@ export default function DashboardPage() {
           {data.status === 'pending_review' && (
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm flex items-start gap-3">
               <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-[#0B2C6B]">
-                <svg className="h-5 w-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
@@ -462,25 +466,43 @@ export default function DashboardPage() {
           )}
         </>
       )}
-
-
+      <div className="ams-overview-grid">
+        <WorkspaceOverview
+          heading="Ruang kerja Anda"
+          value={inProgressAssignments.length}
+          label="penugasan berjalan"
+          detail={`${data.assignments.filter((assignment) => assignment.status === 'upcoming' || assignment.status === 'planned').length} mendatang · ${data.assignments.filter((assignment) => assignment.status === 'completed').length} selesai`}
+          href="/dashboard/assignments"
+          action="Lihat penugasan"
+          completion={completionPercentage}
+          completionLabel="Profil terisi"
+          completionHref="/dashboard/profile"
+        />
+        <WorkspaceShortcuts items={[
+          { label: 'Dokumen', href: '/dashboard/profile?tab=documents', tone: 'blue', icon: 'M9 12h6m-6 4h4M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9l-6-6zm0 0v6h6' },
+          { label: 'Ketersediaan', href: '/dashboard/profile?tab=availability', tone: 'teal', icon: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zm3 12 3 3 5-6' },
+          { label: 'Asesmen', href: '/dashboard/assessments', tone: 'gold', icon: 'M9 5H5v16h14V5h-4m-6-2h6v4H9V3zm-1 9 1 1 2-2m2 1h3m-8 5 1 1 2-2m2 1h3' },
+          { label: 'Pengembangan', href: '/dashboard/development', tone: 'violet', icon: 'M4 20h16M5 16l5-5 4 3 6-9m-5 0h5v5' },
+        ]} />
+      </div>
       <ConsultantPortalEntry />
 
-      <section aria-labelledby="my-assignments-heading" className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 border-b border-slate-200 px-4 py-1 sm:px-5">
+      <div className="ams-dashboard-grid">
+      <section aria-labelledby="my-assignments-heading" className="ams-panel overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 border-b border-slate-100 px-4 py-2 sm:px-5">
           <h2 id="my-assignments-heading" className="text-base font-semibold text-slate-900">Penugasan saya</h2>
           <Link href="/dashboard/assignments" className="inline-flex min-h-11 items-center text-sm font-medium text-[#0B2C6B] hover:underline">
             Lihat semua
           </Link>
         </div>
         {data?.assignments.length ? (
-          <ul className="divide-y divide-slate-200">
+          <ul className="divide-y divide-slate-100">
             {[...inProgressAssignments, ...otherAssignments].map((assignment) => {
               const status = statusConfig[assignment.status] ?? statusConfig.upcoming;
               const ongoing = assignment.status === 'in_progress';
               const date = ongoing ? assignment.deadline : assignment.start_date || assignment.deadline;
               return (
-                <li key={assignment.id}>
+                <li key={assignment.id} className="ams-assignment-row">
                   <Link href={`/dashboard/assignments/${assignment.id}`} className="flex min-h-16 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0B2C6B] sm:px-5">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -489,7 +511,7 @@ export default function DashboardPage() {
                           {ongoing ? 'Tenggat ' : 'Mulai '}{new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </time>}
                       </div>
-                      <p className="mt-1.5 break-words text-sm font-semibold text-slate-900">{assignment.project_name}</p>
+                      <p className="mt-2 break-words text-[15px] font-semibold leading-6 text-slate-900">{assignment.project_name}</p>
                       <p className="mt-0.5 break-words text-sm text-slate-600">{[assignment.role, assignment.client].filter(Boolean).join(' · ')}</p>
                       {ongoing && assignment.progress != null && (
                         <div className="mt-2 flex max-w-60 items-center gap-2">
@@ -514,22 +536,10 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <section aria-labelledby="profile-summary-heading" className="rounded-2xl border border-slate-200 bg-white px-4 sm:px-5">
+      <section aria-labelledby="profile-summary-heading" className="ams-panel self-start px-4 sm:px-5">
         <div className="flex flex-wrap items-center gap-3 py-4">
-          <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-100">
-            {data?.profile?.photo_url ? (
-              <ProtectedFileImage
-                src={getPhotoUrl(data.profile.photo_url) || data.profile.photo_url}
-                accessToken={accessToken}
-                alt="Foto profil"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <Avatar name={data?.profile?.full_name} size="xl" className="h-full w-full" />
-            )}
-          </div>
           <div className="min-w-0 flex-1">
-            <h2 id="profile-summary-heading" className="break-words text-base font-semibold text-slate-900">{data?.profile?.full_name || 'Profil saya'}</h2>
+            <h2 id="profile-summary-heading" className="text-base font-semibold text-slate-900">Profil saya</h2>
             {(data?.profile?.headline || data?.profile?.roles?.length) && (
               <p className="mt-0.5 break-words text-sm text-slate-600">{data.profile.headline || data.profile.roles?.join(', ')}</p>
             )}
@@ -549,13 +559,6 @@ export default function DashboardPage() {
             </span>
           </div>
         )}
-        <div className="border-t border-slate-200 py-3.5">
-          <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-            <span className="font-medium text-slate-900">Kelengkapan profil</span>
-            <span className="font-medium tabular-nums text-[#0B2C6B]">{completionPercentage}%</span>
-          </div>
-          <progress value={completionPercentage} max={100} aria-label="Kelengkapan profil" className="block h-1.5 w-full accent-[#0B2C6B]" />
-        </div>
         {completionPercentage < 100 && (
           <details className="border-t border-slate-200">
             <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-[#0B2C6B]">Lengkapi data profil</summary>
@@ -592,9 +595,10 @@ export default function DashboardPage() {
           </ProtectedFileLink>
         )}
       </section>
+      </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+        <section className="ams-panel p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-x-3">
             <h2 className="text-base font-semibold text-slate-900">Kapabilitas</h2>
             <Link href="/dashboard/capability" className="inline-flex min-h-11 items-center text-sm font-medium text-[#0B2C6B] hover:underline">Lihat rincian</Link>
@@ -616,7 +620,7 @@ export default function DashboardPage() {
             <p className="py-3 text-sm leading-6 text-slate-600">Tambahkan keahlian pada profil Anda untuk melihat ringkasannya.</p>
           )}
         </section>
-        <section className="self-start overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-label="Pengembangan dan evaluasi">
+        <section className="ams-panel self-start overflow-hidden" aria-label="Pengembangan dan evaluasi">
           {[
             {href:'/dashboard/reviews',label:'Evaluasi saya'},
             {href:'/dashboard/assessments',label:'Asesmen'},
@@ -635,5 +639,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-import { ConsultantPortalEntry } from '@/components/consultant-team-context';
-import { InstallAmsCard } from '@/components/notifications/device-settings';

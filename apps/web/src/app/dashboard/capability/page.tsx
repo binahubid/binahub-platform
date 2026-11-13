@@ -33,10 +33,10 @@ const categoryIcons: Record<string, string> = {
 };
 
 const proficiencyConfig = {
-  beginner: { label: 'Beginner', color: 'text-slate-500', bg: 'bg-slate-100', width: '25%' },
-  intermediate: { label: 'Intermediate', color: 'text-blue-600', bg: 'bg-blue-50', width: '50%' },
-  advanced: { label: 'Advanced', color: 'text-amber-600', bg: 'bg-amber-50', width: '75%' },
-  expert: { label: 'Expert', color: 'text-emerald-600', bg: 'bg-emerald-50', width: '100%' },
+  beginner: { label: 'Pemula', color: 'text-slate-600', bg: 'bg-slate-100', width: '25%' },
+  intermediate: { label: 'Menengah', color: 'text-blue-600', bg: 'bg-blue-50', width: '50%' },
+  advanced: { label: 'Mahir', color: 'text-amber-600', bg: 'bg-amber-50', width: '75%' },
+  expert: { label: 'Ahli', color: 'text-emerald-600', bg: 'bg-emerald-50', width: '100%' },
 };
 
 export default function CapabilityPage() {
@@ -110,20 +110,20 @@ export default function CapabilityPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Total keahlian</p>
+        <div className="ams-panel p-4">
+          <p className="text-xs font-medium text-slate-600">Total keahlian</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totalSkills}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Rata-rata penguasaan</p>
+        <div className="ams-panel p-4">
+          <p className="text-xs font-medium text-slate-600">Rata-rata penguasaan</p>
           <p className="mt-1 text-2xl font-bold text-[#0B2C6B]">{stats.avgProficiency}%</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Skill Updates</p>
+        <div className="ams-panel p-4">
+          <p className="text-xs font-medium text-slate-600">Pembaruan keahlian</p>
           <p className="mt-1 text-2xl font-bold text-emerald-600">{stats.totalUpdates}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Categories</p>
+        <div className="ams-panel p-4">
+          <p className="text-xs font-medium text-slate-600">Kategori</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{stats.categories}</p>
         </div>
       </div>
@@ -132,25 +132,16 @@ export default function CapabilityPage() {
         {/* Main Content */}
         <div className="space-y-6 lg:col-span-2">
           {/* Radar Chart */}
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          {capabilityData.length >= 3 && <div className="ams-panel p-5">
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Peta kapabilitas</h2>
-            {capabilityData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <svg className="h-16 w-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                <p className="mt-3 text-sm text-slate-400">Add skills to see your capability radar</p>
-              </div>
-            ) : (
-              <CapabilityRadar data={capabilityData} size={320} />
-            )}
-          </div>
+            <CapabilityRadar data={capabilityData} size={320} />
+          </div>}
 
           {/* Skills by Category */}
           {Object.keys(groupedSkills).length > 0 ? (
             <div className="space-y-4">
               {Object.entries(groupedSkills).map(([category, categorySkills]) => (
-                <div key={category} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div key={category} className="ams-panel p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <svg className="h-5 w-5 text-[#0B2C6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={categoryIcons[category] || categoryIcons.technical} />
@@ -176,7 +167,7 @@ export default function CapabilityPage() {
                               <div className="h-full rounded-full bg-[#0B2C6B]" style={{ width: profConfig.width }} />
                             </div>
                             <div className="mt-1 text-[11px] text-slate-400">
-                              <span>{skill.years_experience || 0} years experience</span>
+                              <span>{skill.years_experience ? `${skill.years_experience} tahun pengalaman` : 'Pengalaman belum diisi'}</span>
                             </div>
                           </div>
                         </div>
@@ -187,12 +178,12 @@ export default function CapabilityPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm text-center">
+            <div className="ams-panel p-8 text-center">
               <svg className="h-12 w-12 text-slate-200 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              <h3 className="mt-3 text-sm font-semibold text-slate-900">No Skills Added</h3>
-              <p className="mt-1 text-xs text-slate-500">Add skills in your profile to see capability scores here</p>
+              <h3 className="mt-3 text-sm font-semibold text-slate-900">Keahlian belum diisi</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Tambahkan keahlian pada profil untuk melihat ringkasan kapabilitas Anda.</p>
             </div>
           )}
         </div>
@@ -201,8 +192,8 @@ export default function CapabilityPage() {
         <div className="space-y-6">
           {/* Score List */}
           {capabilityData.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-900 mb-4">Score Breakdown</h3>
+            <div className="ams-panel p-5">
+              <h3 className="text-sm font-semibold text-slate-900 mb-4">Rincian penguasaan</h3>
               <div className="space-y-3">
                 {capabilityData.map((item, i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -220,7 +211,7 @@ export default function CapabilityPage() {
           )}
 
           {/* AI Insights */}
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="ams-panel p-5">
             <div className="flex items-center gap-2 mb-4">
               <div className="flex h-6 w-6 items-center justify-center rounded bg-[#D9A441]/10">
                 <svg className="h-3.5 w-3.5 text-[#D9A441]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -257,7 +248,7 @@ export default function CapabilityPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="ams-panel p-5">
             <h3 className="text-sm font-semibold text-slate-900 mb-3">Quick Actions</h3>
             <div className="space-y-2">
               <a href="/dashboard/profile?tab=skills" className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50 transition-colors">

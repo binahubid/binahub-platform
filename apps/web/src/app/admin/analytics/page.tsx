@@ -162,14 +162,14 @@ export default function AnalyticsPage() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="ams-panel p-6">
           <h2 className="text-base font-semibold text-slate-900">Associate Growth (6 Bulan)</h2>
           <div className="mt-4">
             <SimpleBarChart data={growthValues} labels={growthLabels} color="#0B2C6B" height={220} />
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="ams-panel p-6">
           <h2 className="text-base font-semibold text-slate-900">Distribusi Keahlian (Top 6)</h2>
           <div className="mt-4 flex items-center justify-center">
             <DonutChart data={donutData} size={160} strokeWidth={24} />
@@ -178,14 +178,14 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="ams-panel p-6">
           <h2 className="text-base font-semibold text-slate-900">Top 5 Keahlian</h2>
           <div className="mt-4">
             <SimpleBarChart data={skillsBarData} labels={skillsLabels} color="#2563eb" height={220} />
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="ams-panel p-6">
           <h2 className="text-base font-semibold text-slate-900">Top 5 Kota</h2>
           <div className="mt-4">
             <SimpleBarChart data={citiesBarData} labels={citiesLabels} color="#7c3aed" height={220} />
@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Assignment Status */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="ams-panel p-6">
         <h2 className="text-base font-semibold text-slate-900 mb-4">Status Assignment</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-lg border border-slate-200 p-4">

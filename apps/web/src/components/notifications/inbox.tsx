@@ -151,7 +151,7 @@ export function NotificationInbox() {
           Atur notifikasi HP
         </Link>
       </div>
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <section className="ams-panel overflow-hidden">
         <div className="border-b border-slate-200 px-3 pt-1 sm:flex sm:flex-wrap sm:justify-between sm:gap-2 sm:px-5">
           <div
             className="flex flex-wrap gap-x-3 sm:gap-x-4"

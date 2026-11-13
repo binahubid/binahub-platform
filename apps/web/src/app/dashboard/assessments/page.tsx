@@ -67,15 +67,15 @@ export default function AssessmentsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="ams-panel p-3 sm:p-4">
           <p className="break-words text-xs font-medium text-slate-600">Total asesmen</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{assessments.length}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="ams-panel p-3 sm:p-4">
           <p className="break-words text-xs font-medium text-slate-600">Selesai</p>
           <p className="mt-1 text-2xl font-bold text-emerald-600">{completed.length}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="ams-panel p-3 sm:p-4">
           <p className="break-words text-xs font-medium text-slate-600">Avg Score</p>
           <p className="mt-1 text-2xl font-bold text-[#0B2C6B]">{avgScore}%</p>
         </div>
@@ -83,7 +83,7 @@ export default function AssessmentsPage() {
 
       {/* Assessment List */}
       {assessments.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-12 shadow-sm">
+        <div className="ams-panel p-12">
           <div className="flex flex-col items-center justify-center">
             <svg className="h-16 w-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -102,7 +102,7 @@ export default function AssessmentsPage() {
             return (
               <div
                 key={assessment.id}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md"
+                className="ams-panel p-5 transition-all hover:shadow-md"
               >
                 <div className="flex items-start gap-4">
                   <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${config.bg}`}>

@@ -103,7 +103,7 @@ export default function SettingsPage() {
 
       <DeviceSettings />
       <section
-        className="rounded-xl border border-slate-200 bg-white px-5 sm:px-6"
+        className="ams-panel px-5 sm:px-6"
         aria-label="Notifikasi email dan WhatsApp"
       >
         <div className="border-b border-slate-200 py-4">
@@ -149,7 +149,7 @@ export default function SettingsPage() {
 
       <NoticePreferences />
       <section
-        className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
+        className="ams-panel p-5 sm:p-6"
         aria-labelledby="account-settings-heading"
       >
         <h2

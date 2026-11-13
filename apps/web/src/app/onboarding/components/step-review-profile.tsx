@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { Avatar } from '@/components/ui/avatar';
 
 type ProfileDraft = {
   full_name: string;
@@ -196,15 +197,6 @@ export function StepReviewProfile({
 
   const handleChange = (key: AIFieldKey, val: string) => onChange({ [key]: val });
 
-  const getPhotoUrl = () => {
-    if (previewSrc) return previewSrc;
-    if (!draft.photo_url) return '';
-    if (draft.photo_url.startsWith('http') || draft.photo_url.startsWith('data:')) {
-      return draft.photo_url;
-    }
-    return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(draft.photo_url)}`;
-  };
-
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -279,16 +271,8 @@ export function StepReviewProfile({
       <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Foto Profil</h3>
         <div className="flex items-center gap-4">
-          <div className="relative h-16 w-16 flex-shrink-0 rounded-full border border-slate-200 bg-slate-200 overflow-hidden flex items-center justify-center">
-            {getPhotoUrl() ? (
-              // The uploader previews a local data URL before the file is registered.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={getPhotoUrl()} alt="Avatar" className="h-full w-full object-cover" />
-            ) : (
-              <svg className="h-8 w-8 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            )}
+          <div className="relative h-16 w-16 flex-shrink-0">
+            <Avatar src={previewSrc || draft.photo_url} name={draft.full_name || 'Foto profil'} accessToken={accessToken} size="xl" />
             {uploadingPhoto && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                 <svg className="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">

@@ -81,7 +81,7 @@ export function ConsultantPortalEntry({navigation=false}:{navigation?:boolean}){
     </>
   );
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white" aria-label="Akses konsultan">
+    <section className="ams-panel ams-portal-entry" aria-label="Akses konsultan">
       {active ? (
         <button type="button" className={rowClass} disabled={opening} onClick={() => void open()}>{content}</button>
       ) : (

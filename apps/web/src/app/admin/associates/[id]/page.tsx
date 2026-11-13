@@ -191,7 +191,7 @@ export default function AssociateDetailPage() {
 
   if (!data) {
     return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white">
+      <div className="ams-panel flex min-h-[400px] flex-col items-center justify-center">
         <p className="text-sm text-slate-500">Associate tidak ditemukan</p>
         <Link href="/admin/associates" className="mt-3 text-sm font-medium text-[#0B2C6B] hover:underline">Kembali ke daftar</Link>
       </div>
@@ -230,13 +230,14 @@ export default function AssociateDetailPage() {
       </div>
 
       {/* Profile Header */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="ams-panel overflow-hidden">
         <div className="h-32 bg-gradient-to-r from-[#0B2C6B] to-[#1e40af]" />
         <div className="px-6 pb-6">
           <div className="flex items-end justify-between -mt-12">
             <Avatar
               name={data.profile?.full_name || data.email}
-              src={data.profile?.photo_url ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(data.profile.photo_url)}` : undefined}
+              src={data.profile?.photo_url}
+              accessToken={accessToken}
               size="xl"
               className="border-4 border-white shadow-lg"
             />
@@ -324,7 +325,7 @@ export default function AssociateDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="ams-panel">
         <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} className="px-6" />
 
         <div className="p-6">

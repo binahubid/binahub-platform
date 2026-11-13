@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Avatar, useToast } from '../../../../components/ui';
 import { useAuth } from '../../../../context/AuthContext';
-import { ProtectedFileImage, resolveProtectedFileUrl } from '../../../../components/ui/protected-file';
+import { resolveProtectedFileUrl } from '../../../../components/ui/protected-file';
 import type { AssociateData } from '../types';
 
 type ProfileViewProps = {
@@ -39,12 +39,6 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
   ].filter(Boolean) as string[];
   const rejectedReview = data.status === 'draft' ? data.reviews?.find((review) => review.status === 'rejected') : null;
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const getPhotoUrl = (path: string | null | undefined) => {
-    if (!path) return undefined;
-    if (path.startsWith('http') || path.startsWith('data:')) return path;
-    return `${apiUrl}/api/files/view-path?path=${encodeURIComponent(path)}`;
-  };
 
   const openPreview = async (source: string, title: string) => {
     if (!accessToken) {
@@ -76,15 +70,9 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
   return (
     <div className="space-y-5">
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+      <section className="ams-panel p-4 sm:p-6">
         <div className="flex items-start gap-4">
-          <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-100 sm:h-20 sm:w-20">
-            {p?.photo_url ? (
-              <ProtectedFileImage src={getPhotoUrl(p.photo_url) || p.photo_url} accessToken={accessToken} alt="Foto profil" className="h-full w-full object-cover" />
-            ) : (
-              <Avatar name={p?.full_name || data.id} size="xl" className="h-full w-full" />
-            )}
-          </div>
+          <Avatar name={p?.full_name || data.id} src={p?.photo_url} accessToken={accessToken} size="xl" className="sm:!h-20 sm:!w-20" />
           <div className="min-w-0 flex-1">
             <h1 className="break-words text-xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-2xl">{p?.full_name || 'Profil saya'}</h1>
             {(p?.headline || p?.roles?.length) && <p className="mt-1 break-words text-sm leading-6 text-slate-600">{p.headline || p.roles?.join(' · ')}</p>}
@@ -128,7 +116,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Side: Summary & Sidebar Widgets (1 Column) */}
-        <div className="divide-y divide-slate-200 self-start overflow-hidden rounded-2xl border border-slate-200 bg-white lg:col-span-1">
+        <div className="ams-panel divide-y divide-slate-200 self-start overflow-hidden lg:col-span-1">
           {/* Availability Status */}
           {av && (
             <div className="p-4 sm:p-5 space-y-4">
@@ -374,7 +362,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                 {data.portfolios.map((port) => {
                   const { cleanDesc, files } = extractAttachments(port.description);
                   return (
-                    <div key={port.id} className="rounded-xl border border-slate-200 bg-white p-4 hover:shadow-sm transition-shadow flex flex-col justify-between">
+                    <div key={port.id} className="ams-panel p-4 hover:shadow-sm transition-shadow flex flex-col justify-between">
                       <div>
                         <h4 className="text-sm font-bold text-slate-900 truncate" title={port.title}>{port.title}</h4>
                         {cleanDesc && (

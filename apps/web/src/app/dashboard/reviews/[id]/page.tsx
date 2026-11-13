@@ -65,7 +65,7 @@ export default function ReviewDetailPage() {
           </svg>
           Back
         </button>
-        <div className="rounded-xl border border-slate-200 bg-white p-12 shadow-sm text-center">
+        <div className="ams-panel p-12 text-center">
           <h2 className="text-lg font-semibold text-slate-900">Review not found</h2>
         </div>
       </div>
@@ -82,7 +82,7 @@ export default function ReviewDetailPage() {
       </button>
 
       {/* Header */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="ams-panel p-6">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">{review.project_name}</h1>
@@ -109,7 +109,7 @@ export default function ReviewDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Main Content */}
         <div className="lg:col-span-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="ams-panel p-6">
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Feedback</h2>
             <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{review.comment}</p>
           </div>
@@ -118,7 +118,7 @@ export default function ReviewDetailPage() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Capability Updates */}
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="ams-panel p-5">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">Capability Updates</h3>
             {review.capability_updates && review.capability_updates.length > 0 ? (
               <div className="space-y-3">
@@ -144,7 +144,7 @@ export default function ReviewDetailPage() {
           </div>
 
           {/* AI Insight */}
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="ams-panel p-5">
             <div className="flex items-center gap-2 mb-4">
               <div className="flex h-6 w-6 items-center justify-center rounded bg-[#D9A441]/10">
                 <svg className="h-3.5 w-3.5 text-[#D9A441]" fill="none" stroke="currentColor" viewBox="0 0 24 24">

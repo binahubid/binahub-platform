@@ -110,9 +110,10 @@ export default function ProfilePage() {
 
   // Auto-enter edit mode
   useEffect(() => {
-    if (editParam === 'true' || tabParam === 'documents') {
+    const steps: Record<string, number> = { documents: 0, profile: 1, experience: 2, skills: 3, certifications: 4, portfolio: 5, availability: 6, financial: 7 };
+    if (editParam === 'true' || (tabParam && Object.hasOwn(steps, tabParam))) {
       setIsEditing(true);
-      if (tabParam === 'documents') setCurrentStep(0);
+      if (tabParam && Object.hasOwn(steps, tabParam)) setCurrentStep(steps[tabParam]);
     }
   }, [editParam, tabParam]);
 
@@ -367,7 +368,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-[calc(100vh-8rem)] space-y-6">
         {toast && (
-          <div className="fixed bottom-5 right-5 z-50 animate-bounce flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg border text-xs font-semibold text-white bg-slate-900 border-slate-800">
+          <div role="status" className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg border text-xs font-semibold text-white bg-slate-900 border-slate-800 lg:bottom-5">
             <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10">
               {toast.type === 'success' ? (
                 <svg className="h-3 w-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -468,7 +469,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Form Editor Card */}
-          <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-3">
+          <div className="ams-panel min-w-0 p-4 sm:p-6 lg:col-span-3">
             {currentStep === 0 && (
               <div>
                 <h2 className="text-base font-bold text-slate-900 mb-1">Unggah Dokumen CV</h2>
@@ -736,7 +737,7 @@ export default function ProfilePage() {
     <div className="min-h-[calc(100vh-8rem)]">
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 animate-bounce flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg border text-xs font-semibold text-white bg-slate-900 border-slate-800">
+          <div role="status" className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg border text-xs font-semibold text-white bg-slate-900 border-slate-800 lg:bottom-5">
           <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10">
             {toast.type === 'success' ? <svg className="h-3 w-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg> : <svg className="h-3 w-3 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>}
           </div>

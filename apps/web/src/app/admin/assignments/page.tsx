@@ -425,7 +425,7 @@ export default function AdminAssignmentsPage() {
       </div>
 
       {showForm && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="ams-panel p-5">
           <div className="mb-5">
             <h3 className="text-sm font-semibold text-slate-900">Penugasan baru</h3>
             <p className="mt-1 text-xs text-slate-500">Pilih project yang ada atau buat project baru di sini. Penawaran associate dikirim setelah fee tiap orang ditetapkan.</p>
@@ -499,14 +499,14 @@ export default function AdminAssignmentsPage() {
       )}
 
       {loading ? (
-        <div className="flex min-h-[400px] items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[400px] items-center justify-center">
           <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
       ) : assignments.length === 0 ? (
-        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[400px] flex-col items-center justify-center">
           <svg className="h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
@@ -514,7 +514,7 @@ export default function AdminAssignmentsPage() {
           <p className="mt-1 text-xs text-slate-500">Klik &quot;Buat penugasan&quot; untuk menambah baru</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="ams-panel overflow-hidden">
           <div className="divide-y divide-slate-100">
             {assignments.map((a) => (
               <div key={a.id} className="px-5 py-4 hover:bg-slate-50/50 transition-colors">

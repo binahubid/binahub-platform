@@ -103,7 +103,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* Account */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="ams-panel p-6">
         <h3 className="text-sm font-semibold text-slate-900">Akun Admin</h3>
         <div className="mt-3 space-y-2 text-sm">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -128,7 +128,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* Notification Preferences */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="ams-panel p-6">
         <h3 className="text-sm font-semibold text-slate-900">Preferensi Notifikasi</h3>
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -168,7 +168,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* System Info */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="ams-panel p-6">
         <h3 className="text-sm font-semibold text-slate-900">Informasi Sistem</h3>
         <div className="mt-3 space-y-2 text-sm">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">

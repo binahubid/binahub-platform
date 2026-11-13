@@ -218,7 +218,7 @@ export function StepCertifications({ certifications, associateId, apiUrl, access
       ) : (
         <>
           {certifications.map((cert) => (
-            <div key={cert.id} className="rounded-xl border border-slate-200 bg-white p-4 hover:shadow-sm transition-shadow">
+            <div key={cert.id} className="ams-panel p-4 hover:shadow-sm transition-shadow">
               {editingId === cert.id ? (
                 <div className="space-y-3">
                   <input

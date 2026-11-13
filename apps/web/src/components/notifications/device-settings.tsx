@@ -19,7 +19,7 @@ export function InstallAmsCard() {
   }, []);
   if (dismissed || subscribed || (!ios && !supported)) return null;
   return (
-    <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4">
+    <section className="ams-panel flex flex-wrap items-center justify-between gap-3 p-4">
       <div>
         <h2 className="font-semibold text-[#0B2C6B]">
           {installed ? "Terima undangan di HP" : "Akses AMS dari layar utama"}
@@ -114,7 +114,7 @@ export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
   return (
     <section
       id="notifikasi-hp"
-      className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
+      className="ams-panel scroll-mt-24 p-5 sm:p-6"
       aria-labelledby="notification-settings-heading"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">

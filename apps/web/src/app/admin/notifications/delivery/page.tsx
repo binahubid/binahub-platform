@@ -189,7 +189,7 @@ export default function NotificationDeliveryPage() {
               <strong>{data.waiting}</strong> undangan menunggu respons.
             </p>
           )}
-          <section className="rounded-xl border border-slate-200 bg-white">
+          <section className="ams-panel">
             {!data.items.length && (
               <p className="p-5 text-sm text-slate-600">
                 Belum ada riwayat pengiriman.

@@ -67,11 +67,11 @@ export default function ReviewsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="ams-panel p-3 sm:p-4">
           <p className="break-words text-xs font-medium text-slate-600">Total evaluasi</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{stats.total}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="ams-panel p-3 sm:p-4">
           <p className="break-words text-xs font-medium text-slate-600">Rata-rata</p>
           <div className="mt-1 flex items-center gap-2">
             <p className="text-2xl font-bold text-amber-500">{stats.average}</p>
@@ -80,7 +80,7 @@ export default function ReviewsPage() {
             </svg>
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="ams-panel p-3 sm:p-4">
           <p className="break-words text-xs font-medium text-slate-600">Disetujui</p>
           <p className="mt-1 text-2xl font-bold text-emerald-600">{stats.approved}</p>
         </div>
@@ -88,7 +88,7 @@ export default function ReviewsPage() {
 
       {/* Review List */}
       {reviews.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-12 shadow-sm">
+        <div className="ams-panel p-12">
           <div className="flex flex-col items-center justify-center">
             <svg className="h-16 w-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -105,7 +105,7 @@ export default function ReviewsPage() {
             <Link
               key={review.id}
               href={`/dashboard/reviews/${review.id}`}
-              className="block rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-[#0B2C6B]/30 hover:shadow-md"
+              className="ams-panel block p-5 transition-all hover:border-[#0B2C6B]/30 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div>

@@ -167,17 +167,17 @@ export default function AdminDevPlansPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ams-panel p-4">
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Total Plans</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{plans.length}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ams-panel p-4">
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Avg Current Score</p>
           <p className="mt-1 text-2xl font-bold text-[#0B2C6B]">
             {plans.length > 0 ? Math.round(plans.reduce((s, p) => s + p.current_score, 0) / plans.length) : 0}
           </p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ams-panel p-4">
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Avg Target Score</p>
           <p className="mt-1 text-2xl font-bold text-amber-600">
             {plans.length > 0 ? Math.round(plans.reduce((s, p) => s + p.target_score, 0) / plans.length) : 0}
@@ -226,14 +226,14 @@ export default function AdminDevPlansPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex min-h-[400px] items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[400px] items-center justify-center">
           <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
       ) : plans.length === 0 ? (
-        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[400px] flex-col items-center justify-center">
           <svg className="h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
           </svg>
@@ -241,7 +241,7 @@ export default function AdminDevPlansPage() {
           <p className="mt-1 text-xs text-slate-500">Klik &quot;Tambah Plan&quot; untuk membuat baru.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="ams-panel overflow-hidden">
           <div className="overflow-x-auto">
           <table className="w-full min-w-[700px]">
             <thead>

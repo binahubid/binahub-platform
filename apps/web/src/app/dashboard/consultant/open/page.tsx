@@ -11,7 +11,7 @@ function OpenConsultantWork() {
   const valid = !!leadId && /^[a-f0-9-]{36}$/i.test(leadId);
   const [started, setStarted] = useState(false);
   return (
-    <section className="max-w-xl rounded-xl border border-slate-200 bg-white p-6">
+    <section className="ams-panel max-w-xl p-6">
       <h1 className="text-xl font-semibold text-[#0B2C6B]">
         Penugasan konsultasi
       </h1>

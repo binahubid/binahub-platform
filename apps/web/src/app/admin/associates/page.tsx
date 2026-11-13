@@ -353,7 +353,7 @@ export default function AdminAssociatesPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex min-h-[400px] items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[400px] items-center justify-center">
           <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -368,7 +368,7 @@ export default function AdminAssociatesPage() {
           className="min-h-[400px]"
         />
       ) : associates.length === 0 ? (
-        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[400px] flex-col items-center justify-center">
           <svg className="h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
@@ -377,7 +377,7 @@ export default function AdminAssociatesPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="ams-panel overflow-hidden">
           <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead>
@@ -396,7 +396,7 @@ export default function AdminAssociatesPage() {
                 <tr key={associate.id} className="transition-colors hover:bg-slate-50/60">
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <Avatar name={associate.profile?.full_name || associate.email} src={associate.profile?.photo_url ? `${apiUrl}/api/files/view-path?path=${encodeURIComponent(associate.profile.photo_url)}` : undefined} />
+                      <Avatar name={associate.profile?.full_name || associate.email} src={associate.profile?.photo_url} accessToken={accessToken} />
                       <div>
                         <p className="text-sm font-medium text-slate-900">{associate.profile?.full_name || '-'}</p>
                         <p className="text-xs text-slate-500">{associate.email}</p>

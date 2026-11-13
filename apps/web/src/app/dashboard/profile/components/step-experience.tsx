@@ -87,7 +87,7 @@ export function StepExperience({ experiences, apiUrl, accessToken, onRefresh }: 
       ) : (
         <>
           {experiences.map((exp) => (
-            <div key={exp.id} className="rounded-xl border border-slate-200 bg-white p-4 hover:shadow-sm transition-shadow">
+            <div key={exp.id} className="ams-panel p-4 hover:shadow-sm transition-shadow">
               {editingId === exp.id ? (
                 <div className="space-y-3">
                   <input

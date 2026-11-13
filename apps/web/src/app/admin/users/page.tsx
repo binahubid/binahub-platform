@@ -173,7 +173,7 @@ export default function AdminUsersPage() {
       </div>
 
       {loading ? (
-        <div className="flex min-h-[400px] items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <div className="ams-panel flex min-h-[400px] items-center justify-center">
           <svg className="h-8 w-8 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -182,7 +182,7 @@ export default function AdminUsersPage() {
       ) : (
         <div className="space-y-4">
           {admins.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="ams-panel overflow-hidden">
               <div className="border-b border-slate-100 px-5 py-3">
                 <h2 className="text-sm font-semibold text-slate-900">Admin ({admins.length})</h2>
               </div>
@@ -193,7 +193,7 @@ export default function AdminUsersPage() {
           )}
 
           {reviewers.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="ams-panel overflow-hidden">
               <div className="border-b border-slate-100 px-5 py-3">
                 <h2 className="text-sm font-semibold text-slate-900">Reviewer ({reviewers.length})</h2>
               </div>
@@ -203,7 +203,7 @@ export default function AdminUsersPage() {
             </div>
           )}
 
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="ams-panel overflow-hidden">
             <div className="border-b border-slate-100 px-5 py-3">
               <h2 className="text-sm font-semibold text-slate-900">Associate ({associates.length})</h2>
             </div>

@@ -80,7 +80,7 @@ export default function DevelopmentPage() {
       </div>
 
       {!plan ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-12 shadow-sm">
+        <div className="ams-panel p-12">
           <div className="flex flex-col items-center justify-center">
             <svg className="h-16 w-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -94,7 +94,7 @@ export default function DevelopmentPage() {
       ) : (
         <>
           {/* Progress Card */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="ams-panel p-6">
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Perkembangan kapabilitas</h2>
             <div className="flex items-center gap-4">
               <div className="flex-1">
@@ -120,7 +120,7 @@ export default function DevelopmentPage() {
 
           {/* Recommended Actions */}
           {plan.recommended_actions.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="ams-panel p-5">
               <h2 className="text-sm font-semibold text-slate-900 mb-4">Recommended Actions</h2>
               <div className="space-y-3">
                 {plan.recommended_actions.map((action) => {
@@ -161,7 +161,7 @@ export default function DevelopmentPage() {
 
           {/* Learning Paths */}
           {plan.learning_paths.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="ams-panel p-5">
               <h2 className="text-sm font-semibold text-slate-900 mb-4">Learning Paths</h2>
               <div className="space-y-4">
                 {plan.learning_paths.map((path) => (

@@ -193,7 +193,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <header className="fixed inset-x-0 top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b border-slate-200 bg-white px-4 pt-[env(safe-area-inset-top)] lg:hidden">
+      <header className="ams-mobile-header fixed inset-x-0 top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b px-4 pt-[env(safe-area-inset-top)] lg:hidden">
         <Image src="/full-logo.png" alt="BinaHub" width={100} height={28} className="h-auto w-[100px]" priority />
         <Link
           href={isActive('/dashboard/notifications') ? '/dashboard/settings#notifikasi-hp' : '/dashboard/settings'}
@@ -207,7 +207,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </Link>
       </header>
 
-      <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
+      <nav aria-label="Navigasi utama" className="ams-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] lg:hidden">
         {bottomNavItems.map((item) => {
           const active = isActive(item.href);
           const count = item.href === '/dashboard/notifications' ? notifCount : 0;
@@ -237,7 +237,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main id="ams-main-content" tabIndex={-1} className="min-w-0 flex-1 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(3.75rem+env(safe-area-inset-bottom))] lg:pt-0 lg:pb-0 lg:pl-60">
-        <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+        <div className="ams-content mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
           {children}
         </div>
       </main>
