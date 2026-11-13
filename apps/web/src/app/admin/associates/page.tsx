@@ -235,7 +235,7 @@ export default function AdminAssociatesPage() {
     const deadline = new Date(Date.now() + 72 * 60 * 60_000);
     setInviteDeadline(new Date(deadline.getTime() - deadline.getTimezoneOffset() * 60_000).toISOString().slice(0, 16));
     try {
-      const resp = await fetch(`${apiUrl}/api/admin/assignments`, {
+      const resp = await fetch(`${apiUrl}/api/admin/assignments?view=active&limit=100`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await resp.json();
@@ -521,12 +521,12 @@ export default function AdminAssociatesPage() {
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none"
               >
                 <option value="">— Pilih Assignment —</option>
-                {assignments.filter((a) => a.status === 'active' || a.status === 'draft').map((a) => (
+                {assignments.map((a) => (
                   <option key={a.id} value={a.id}>{a.title} ({a.client_name})</option>
                 ))}
               </select>
               {assignments.length === 0 && (
-                <p className="mt-2 text-xs text-amber-600">Belum ada assignment. Buat assignment dulu di halaman Assignments.</p>
+                  <p className="mt-2 text-xs text-slate-600">Belum ada penugasan aktif. Aktifkan penugasan dengan jadwal yang masih berlaku di halaman Penugasan.</p>
               )}
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
