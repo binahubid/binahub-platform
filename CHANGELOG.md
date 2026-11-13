@@ -16,6 +16,9 @@ Semua perubahan signifikan pada BinaHub AMS didokumentasikan di file ini.
   tiga keahlian. Ringkasan dengan sedikit keahlian tetap tersedia sebagai daftar.
 - Verifikasi menggunakan data sintetis pada lebar 320, 390, 768, dan 1366 piksel;
   tidak ada perubahan SQL, environment, peran, atau proses pengiriman notifikasi.
+- Tutup hambatan audit dependensi pada quality gate dengan Hono4.13.16 dan
+  adapter Node2.1.6. Audit pnpm9.15 tidak menemukan advisori; build/typecheck API,
+  sembilan kontrak API, dan empat kontrak kompatibilitas dependensi lulus.
 
 ## [0.11.5] - 2026-11-04
 

@@ -48,3 +48,20 @@ landing grid utility, which is outside this workspace refresh.
 
 These checks verify synthetic rendering and navigation. They do not replace
 testing the installed PWA on a physical phone or a production permission audit.
+
+## Release gate follow-up
+
+GitHub's dependency audit rejected the first UI commit because the pre-existing
+Hono and Node adapter versions now have published advisories. Update only Hono
+to4.13.16, the adapter to2.1.6, and their lockfile references. The existing
+moderate audit threshold and CI checks are retained.
+
+References: [Hono security release](https://github.com/honojs/hono/releases/tag/v4.13.16)
+and [Node adapter advisory](https://github.com/honojs/node-server/security/advisories/GHSA-jpvv-r467-5p4w).
+
+After the patch, the frozen pnpm9.15 install, dependency audit (no known
+advisories), four dependency compatibility contracts, API build/typecheck, and
+nine API contracts pass. Contracts intercept outbound requests with synthetic
+data. No production exploit requests or Strix scan were run; the local Docker
+engine was unavailable. This is dependency patch verification, not a claim
+that the entire application has been penetration tested.
