@@ -30,7 +30,7 @@
     "@electric-sql/pglite": "0.5.8",
     "@types/node": "^26.1.0",
     "eslint": "^9.39.1",
-    "eslint-config-next": "15.5.28",
+    "eslint-config-next": "15.5.29",
     "minimatch": "11.0.1",
     "prettier": "^3.3.0",
     "turbo": "^2.1.0",

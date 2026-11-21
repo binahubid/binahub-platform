@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import {useCallback,useEffect,useRef,useState,type FormEvent} from 'react';
 import {useAuth} from '@/context/AuthContext';
 import {teamActions,teamDate,teamLabels,teamRequest,type TeamMembership} from '@/lib/consultant-team';
@@ -56,7 +57,7 @@ export default function ConsultantTeamAdminPage(){
   }
   function send(e:FormEvent){e.preventDefault();if(target)void mutate({action:'invite',associateId:target.id,revision:target.revision,agreementText:agreement,compensationTerms:compensation,reviewed})}
   return <div className={s.page}>
-    <header className={s.heading}><div><h1>Tim Konsultan</h1><p>Kelola undangan, perjanjian, dan keanggotaan konsultan. Penugasan klien dikelola di App BinaHub.</p></div><button className={s.primary} type="button" onClick={()=>{setInvite((v)=>!v);setTarget(null);setReviewed(false)}}>{invite?'Tutup formulir':'Undang anggota'}</button></header>
+    <header className={s.heading}><div><h1>Tim Konsultan</h1><p>Kelola undangan, perjanjian, dan keanggotaan konsultan. Penugasan klien dikelola di App BinaHub.</p><Link href="/admin/materials" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Materi & panduan konsultan →</Link></div><button className={s.primary} type="button" onClick={()=>{setInvite((v)=>!v);setTarget(null);setReviewed(false)}}>{invite?'Tutup formulir':'Undang anggota'}</button></header>
     {error&&<div role="alert" className={s.error}>{error} <button type="button" onClick={()=>void load()}>Muat ulang</button></div>}
     {notice&&<p role="status" className={s.notice}>{notice}</p>}
     {invite&&<section className={s.panel}><h2>Undang ke Tim Konsultan BinaHub</h2>

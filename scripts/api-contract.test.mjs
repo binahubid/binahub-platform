@@ -9,6 +9,7 @@ Object.assign(process.env, {
   APP_INTEGRATION_SECRET:'synthetic-integration-contract-only',
 });
 let outbound=0,rateChecks=0,associateLookups=0,teamActive=true;
+let materialReads=0;
 const accountId='00000000-0000-4000-8000-000000000007';
 let preferenceUpdate=null;
 globalThis.fetch=async (input,init)=>{
@@ -43,6 +44,13 @@ globalThis.fetch=async (input,init)=>{
     return Response.json([{associate_id:'00000000-0000-4000-8000-000000000007',
       membership_id:'00000000-0000-4000-8000-000000000009',status:teamActive?'active':'paused',accepted_at:'2026-11-12T00:00:00Z'}]);
   }
+  if(url.origin==='https://api.binahub.id'&&url.pathname==='/api/integrations/ams/materials'){
+    materialReads++;
+    const headers=new Headers(init.headers),raw=init.body;
+    assert.equal(headers.get('x-binahub-signature'),createHmac('sha256',process.env.APP_INTEGRATION_SECRET).update(`${headers.get('x-binahub-timestamp')}.${raw}`).digest('hex'));
+    const input=JSON.parse(raw);assert.equal(input.purpose,'ams-admin-materials');assert.equal(input.requesterId,accountId);
+    return Response.json({success:true,data:input.action==='catalog'?{documents:[],videos:[]}:{url:'https://example.supabase.co/storage/v1/object/sign/consultant-materials/approved.pdf?token=synthetic',filename:'approved.pdf',expiresInSeconds:120}});
+  }
   outbound++;throw new Error('Unexpected outbound requests are forbidden in the API contract.');
 };
 const {default:app}=await import('../apps/api/dist/app.js');
@@ -75,6 +83,7 @@ test('built app rejects malformed registration/login without reaching an auth pr
 test('private associate/admin/worker routes still reject missing authentication', async()=>{
   for(const [route,method] of [['associate/me','GET'],['admin/stats','GET'],['workers/process-events','POST'],
     ['admin/consultant-team','GET'],['admin/consultant-team','POST'],['associate/consultant-team','GET'],['associate/consultant-team/open','POST'],
+    ['admin/materials','GET'],['admin/materials/company-profile','GET'],
     ['notifications','GET'],['notifications/devices','POST'],['notifications/open','POST'],['notifications/operations','GET'],
     ['notifications/retry','POST'],['notifications/test','POST'],['workers/notifications','POST'],['workers/notifications/dispatch','POST'],['integrations/app/notifications','POST']]){
     const response=await app.request('https://example.invalid/api/'+route,{method});
@@ -124,6 +133,24 @@ test('CORS allows only the approved frontend, not an arbitrary caller', async()=
     assert.equal(response.headers.get('Access-Control-Allow-Origin'),origin==='https://ams.binahub.id'?origin:null);
   }
   assert.equal(outbound,0);
+});
+
+test('AMS materials are admin-only and cannot be used to request arbitrary files',async()=>{
+  for(const role of ['associate','reviewer']){
+    for(const path of ['materials','materials/company-profile']){
+      const denied=await app.request('https://example.invalid/api/admin/'+path,{headers:{authorization:'Bearer synthetic-'+role}});
+      assert.equal(denied.status,403);
+    }
+  }
+  assert.equal(materialReads,0);
+  const invalid=await app.request('https://example.invalid/api/admin/materials/other-file',{headers:{authorization:'Bearer synthetic-admin'}});
+  assert.equal(invalid.status,404);assert.equal(materialReads,0);
+  for(const path of ['materials','materials/company-profile']){
+    const response=await app.request('https://example.invalid/api/admin/'+path,{headers:{authorization:'Bearer synthetic-admin'}});
+    assert.equal(response.status,200);assert.equal(response.headers.get('Cache-Control'),'private, no-store');
+    assert.equal((await response.json()).success,true);
+  }
+  assert.equal(materialReads,2);assert.equal(outbound,0);
 });
 test('signed eligibility matches full email for active associates only',async()=>{
   const url='https://example.invalid/api/integrations/app/associates/eligible';

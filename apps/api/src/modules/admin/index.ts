@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import materials from './materials.js';
 import { authMiddleware, requireRole } from '../auth/middleware/auth.js';
 import { getDb } from '../../lib/database.js';
 import { assignmentLifecycle, assignmentWorkState, hasAssignmentReport } from '@ams/domain';
@@ -161,6 +162,7 @@ function parsedCVImportPayload(parsed: ParsedCV, selectedFields: CVApplyField[])
 
 admin.use('*', authMiddleware);
 admin.use('*', requireRole(['admin']));
+admin.route('/materials', materials);
 
 admin.get('/stats', async (c) => {
   const db = getDb();
