@@ -143,8 +143,11 @@ test('AMS materials are admin-only and cannot be used to request arbitrary files
     }
   }
   assert.equal(materialReads,0);
-  const invalid=await app.request('https://example.invalid/api/admin/materials/other-file',{headers:{authorization:'Bearer synthetic-admin'}});
-  assert.equal(invalid.status,404);assert.equal(materialReads,0);
+  for (const slug of ['company-profile-v1','product-knowledge-v1','other-file']) {
+    const invalid=await app.request('https://example.invalid/api/admin/materials/'+slug,{headers:{authorization:'Bearer synthetic-admin'}});
+    assert.equal(invalid.status,404);
+  }
+  assert.equal(materialReads,0);
   for(const path of ['materials','materials/company-profile']){
     const response=await app.request('https://example.invalid/api/admin/'+path,{headers:{authorization:'Bearer synthetic-admin'}});
     assert.equal(response.status,200);assert.equal(response.headers.get('Cache-Control'),'private, no-store');
