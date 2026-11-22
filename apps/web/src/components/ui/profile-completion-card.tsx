@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
+import { useAmsLocale } from "@/components/ams-language";
 
 type ProfileCompletionCardProps = {
   completionPercentage: number;
@@ -25,6 +26,7 @@ export function ProfileCompletionCard({
   hasPortfolio,
   userName,
 }: ProfileCompletionCardProps) {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -145,7 +147,7 @@ export function ProfileCompletionCard({
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              {step.label}
+              {t(step.label)}
             </Link>
             {!step.done && nextStep?.label === step.label && (
               <span className="rounded-full bg-[#0B2C6B]/10 px-2 py-0.5 text-[10px] font-medium text-[#0B2C6B]">

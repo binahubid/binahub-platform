@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../components/ui';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Activity = {
   icon: string;
@@ -14,6 +15,7 @@ type Activity = {
 };
 
 export default function AdminActivityPage() {
+  const { t } = useAmsLocale();
   const { user, accessToken } = useAuth();
   const { toast } = useToast();
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -50,7 +52,7 @@ export default function AdminActivityPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Activity Log</h1>
-          <p className="mt-1 text-sm text-slate-500">Riwayat aktivitas seluruh pengguna sistem.</p>
+          <p className="mt-1 text-sm text-slate-500">{t("Riwayat aktivitas seluruh pengguna sistem.")}</p>
         </div>
         <button
           onClick={fetchActivities}
@@ -77,7 +79,7 @@ export default function AdminActivityPage() {
             <svg className="h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="mt-4 text-sm text-slate-500">Belum ada aktivitas</p>
+            <p className="mt-4 text-sm text-slate-500">{t("Belum ada aktivitas")}</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">

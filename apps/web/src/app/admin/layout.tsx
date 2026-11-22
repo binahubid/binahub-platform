@@ -8,6 +8,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { ToastProvider } from '../../components/ui';
 import { AppBootLogo } from '@/components/ui/app-boot-logo';
 import { usePageVisibility } from '../../hooks/use-page-visibility';
+import { AmsLanguageSelect, useAmsLocale } from "@/components/ams-language";
 
 const sidebarSections = [
   {
@@ -63,6 +64,7 @@ type AdminNotification = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useAmsLocale();
   const { user, accessToken, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -288,7 +290,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <ToastProvider>
       <div className="ams-workspace flex min-h-screen bg-[#F5F7FA]">
-        <a href="#ams-main-content" className="ams-skip-link">Lewati ke konten utama</a>
+        <a href="#ams-main-content" className="ams-skip-link">{t("Lewati ke konten utama")}</a>
         {/* Sidebar — Desktop */}
         <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col bg-[#0B2C6B] lg:flex print:hidden">
           <div className="flex h-16 items-center gap-3 px-6">
@@ -303,7 +305,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {visibleSidebarSections.map((section, idx) => (
               <div key={section.label || `s-${idx}`} className="mb-4">
                 {section.label && (
-                  <p className="mb-2 px-3 text-xs font-medium text-white/80">{section.label}</p>
+                  <p className="mb-2 px-3 text-xs font-medium text-white/80">{t(section.label)}</p>
                 )}
                 <div className="space-y-0.5">
                   {section.items.map((item) => {
@@ -319,7 +321,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                         </svg>
-                        {item.label}
+                        {t(item.label)}
                         {item.href === '/admin/notifications' && unreadCount > 0 && (
                           <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
                             {unreadCount > 99 ? '99+' : unreadCount}
@@ -345,7 +347,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              <span>Notifikasi</span>
+              <span>{t("Notifikasi")}</span>
               {unreadCount > 0 && (
                 <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1.5 text-[9px] font-bold text-white">
                   {unreadCount}
@@ -376,7 +378,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <svg className="h-4 w-4 text-white/85 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Pusat Bantuan</span>
+              <span>{t('Pusat Bantuan')}</span>
             </a>
 
             <Link
@@ -390,7 +392,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span>Syarat & Ketentuan</span>
+              <span>{t("Syarat & Ketentuan")}</span>
             </Link>
           </div>
 
@@ -401,15 +403,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Mobile Sidebar Overlay */}
         {mobileSidebarOpen && (
-          <div ref={mobileMenuRef} className="fixed inset-0 z-50 lg:hidden print:hidden" role="dialog" aria-modal="true" aria-label="Navigasi admin">
-            <button type="button" aria-label="Tutup menu admin" className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
+          <div ref={mobileMenuRef} className="fixed inset-0 z-50 lg:hidden print:hidden" role="dialog" aria-modal="true" aria-label={t('Navigasi admin')}>
+            <button type="button" aria-label={t("Tutup menu admin")} className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
             <aside className="absolute inset-y-0 left-0 flex w-[min(20rem,calc(100vw-3rem))] flex-col bg-[#0B2C6B] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
               <div className="flex h-16 items-center justify-between px-6">
                 <div className="flex items-center gap-3">
                   <Image src="/logo.png" alt="BinaHub" width={24} height={24} className="h-6 w-auto" priority />
                   <span className="text-base font-semibold text-white">BinaHub AMS</span>
                 </div>
-                <button type="button" aria-label="Tutup navigasi" onClick={() => setMobileSidebarOpen(false)} className="grid h-11 w-11 place-items-center rounded-lg text-white/85 hover:text-white">
+                <button type="button" aria-label={t("Tutup navigasi")} onClick={() => setMobileSidebarOpen(false)} className="grid h-11 w-11 place-items-center rounded-lg text-white/85 hover:text-white">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -419,7 +421,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {visibleSidebarSections.map((section, idx) => (
                   <div key={section.label || `s-${idx}`} className="mb-4">
                     {section.label && (
-                      <p className="mb-2 px-3 text-xs font-medium text-white/80">{section.label}</p>
+                      <p className="mb-2 px-3 text-xs font-medium text-white/80">{t(section.label)}</p>
                     )}
                     <div className="space-y-0.5">
                       {section.items.map((item) => {
@@ -435,7 +437,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                             </svg>
-                            {item.label}
+                            {t(item.label)}
                             {item.href === '/admin/notifications' && unreadCount > 0 && (
                               <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
                                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -460,7 +462,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <button
                 ref={menuTriggerRef}
                 type="button"
-                aria-label="Buka navigasi admin"
+                aria-label={t("Buka navigasi admin")}
                 aria-expanded={mobileSidebarOpen}
                 onClick={() => setMobileSidebarOpen(true)}
                 className="grid h-11 w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
@@ -478,11 +480,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <input
                   ref={searchRef}
                   type="text"
-                  aria-label="Cari di workspace AMS"
+                  aria-label={t("Cari di workspace AMS")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
-                  placeholder="Cari associate, assignment, atau capability..."
+                  placeholder={t("Cari associate, assignment, atau capability...")}
                   className="w-72 lg:w-96 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-12 text-base sm:text-sm text-slate-900 outline-none transition-colors focus:border-[#0B2C6B] focus:bg-white focus:ring-1 focus:ring-[#0B2C6B]/20"
                 />
                 <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-medium text-slate-600">⌘K</kbd>
@@ -491,7 +493,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <div className="absolute top-full left-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
                     {searchResults.length === 0 ? (
                       <div className="px-4 py-6 text-center">
-                        <p className="text-sm text-slate-500">Tidak ada hasil untuk &quot;{searchQuery}&quot;</p>
+                        <p className="text-sm text-slate-500">{t("Tidak ada hasil untuk \"")}{searchQuery}&quot;</p>
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-100">
@@ -522,16 +524,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
 
             {/* Right: Notification Dropdown + User */}
-            <div className="flex items-center gap-3 lg:gap-4">
+            <div className="flex items-center gap-1.5 lg:gap-3">
+              <AmsLanguageSelect compact />
               {/* Notification Bell + Dropdown */}
               <div className="relative" ref={notifDropdownRef}>
                 <button
                   type="button"
-                  aria-label="Notifikasi"
+                  aria-label={t("Notifikasi")}
                   aria-expanded={notifDropdownOpen}
                   onClick={handleNotifBellClick}
                   className="relative grid h-11 w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
-                  title="Notifikasi"
+                  title={t("Notifikasi")}
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -546,14 +549,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {notifDropdownOpen && (
                   <div className="fixed left-4 right-4 top-16 w-auto rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:max-w-[calc(100vw-2rem)]">
                     <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                      <h3 className="text-sm font-semibold text-slate-900">Notifikasi</h3>
+                      <h3 className="text-sm font-semibold text-slate-900">{t("Notifikasi")}</h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={handleNotifMarkAllRead}
                           className="text-[11px] font-medium text-[#0B2C6B] hover:underline"
-                        >
-                          Tandai semua sudah dibaca
-                        </button>
+                        >{t("Tandai semua sudah dibaca")}</button>
                       )}
                     </div>
                     <div className="max-h-96 overflow-y-auto">
@@ -562,7 +563,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           <svg className="mx-auto h-10 w-10 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                           </svg>
-                          <p className="mt-2 text-sm text-slate-500">Belum ada notifikasi</p>
+                          <p className="mt-2 text-sm text-slate-500">{t("Belum ada notifikasi")}</p>
                         </div>
                       ) : (
                         notifications.slice(0, 10).map((n) => {
@@ -599,9 +600,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           href="/admin/notifications"
                           onClick={() => setNotifDropdownOpen(false)}
                           className="block text-center text-[11px] font-medium text-[#0B2C6B] hover:underline"
-                        >
-                          Lihat Semua Notifikasi →
-                        </Link>
+                        >{t("Lihat Semua Notifikasi →")}</Link>
                       </div>
                     )}
                   </div>
@@ -618,10 +617,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
                 <button
                   type="button"
-                  aria-label="Keluar"
+                  aria-label={t("Keluar")}
                   onClick={signOut}
                   className="grid h-11 w-11 place-items-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
-                  title="Keluar"
+                  title={t("Keluar")}
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

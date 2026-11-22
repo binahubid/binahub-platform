@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useAmsLocale } from "@/components/ams-language";
 
 function CompleteIllustration({ mounted }: { mounted: boolean }) {
   return (
@@ -79,6 +80,7 @@ function CompleteIllustration({ mounted }: { mounted: boolean }) {
 }
 
 export function StepComplete({ name }: { name: string }) {
+  const { t } = useAmsLocale();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
@@ -94,10 +96,8 @@ export function StepComplete({ name }: { name: string }) {
       <CompleteIllustration mounted={mounted} />
 
       <div className={`space-y-1.5 transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
-        <h2 className="text-xl font-bold text-slate-900">Profil Anda sudah aktif, {firstName}!</h2>
-        <p className="text-sm text-slate-500 max-w-xs mx-auto">
-          Data dari CV telah tersimpan. Anda bisa melengkapi detail lainnya kapan saja dari dashboard.
-        </p>
+        <h2 className="text-xl font-bold text-slate-900">{t("Profil Anda sudah aktif,")} {firstName}!</h2>
+        <p className="text-sm text-slate-500 max-w-xs mx-auto">{t("Data dari CV telah tersimpan. Anda bisa melengkapi detail lainnya kapan saja dari dashboard.")}</p>
       </div>
 
       {/* Summary */}
@@ -123,7 +123,7 @@ export function StepComplete({ name }: { name: string }) {
             <div className="mx-auto mb-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-[#0B2C6B]/8 text-[#0B2C6B]">
               {item.icon}
             </div>
-            <p className="text-xs font-semibold text-slate-800">{item.label}</p>
+            <p className="text-xs font-semibold text-slate-800">{t(item.label)}</p>
             <p className="text-[10px] text-slate-400 mt-0.5">{item.sublabel}</p>
           </div>
         ))}
@@ -134,18 +134,14 @@ export function StepComplete({ name }: { name: string }) {
         <button
           onClick={() => router.push('/dashboard')}
           className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#0B2C6B] px-6 py-3.5 text-sm font-semibold text-white hover:bg-[#0A255A] transition-colors"
-        >
-          Mulai Jelajahi Dashboard
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        >{t("Mulai Jelajahi Dashboard")}<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
         <button
           onClick={() => router.push('/dashboard/profile')}
           className="w-full rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-        >
-          Lengkapi Profil Lebih Lanjut
-        </button>
+        >{t("Lengkapi Profil Lebih Lanjut")}</button>
       </div>
     </div>
   );

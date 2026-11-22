@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
+import { useAmsLocale } from "@/components/ams-language";
 
 type AdminNotification = {
   id: string;
@@ -27,6 +28,7 @@ const typeConfig: Record<string, { label: string; bg: string; color: string; ico
 };
 
 export default function AdminNotificationsPage() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,10 +107,10 @@ export default function AdminNotificationsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Notifikasi</h1>
-          <p className="mt-1 text-sm text-slate-500">Daftar semua notifikasi talent operations BinaHub</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t("Notifikasi")}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t("Daftar semua notifikasi talent operations BinaHub")}</p>
         </div>
-        <a href="/admin/notifications/delivery" className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-[#0B2C6B] hover:bg-slate-50">Pantau pengiriman</a>
+        <a href="/admin/notifications/delivery" className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-[#0B2C6B] hover:bg-slate-50">{t("Pantau pengiriman")}</a>
         {counts.unread > 0 && (
           <button
             onClick={async () => {
@@ -123,9 +125,7 @@ export default function AdminNotificationsPage() {
               fetchNotifications();
             }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-50 transition-colors shadow-sm"
-          >
-            Tandai semua dibaca
-          </button>
+          >{t("Tandai semua dibaca")}</button>
         )}
       </div>
 
@@ -138,8 +138,7 @@ export default function AdminNotificationsPage() {
               ? 'bg-[#0B2C6B] text-white'
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
-        >
-          Semua ({counts.all})
+        >{t("Semua (")}{counts.all})
         </button>
         <button
           onClick={() => setFilter('unread')}
@@ -148,8 +147,7 @@ export default function AdminNotificationsPage() {
               ? 'bg-[#0B2C6B] text-white'
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
-        >
-          Belum Dibaca ({counts.unread})
+        >{t("Belum Dibaca (")}{counts.unread})
         </button>
       </div>
 
@@ -160,10 +158,8 @@ export default function AdminNotificationsPage() {
             <svg className="h-16 w-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            <h2 className="mt-4 text-lg font-semibold text-slate-900">Belum Ada Notifikasi</h2>
-            <p className="mt-2 text-sm text-slate-500 text-center max-w-sm">
-              Notifikasi baru akan muncul di sini.
-            </p>
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">{t("Belum Ada Notifikasi")}</h2>
+            <p className="mt-2 text-sm text-slate-500 text-center max-w-sm">{t("Notifikasi baru akan muncul di sini.")}</p>
           </div>
         </div>
       ) : (
@@ -188,7 +184,7 @@ export default function AdminNotificationsPage() {
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-slate-900">{notification.title}</h3>
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${config.bg} ${config.color}`}>
-                      {config.label}
+                      {t(config.label)}
                     </span>
                     {!notification.read && <div className="h-1.5 w-1.5 rounded-full bg-[#0B2C6B]" />}
                   </div>
@@ -199,9 +195,7 @@ export default function AdminNotificationsPage() {
                       <Link
                         href={targetLink}
                         className="text-[11px] font-medium text-[#0B2C6B] hover:underline"
-                      >
-                        Buka Tautan →
-                      </Link>
+                      >{t("Buka Tautan →")}</Link>
                     )}
                   </div>
                 </div>

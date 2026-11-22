@@ -7,8 +7,10 @@ import Image from 'next/image';
 import { AppBootLogo } from '@/components/ui/app-boot-logo';
 import { supabase } from '@/lib/supabase-client';
 import { notificationLoginReturn } from '@/lib/notification-client';
+import { AmsLanguageSelect, useAmsLocale } from "@/components/ams-language";
 
 function LoginForm() {
+  const { t } = useAmsLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -103,14 +105,15 @@ function LoginForm() {
   return (
     <main className="flex min-h-[100svh] items-center justify-center bg-white px-5 py-8 sm:bg-slate-50 sm:py-10">
       <div className="w-full max-w-[420px]">
-        <Link href="/" className="mb-6 inline-flex min-h-11 items-center">
-          <Image src="/full-logo.png" alt="BinaHub" width={120} height={34} className="h-auto w-[120px]" priority />
-        </Link>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <Link href="/" className="inline-flex min-h-11 items-center">
+            <Image src="/full-logo.png" alt="BinaHub" width={120} height={34} className="h-auto w-[120px]" priority />
+          </Link>
+          <AmsLanguageSelect compact />
+        </div>
 
         <div className="sm:rounded-2xl sm:border sm:border-slate-200 sm:bg-white sm:p-7">
-          <h1 className="mb-6 text-[1.65rem] font-semibold leading-tight tracking-tight text-slate-900">
-            Masuk ke AMS
-          </h1>
+          <h1 className="mb-6 text-[1.65rem] font-semibold leading-tight tracking-tight text-slate-900">{t("Masuk ke AMS")}</h1>
 
           {/* Success */}
           {success && (
@@ -118,7 +121,7 @@ function LoginForm() {
               <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-xs leading-relaxed text-emerald-700">{success}</p>
+              <p className="text-xs leading-relaxed text-emerald-700">{t(success)}</p>
             </div>
           )}
 
@@ -128,7 +131,7 @@ function LoginForm() {
               <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <p className="text-xs leading-relaxed text-red-700">{error}</p>
+              <p className="text-xs leading-relaxed text-red-700">{t(error)}</p>
             </div>
           )}
 
@@ -145,7 +148,7 @@ function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="block min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-base text-slate-900 placeholder-slate-400 transition-all focus:border-[#0B2C6B] focus:outline-none focus:ring-2 focus:ring-[#0B2C6B]/10"
-                placeholder="nama@binahub.id"
+                placeholder={t("nama@binahub.id")}
                 autoComplete="email"
               />
             </div>
@@ -208,7 +211,7 @@ function LoginForm() {
                   <span>Memproses...</span>
                 </>
               ) : (
-                'Masuk'
+                t("Masuk")
               )}
             </button>
           </form>
@@ -236,17 +239,14 @@ function LoginForm() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
             )}
-            <span className="text-sm">{googleLoading ? 'Mengalihkan...' : 'Masuk dengan Google'}</span>
+            <span className="text-sm">{googleLoading ? 'Mengalihkan...' : t("Masuk dengan Google")}</span>
           </button>
 
         </div>
 
         {/* Sign up link */}
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Belum punya akun?{' '}
-          <Link href="/auth/register" className="inline-flex min-h-11 items-center font-semibold text-[#0B2C6B] hover:underline">
-            Daftar
-          </Link>
+        <p className="mt-6 text-center text-sm text-slate-500">{t("Belum punya akun?")}{' '}
+          <Link href="/auth/register" className="inline-flex min-h-11 items-center font-semibold text-[#0B2C6B] hover:underline">{t("Daftar")}</Link>
         </p>
       </div>
     </main>

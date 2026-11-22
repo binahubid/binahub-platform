@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { cookies } from "next/headers";
 import { AuthProvider } from "../context/AuthContext";
 import { AmsNotificationProvider } from "@/components/notifications/provider";
+import { AmsLocaleProvider } from "@/components/ams-language";
+import { amsLanguageCookie, amsLocale, amsTranslator } from "@/lib/ams-locale";
 import "./globals.css";
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -26,7 +29,7 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 };
 
-export const metadata: Metadata = {
+const defaultMetadata: Metadata = {
   title: "BinaApps AMS - Associate Management System",
   description: "Sistem Kelola profil profesional Associate BinaHub. Platform yang mendukung associate mulai dari pendaftaran, penugasan, dan evaluasi diri.",
   keywords: ["BinaHub", "AMS", "associate", "trainer", "coach", "facilitator", "Indonesia"],
@@ -44,15 +47,32 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = amsLocale((await cookies()).get(amsLanguageCookie)?.value);
+  const t = amsTranslator(locale);
+  return {
+    ...defaultMetadata,
+    description: t("Sistem Kelola profil profesional Associate BinaHub. Platform yang mendukung associate mulai dari pendaftaran, penugasan, dan evaluasi diri."),
+    openGraph: {
+      ...defaultMetadata.openGraph,
+      description: t("Sistem Kelola profil profesional Associate BinaHub."),
+      locale: locale === "en" ? "en_GB" : "id_ID",
+    },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = amsLocale((await cookies()).get(amsLanguageCookie)?.value);
   return (
-    <html lang="id" className={`${jakartaSans.variable} ${inter.variable} h-full scroll-smooth antialiased`}>
+    <html lang={locale} className={`${jakartaSans.variable} ${inter.variable} h-full scroll-smooth antialiased`}>
       <body className="flex min-h-full flex-col font-[family-name:var(--font-jakarta-sans)] selection:bg-[#0B2C6B] selection:text-white">
-        <AuthProvider><AmsNotificationProvider>{children}</AmsNotificationProvider></AuthProvider>
+        <AmsLocaleProvider initialLocale={locale}>
+          <AuthProvider><AmsNotificationProvider>{children}</AmsNotificationProvider></AuthProvider>
+        </AmsLocaleProvider>
       </body>
     </html>
   );

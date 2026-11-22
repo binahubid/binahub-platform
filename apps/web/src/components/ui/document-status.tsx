@@ -1,4 +1,5 @@
 'use client';
+import { useAmsLocale } from "@/components/ams-language";
 
 type DocumentItem = {
   id: string;
@@ -29,6 +30,7 @@ const statusConfig = {
 };
 
 export function DocumentStatus({ documents }: { documents: DocumentItem[] }) {
+  const { t } = useAmsLocale();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 className="text-sm font-semibold text-slate-900">Document Status</h3>
@@ -42,7 +44,7 @@ export function DocumentStatus({ documents }: { documents: DocumentItem[] }) {
               <span className="text-sm text-slate-700">{doc.name}</span>
               <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${config.bg} ${config.text}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
-                {config.label}
+                {t(config.label)}
               </span>
             </div>
           );

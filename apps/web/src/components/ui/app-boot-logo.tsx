@@ -1,8 +1,12 @@
+"use client";
+
 import Image from "next/image";
+import { useAmsLocale } from "@/components/ams-language";
 
 export function AppBootLogo() {
+  const { t } = useAmsLocale();
   return (
-    <div role="status" className="grid min-h-[100svh] place-items-center">
+    <div role="status" className="grid min-h-[100svh] place-content-center justify-items-center">
       <Image
         src="/intro2.png"
         alt=""
@@ -11,7 +15,8 @@ export function AppBootLogo() {
         priority
         className="h-auto w-[min(76vw,300px)]"
       />
-      <span className="sr-only">Membuka BinaHub AMS…</span>
+      <p className="text-sm text-slate-600">{t("Membuka BinaHub AMS…")}</p>
+      <span className="ams-portal-transfer-track ams-boot-progress" aria-hidden="true" />
     </div>
   );
 }

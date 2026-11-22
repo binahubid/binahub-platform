@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { StatCard } from '../../../components/ui';
 import { SimpleBarChart, DonutChart } from '../../../components/ui/charts';
+import { useAmsLocale } from "@/components/ams-language";
 
 type GrowthData = {
   label: string;
@@ -26,6 +27,7 @@ type GrowthEndpointData = {
 };
 
 export default function AnalyticsPage() {
+  const { t } = useAmsLocale();
   const { user, accessToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -169,14 +171,14 @@ export default function AnalyticsPage() {
       {/* Charts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="ams-panel p-6">
-          <h2 className="text-base font-semibold text-slate-900">Associate Growth (6 Bulan)</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t("Associate Growth (6 Bulan)")}</h2>
           <div className="mt-4">
             <SimpleBarChart data={growthValues} labels={growthLabels} color="#0B2C6B" height={220} />
           </div>
         </div>
 
         <div className="ams-panel p-6">
-          <h2 className="text-base font-semibold text-slate-900">Distribusi Keahlian (Top 6)</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t("Distribusi Keahlian (Top 6)")}</h2>
           <div className="mt-4 flex items-center justify-center">
             <DonutChart data={donutData} size={160} strokeWidth={24} />
           </div>
@@ -185,14 +187,14 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="ams-panel p-6">
-          <h2 className="text-base font-semibold text-slate-900">Top 5 Keahlian</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t("Top 5 Keahlian")}</h2>
           <div className="mt-4">
             <SimpleBarChart data={skillsBarData} labels={skillsLabels} color="#2563eb" height={220} />
           </div>
         </div>
 
         <div className="ams-panel p-6">
-          <h2 className="text-base font-semibold text-slate-900">Top 5 Kota</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t("Top 5 Kota")}</h2>
           <div className="mt-4">
             <SimpleBarChart data={citiesBarData} labels={citiesLabels} color="#7c3aed" height={220} />
           </div>
@@ -201,7 +203,7 @@ export default function AnalyticsPage() {
 
       {/* Assignment Status */}
       <div className="ams-panel p-6">
-        <h2 className="text-base font-semibold text-slate-900 mb-4">Status penugasan</h2>
+        <h2 className="text-base font-semibold text-slate-900 mb-4">{t("Status penugasan")}</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {assignmentGroups.map(([key, label]) => (
             <div key={key} className="rounded-lg border border-slate-200 p-4">

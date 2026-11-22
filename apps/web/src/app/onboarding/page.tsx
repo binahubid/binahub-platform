@@ -10,6 +10,7 @@ import { StepSelectRoles } from './components/step-select-roles';
 import { StepAvailability } from './components/step-availability';
 import { StepHistory } from './components/step-history';
 import { StepComplete } from './components/step-complete';
+import { useAmsLocale } from "@/components/ams-language";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,6 +177,7 @@ const STEPS = [
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
+  const { t } = useAmsLocale();
   const { user, accessToken, loading } = useAuth();
   const router = useRouter();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -587,14 +589,14 @@ export default function OnboardingPage() {
                       isActive ? 'text-white' : isCompleted ? 'text-[#D9A441]' : isFuture ? 'text-white/40' : 'text-white'
                     }`}
                   >
-                    {step.label}
+                    {t(step.label)}
                   </p>
                   <p
                     className={`text-[11px] mt-0.5 transition-colors ${
                       isActive ? 'text-white/70' : isCompleted ? 'text-[#D9A441]/70' : 'text-white/30'
                     }`}
                   >
-                    {step.description}
+                    {t(step.description)}
                   </p>
                 </div>
               </div>
@@ -618,7 +620,7 @@ export default function OnboardingPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            Langkah {currentStep + 1} dari {STEPS.length} — <span className="font-medium text-slate-700">{stepLabels[currentStep]}</span>
+            Langkah {currentStep + 1} {t("dari")} {STEPS.length} — <span className="font-medium text-slate-700">{stepLabels[currentStep]}</span>
           </p>
         </div>
 
@@ -641,14 +643,14 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                   
-                  <h3 className="text-sm font-bold text-slate-800 tracking-wide">Menyelesaikan Profil Anda</h3>
+                  <h3 className="text-sm font-bold text-slate-800 tracking-wide">{t("Menyelesaikan Profil Anda")}</h3>
                   <p className="mt-1.5 text-xs text-slate-500 font-medium min-h-[16px] animate-pulse">
-                    {savingPhase === 'profile' && 'Menyimpan data diri & foto profil...'}
-                    {savingPhase === 'social' && 'Menghubungkan akun profesional...'}
-                    {savingPhase === 'availability' && 'Mengonfigurasi ketersediaan jadwal...'}
-                    {savingPhase === 'history' && 'Menyinkronkan riwayat kerja & kompetensi...'}
-                    {savingPhase === 'done' && 'Hampir selesai...'}
-                    {!savingPhase && 'Sedang mengirim data...'}
+                    {savingPhase === 'profile' && t("Menyimpan data diri & foto profil...")}
+                    {savingPhase === 'social' && t("Menghubungkan akun profesional...")}
+                    {savingPhase === 'availability' && t("Mengonfigurasi ketersediaan jadwal...")}
+                    {savingPhase === 'history' && t("Menyinkronkan riwayat kerja & kompetensi...")}
+                    {savingPhase === 'done' && t("Hampir selesai...")}
+                    {!savingPhase && t("Sedang mengirim data...")}
                   </p>
 
                   {/* Micro Progress Bar */}
@@ -671,7 +673,7 @@ export default function OnboardingPage() {
               {!isDoneStep && (
                 <div className="px-6 pt-6 pb-5 border-b border-slate-100">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-[#D9A441] mb-1">
-                    Langkah {currentStep + 1} dari {STEPS.length}
+                    Langkah {currentStep + 1} {t("dari")} {STEPS.length}
                   </p>
                   <h1 className="text-xl font-bold text-slate-900">{STEPS[currentStep].label}</h1>
                   <p className="mt-0.5 text-sm text-slate-500">{STEPS[currentStep].description}</p>
@@ -684,7 +686,7 @@ export default function OnboardingPage() {
                     <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    <p className="text-xs text-red-700">{error}</p>
+                    <p className="text-xs text-red-700">{t(error)}</p>
                   </div>
                 )}
 
@@ -757,9 +759,7 @@ export default function OnboardingPage() {
                     >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Kembali
-                    </button>
+                      </svg>{t("Kembali")}</button>
                   ) : (
                     <div />
                   )}
@@ -770,7 +770,7 @@ export default function OnboardingPage() {
                       disabled={saving}
                       className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all disabled:opacity-60"
                     >
-                      {saving ? 'Menyimpan...' : currentStep === 4 ? 'Selesaikan Profil' : 'Selanjutnya'}
+                      {saving ? t("Menyimpan...") : currentStep === 4 ? t("Selesaikan Profil") : 'Selanjutnya'}
                     </button>
                   )}
                 </div>

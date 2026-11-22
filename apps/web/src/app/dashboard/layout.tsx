@@ -11,6 +11,7 @@ import { ToastProvider } from '../../components/ui';
 import { AppBootLogo } from '@/components/ui/app-boot-logo';
 import { useAmsNotifications } from '@/components/notifications/provider';
 import { ConsultantTeamProvider, ConsultantPortalEntry } from '@/components/consultant-team-context';
+import { AmsLanguageSelect, useAmsLocale } from "@/components/ams-language";
 
 const sidebarSections = [
   {
@@ -42,6 +43,7 @@ const bottomNavItems = [
 ];
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
+  const { t } = useAmsLocale();
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -71,19 +73,20 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="ams-workspace flex min-h-screen bg-slate-50">
-      <a href="#ams-main-content" className="ams-skip-link">Lewati ke konten utama</a>
+      <a href="#ams-main-content" className="ams-skip-link">{t("Lewati ke konten utama")}</a>
       {/* Sidebar — Desktop */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-slate-200 bg-white lg:flex">
-        <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5">
+        <div className="flex h-16 items-center gap-2.5 border-b border-slate-200 px-4">
           <Image src="/logo.png" alt="BinaHub" width={28} height={28} className="h-7 w-auto" priority />
           <span className="text-base font-semibold text-[#0B2C6B]">BinaHub</span>
+          <span className="ml-auto"><AmsLanguageSelect compact /></span>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           {sidebarSections.map((section, idx) => (
             <div key={section.label || `section-${idx}`} className="mb-4">
               {section.label && (
-                <p className="mb-2 px-3 text-xs font-medium text-slate-600">{section.label}</p>
+                <p className="mb-2 px-3 text-xs font-medium text-slate-600">{t(section.label)}</p>
               )}
               <div className="space-y-0.5">
                 {section.items.map((item) => (
@@ -100,7 +103,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                     </svg>
-                    {item.label}
+                    {t(item.label)}
                     {item.href === '/dashboard/notifications' && notifCount > 0 && (
                       <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
                         {notifCount > 99 ? '99+' : notifCount}
@@ -126,7 +129,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            <span>Notifikasi</span>
+            <span>{t("Notifikasi")}</span>
             {notifCount > 0 && (
               <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1.5 text-[9px] font-bold text-white">
                 {notifCount}
@@ -145,7 +148,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>Pengaturan</span>
+            <span>{t("Pengaturan")}</span>
           </Link>
 
           <a
@@ -157,7 +160,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             <svg className="h-4 w-4 text-[#0B2C6B] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>Pusat Bantuan</span>
+            <span>{t('Pusat Bantuan')}</span>
           </a>
 
           <Link
@@ -171,7 +174,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span>Syarat & Ketentuan</span>
+            <span>{t("Syarat & Ketentuan")}</span>
           </Link>
         </div>
 
@@ -184,7 +187,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               <p className="text-sm font-medium text-slate-900 truncate">{user.email}</p>
               <p className="text-xs text-slate-600">Associate</p>
             </div>
-            <button type="button" aria-label="Keluar" onClick={signOut} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600" title="Keluar">
+            <button type="button" aria-label={t("Keluar")} onClick={signOut} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600" title={t("Keluar")}>
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
@@ -195,6 +198,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
       <header className="ams-mobile-header fixed inset-x-0 top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b px-4 pt-[env(safe-area-inset-top)] lg:hidden">
         <Image src="/full-logo.png" alt="BinaHub" width={100} height={28} className="h-auto w-[100px]" priority />
+        <div className="flex items-center gap-2">
+        <AmsLanguageSelect compact />
         <Link
           href={isActive('/dashboard/notifications') ? '/dashboard/settings#notifikasi-hp' : '/dashboard/settings'}
           aria-current={isActive('/dashboard/settings') ? 'page' : undefined}
@@ -202,12 +207,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         >
           <svg aria-hidden="true" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          Pengaturan
-        </Link>
+          </svg>{t("Pengaturan")}</Link>
+        </div>
       </header>
 
-      <nav aria-label="Navigasi utama" className="ams-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] lg:hidden">
+      <nav aria-label={t("Navigasi utama")} className="ams-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] lg:hidden">
         {bottomNavItems.map((item) => {
           const active = isActive(item.href);
           const count = item.href === '/dashboard/notifications' ? notifCount : 0;
@@ -226,8 +230,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   </span>
                 )}
               </span>
-              <span className="text-[11px]">{item.label}</span>
-              {count > 0 && <span className="sr-only">, {count} belum dibaca</span>}
+              <span className="text-[11px]">{t(item.label)}</span>
+              {count > 0 && <span className="sr-only">, {count} {t("belum dibaca")}</span>}
             </Link>
           );
         })}

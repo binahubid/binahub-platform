@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { useOnboarding } from './context';
+import { useAmsLocale } from "@/components/ams-language";
 
 export function OnboardingModal() {
+  const { t } = useAmsLocale();
   const { currentStep, totalSteps, completedSteps, isVisible, skipAll, completionPercent } = useOnboarding();
 
   if (!currentStep || !isVisible) return null;
@@ -46,7 +48,7 @@ export function OnboardingModal() {
             </div>
             <div>
               <span className="text-xs font-semibold text-[#D9A441] uppercase tracking-wider">
-                Langkah {stepNumber} dari {totalSteps}
+                Langkah {stepNumber} {t("dari")} {totalSteps}
               </span>
               <h2 className="text-lg font-bold text-slate-900">{currentStep.title}</h2>
             </div>
@@ -68,9 +70,7 @@ export function OnboardingModal() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Fitur AI Kami</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    CV Anda akan dianalisis oleh AI untuk mengisi profil secara otomatis — termasuk keahlian, pengalaman, dan pendidikan.
-                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">{t("CV Anda akan dianalisis oleh AI untuk mengisi profil secara otomatis — termasuk keahlian, pengalaman, dan pendidikan.")}</p>
                 </div>
               </div>
             </div>
@@ -88,9 +88,7 @@ export function OnboardingModal() {
             <button
               onClick={skipAll}
               className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              Lewati
-            </button>
+            >{t("Lewati")}</button>
           </div>
 
           {/* Progress dots */}
@@ -114,8 +112,7 @@ export function OnboardingModal() {
           </div>
 
           {/* Completion percent */}
-          <p className="mt-3 text-center text-xs text-slate-400">
-            Profil Anda lengkap {completionPercent}%
+          <p className="mt-3 text-center text-xs text-slate-400">{t("Profil Anda lengkap")} {completionPercent}%
           </p>
         </div>
       </div>

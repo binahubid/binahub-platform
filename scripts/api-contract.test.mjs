@@ -10,6 +10,8 @@ Object.assign(process.env, {
 });
 let outbound=0,rateChecks=0,associateLookups=0,teamActive=true;
 let materialReads=0;
+let syncedRevision=4, membershipSyncs=0;
+const ticketTargets=[];
 const accountId='00000000-0000-4000-8000-000000000007';
 let preferenceUpdate=null;
 globalThis.fetch=async (input,init)=>{
@@ -41,8 +43,24 @@ globalThis.fetch=async (input,init)=>{
     return Response.json([]);
   }
   if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/consultant_team_memberships'){
+    if(init?.method==='PATCH') return new Response(null,{status:204});
     return Response.json([{associate_id:'00000000-0000-4000-8000-000000000007',
-      membership_id:'00000000-0000-4000-8000-000000000009',status:teamActive?'active':'paused',accepted_at:'2026-11-12T00:00:00Z'}]);
+      membership_id:'00000000-0000-4000-8000-000000000009',status:teamActive?'active':'paused',accepted_at:'2026-11-12T00:00:00Z',
+      revision:4,synced_revision:syncedRevision,sync_status:'synced'}]);
+  }
+  if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/associate_profiles'){
+    return Response.json([{full_name:'Synthetic Consultant'}]);
+  }
+  if(url.origin==='https://api.binahub.id'){
+    if(url.pathname==='/api/integrations/ams/consultant-team'){
+      membershipSyncs++;
+      assert.equal(JSON.parse(init.body).membership.revision,4);
+      return Response.json({success:true});
+    }
+    if(url.pathname==='/api/integrations/ams/access-link'){
+      ticketTargets.push(JSON.parse(init.body).nextPath);
+      return Response.json({success:true,url:'https://app.binahub.id/auth/ams?ticket=synthetic'});
+    }
   }
   if(url.origin==='https://api.binahub.id'&&url.pathname==='/api/integrations/ams/materials'){
     materialReads++;
@@ -126,6 +144,28 @@ test('signed consultant checks use current membership and matching email',async(
   assert.equal((await check('other@example.com')).active,false);
   teamActive=false;assert.equal((await check()).active,false);teamActive=true;
   assert.equal(outbound,0);
+});
+test('opening the portal reuses the current synced revision and still handles pending and paused memberships',async()=>{
+  const leadId='00000000-0000-4000-8000-000000000011';
+  const open=()=>app.request('https://example.invalid/api/associate/consultant-team/open',{
+    method:'POST',headers:{authorization:'Bearer synthetic-associate','content-type':'application/json'},
+    body:JSON.stringify({leadId}),
+  });
+  try {
+    assert.equal((await open()).status,200);
+    assert.equal(membershipSyncs,0);
+    syncedRevision=3;
+    assert.equal((await open()).status,200);
+    assert.equal(membershipSyncs,1);
+    teamActive=false;
+    assert.equal((await open()).status,403);
+    assert.equal(membershipSyncs,1);
+    assert.deepEqual(ticketTargets,Array(2).fill('/konsultan/clients/'+leadId));
+    assert.equal(outbound,0);
+  } finally {
+    syncedRevision=4;
+    teamActive=true;
+  }
 });
 test('CORS allows only the approved frontend, not an arbitrary caller', async()=>{
   for(const origin of ['https://ams.binahub.id','https://untrusted.invalid']){

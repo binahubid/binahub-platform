@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FinancialDetails } from '../types';
+import { useAmsLocale } from "@/components/ams-language";
 
 type StepFinancialProps = {
   apiUrl: string;
@@ -10,6 +11,7 @@ type StepFinancialProps = {
 };
 
 export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialProps) {
+  const { t } = useAmsLocale();
   const [data, setData] = useState<FinancialDetails>({
     npwp: '',
     bank_name: '',
@@ -79,10 +81,7 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-slate-500 leading-relaxed">
-        Data finansial ini bersifat rahasia dan hanya dapat dilihat oleh Admin BinaHub.
-        Tidak akan ditampilkan di CV standar atau profil publik Anda.
-      </p>
+      <p className="text-xs text-slate-500 leading-relaxed">{t("Data finansial ini bersifat rahasia dan hanya dapat dilihat oleh Admin BinaHub. Tidak akan ditampilkan di CV standar atau profil publik Anda.")}</p>
 
       <div>
         <label className="block text-sm font-semibold text-slate-700 mb-2">NPWP</label>
@@ -97,7 +96,7 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700 mb-2">Nama Bank</label>
+        <label className="block text-sm font-semibold text-slate-700 mb-2">{t("Nama Bank")}</label>
         <input
           type="text"
           value={data.bank_name || ''}
@@ -108,7 +107,7 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700 mb-2">Nomor Rekening</label>
+        <label className="block text-sm font-semibold text-slate-700 mb-2">{t("Nomor Rekening")}</label>
         <input
           type="text"
           value={data.bank_account_number || ''}
@@ -122,13 +121,13 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700 mb-2">Nama Pemilik Rekening</label>
+        <label className="block text-sm font-semibold text-slate-700 mb-2">{t("Nama Pemilik Rekening")}</label>
         <input
           type="text"
           value={data.bank_account_holder || ''}
           onChange={(e) => setData({ ...data, bank_account_holder: e.target.value })}
           className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 transition-all"
-          placeholder="Nama sesuai rekening"
+          placeholder={t("Nama sesuai rekening")}
         />
       </div>
 
@@ -138,9 +137,9 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
         className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all disabled:opacity-50"
       >
         {saving ? (
-          <><svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Menyimpan...</>
+          <><svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>{t("Menyimpan...")}</>
         ) : (
-          <><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Simpan Data Finansial</>
+          <><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>{t("Simpan Data Finansial")}</>
         )}
       </button>
     </div>

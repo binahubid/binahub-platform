@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAmsLocale } from "@/components/ams-language";
 
 const ROLE_OPTIONS = [
   { value: 'Trainer', icon: <TrainerIcon /> },
@@ -124,6 +125,7 @@ export function StepSelectRoles({
   onRemoveSkill,
   onAddSkill,
 }: StepSelectRolesProps) {
+  const { t } = useAmsLocale();
   const [newSkillName, setNewSkillName] = useState('');
 
   const handleAdd = () => {
@@ -141,8 +143,8 @@ export function StepSelectRoles({
       {/* Roles */}
       <div>
         <div className="mb-3">
-          <h3 className="text-sm font-bold text-slate-900">Peran Associate</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Pilih maksimal 7 peran utama yang ingin Anda kontribusikan di BinaHub</p>
+          <h3 className="text-sm font-bold text-slate-900">{t("Peran Associate")}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{t("Pilih maksimal 7 peran utama yang ingin Anda kontribusikan di BinaHub")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {ROLE_OPTIONS.map(({ value, icon }) => {
@@ -176,8 +178,8 @@ export function StepSelectRoles({
       {/* Expertises */}
       <div>
         <div className="mb-3">
-          <h3 className="text-sm font-bold text-slate-900">Bidang Keahlian Utama</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Bidang Keahlian Utama (maksimal pilih 5)</p>
+          <h3 className="text-sm font-bold text-slate-900">{t("Bidang Keahlian Utama")}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{t("Bidang Keahlian Utama (maksimal pilih 5)")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {EXPERTISE_OPTIONS.map(({ value }) => {
@@ -210,8 +212,8 @@ export function StepSelectRoles({
       {/* Skills list (AI detected) */}
       <div>
         <div className="mb-3">
-          <h3 className="text-sm font-bold text-slate-900">Keahlian & Kompetensi Spesifik</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Keahlian spesifik yang berhasil dideteksi dari CV Anda. Hapus atau tambahkan jika diperlukan.</p>
+          <h3 className="text-sm font-bold text-slate-900">{t("Keahlian & Kompetensi Spesifik")}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{t("Keahlian spesifik yang berhasil dideteksi dari CV Anda. Hapus atau tambahkan jika diperlukan.")}</p>
         </div>
 
         {/* Add skill input */}
@@ -221,16 +223,14 @@ export function StepSelectRoles({
             value={newSkillName}
             onChange={(e) => setNewSkillName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            placeholder="Tambah keahlian baru..."
+            placeholder={t("Tambah keahlian baru...")}
             className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0B2C6B] focus:border-[#0B2C6B]"
           />
           <button
             type="button"
             onClick={handleAdd}
             className="rounded-xl bg-[#0B2C6B] text-white px-4 py-2 text-xs font-semibold hover:bg-[#0A255A] transition-all"
-          >
-            Tambah
-          </button>
+          >{t("Tambah")}</button>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
@@ -252,7 +252,7 @@ export function StepSelectRoles({
             </div>
           ))}
           {skillsList.length === 0 && (
-            <p className="text-xs text-slate-400 w-full text-center py-2">Belum ada keahlian spesifik.</p>
+            <p className="text-xs text-slate-400 w-full text-center py-2">{t("Belum ada keahlian spesifik.")}</p>
           )}
         </div>
       </div>

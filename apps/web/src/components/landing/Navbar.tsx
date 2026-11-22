@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '../../context/AuthContext';
+import { AmsLanguageSelect, useAmsLocale } from "@/components/ams-language";
 
 export function Navbar() {
+  const { t } = useAmsLocale();
   const { user } = useAuth();
   const isLoggedIn = !!user;
 
@@ -21,16 +23,15 @@ export function Navbar() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-7">
-          <a href="#alur" className="group relative hidden text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">
-            Cara Kerja
-            <span className="absolute -bottom-1 left-0 h-px w-0 bg-slate-900 transition-all duration-200 group-hover:w-full" />
+        <div className="flex items-center gap-2 sm:gap-7">
+          <a href="#alur" className="group relative hidden text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">{t("Cara Kerja")}<span className="absolute -bottom-1 left-0 h-px w-0 bg-slate-900 transition-all duration-200 group-hover:w-full" />
           </a>
           <a href="#faq" className="group relative hidden text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">
             FAQ
             <span className="absolute -bottom-1 left-0 h-px w-0 bg-slate-900 transition-all duration-200 group-hover:w-full" />
           </a>
 
+          <AmsLanguageSelect compact />
           {isLoggedIn ? (
             <Link
               href={user?.app_metadata?.role === 'admin' ? '/admin' : '/dashboard'}
@@ -40,15 +41,11 @@ export function Navbar() {
             </Link>
           ) : (
             <>
-              <Link href="/auth/login" className="text-sm font-medium text-slate-600 transition hover:text-slate-900">
-                Masuk
-              </Link>
+              <Link href="/auth/login" className="text-sm font-medium text-slate-600 transition hover:text-slate-900">{t("Masuk")}</Link>
               <Link
                 href="/auth/register"
                 className="rounded-full bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-md"
-              >
-                Daftar
-              </Link>
+              >{t("Daftar")}</Link>
             </>
           )}
         </div>

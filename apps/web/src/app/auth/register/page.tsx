@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase-client';
+import { useAmsLocale } from "@/components/ams-language";
 
 export default function RegisterPage() {
+  const { t } = useAmsLocale();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -102,12 +104,8 @@ export default function RegisterPage() {
         <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-xl shadow-slate-300/30 backdrop-blur sm:p-7">
           {/* Header */}
           <div className="mb-7">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Buat akun Anda
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Gratis. Satu profil untuk seluruh perjalanan associate.
-            </p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t("Buat akun Anda")}</h1>
+            <p className="mt-1 text-sm text-slate-500">{t("Gratis. Satu profil untuk seluruh perjalanan associate.")}</p>
           </div>
 
           {/* Error */}
@@ -116,7 +114,7 @@ export default function RegisterPage() {
               <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <p className="text-xs leading-relaxed text-red-700">{error}</p>
+              <p className="text-xs leading-relaxed text-red-700">{t(error)}</p>
             </div>
           )}
 
@@ -149,7 +147,7 @@ export default function RegisterPage() {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
               )}
-              <span className="text-sm">{googleLoading ? 'Mengalihkan...' : 'Daftar dengan Google'}</span>
+              <span className="text-sm">{googleLoading ? 'Mengalihkan...' : t("Daftar dengan Google")}</span>
             </button>
             {/* Tooltip */}
             {showTooltip && !allChecked && (
@@ -158,9 +156,7 @@ export default function RegisterPage() {
                   <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  <p className="text-xs leading-relaxed text-slate-700">
-                    Centang Syarat & Ketentuan serta Kebijakan Privasi untuk melanjutkan.
-                  </p>
+                  <p className="text-xs leading-relaxed text-slate-700">{t("Centang Syarat & Ketentuan serta Kebijakan Privasi untuk melanjutkan.")}</p>
                 </div>
                 {/* Arrow */}
                 <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-3 w-3 rotate-45 border border-slate-200 bg-white border-b-0 border-r-0" />
@@ -187,7 +183,7 @@ export default function RegisterPage() {
             <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            <span>Daftar dengan Email</span>
+            <span>{t("Daftar dengan Email")}</span>
             <svg className={`h-4 w-4 text-slate-400 transition-transform ${showEmailForm ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -197,9 +193,7 @@ export default function RegisterPage() {
           <div className={`overflow-hidden transition-all duration-300 ${showEmailForm ? 'mt-4 max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Nama Lengkap
-                </label>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Nama Lengkap")}</label>
                 <input
                   type="text"
                   required
@@ -220,7 +214,7 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-[#0B2C6B] focus:outline-none focus:ring-2 focus:ring-[#0B2C6B]/10"
-                  placeholder="nama@binahub.id"
+                  placeholder={t("nama@binahub.id")}
                   autoComplete="email"
                 />
               </div>
@@ -258,9 +252,7 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Konfirmasi Password
-                </label>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Konfirmasi Password")}</label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -283,15 +275,10 @@ export default function RegisterPage() {
                 onChange={(e) => setAgreeSkk(e.target.checked)}
                 className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B]/20"
               />
-              <span className="text-xs leading-relaxed text-slate-600">
-                Saya telah membaca dan menyetujui{' '}
-                <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">
-                  Syarat & Ketentuan
-                </Link>{' '}
+              <span className="text-xs leading-relaxed text-slate-600">{t("Saya telah membaca dan menyetujui")}{' '}
+                <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">{t("Syarat & Ketentuan")}</Link>{' '}
                 serta{' '}
-                <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">
-                  Kebijakan Privasi
-                </Link>{' '}
+                <Link href="/skk" target="_blank" className="font-medium text-[#0B2C6B] underline hover:text-[#0A255A]">{t("Kebijakan Privasi")}</Link>{' '}
                 BinaHub Associate Management System.
               </span>
             </label>
@@ -302,11 +289,7 @@ export default function RegisterPage() {
                 onChange={(e) => setAgreeAi(e.target.checked)}
                 className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B]/20"
               />
-              <span className="text-xs leading-relaxed text-slate-600">
-                Saya memahami bahwa BinaHub dapat menggunakan teknologi AI untuk membantu memproses informasi yang
-                saya unggah, seperti CV dan data profesional, guna meningkatkan efisiensi administrasi dan
-                pencocokan peluang kolaborasi. Keputusan akhir tetap dilakukan oleh tim BinaHub.
-              </span>
+              <span className="text-xs leading-relaxed text-slate-600">{t("Saya memahami bahwa BinaHub dapat menggunakan teknologi AI untuk membantu memproses informasi yang saya unggah, seperti CV dan data profesional, guna meningkatkan efisiensi administrasi dan pencocokan peluang kolaborasi. Keputusan akhir tetap dilakukan oleh tim BinaHub.")}</span>
             </label>
           </div>
 
@@ -327,18 +310,15 @@ export default function RegisterPage() {
                   <span>Memproses...</span>
                 </>
               ) : (
-                'Buat Akun'
+                t("Buat Akun")
               )}
             </button>
           </div>
         </div>
 
         {/* Sign in link */}
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Sudah punya akun?{' '}
-          <Link href="/auth/login" className="font-semibold text-[#0B2C6B] transition-colors hover:text-[#0A255A]">
-            Masuk
-          </Link>
+        <p className="mt-6 text-center text-sm text-slate-500">{t("Sudah punya akun?")}{' '}
+          <Link href="/auth/login" className="font-semibold text-[#0B2C6B] transition-colors hover:text-[#0A255A]">{t("Masuk")}</Link>
         </p>
       </div>
     </div>

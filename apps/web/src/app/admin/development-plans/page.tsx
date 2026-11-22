@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../components/ui';
+import { useAmsLocale } from "@/components/ams-language";
 
 type DevPlan = {
   id: string;
@@ -36,6 +37,7 @@ type Associate = {
 };
 
 export default function AdminDevPlansPage() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const { toast } = useToast();
   const [plans, setPlans] = useState<DevPlan[]>([]);
@@ -158,11 +160,9 @@ export default function AdminDevPlansPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Development Plans</h1>
-          <p className="mt-1 text-sm text-slate-500">Kelola rencana pengembangan skill associate.</p>
+          <p className="mt-1 text-sm text-slate-500">{t("Kelola rencana pengembangan skill associate.")}</p>
         </div>
-        <button onClick={openCreate} className="rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0A255A]">
-          + Tambah Plan
-        </button>
+        <button onClick={openCreate} className="rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0A255A]">{t("+ Tambah Plan")}</button>
       </div>
 
       {/* Stats */}
@@ -189,13 +189,13 @@ export default function AdminDevPlansPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => resetForm()}>
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-slate-900">{editing ? 'Edit Development Plan' : 'Tambah Development Plan'}</h3>
+            <h3 className="text-base font-semibold text-slate-900">{editing ? 'Edit Development Plan' : t("Tambah Development Plan")}</h3>
             <div className="mt-4 space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Associate *</label>
                 <select value={form.associate_id} onChange={(e) => setForm({ ...form, associate_id: e.target.value })} disabled={!!editing}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:outline-none disabled:bg-slate-50">
-                  <option value="">-- Pilih Associate --</option>
+                  <option value="">{t("-- Pilih Associate --")}</option>
                   {associates.map((a) => <option key={a.id} value={a.id}>{a.profile?.full_name || a.email}</option>)}
                 </select>
               </div>
@@ -211,13 +211,13 @@ export default function AdminDevPlansPage() {
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:outline-none" />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400">Actions & learning paths dapat dikelola setelah plan dibuat.</p>
+              <p className="text-[11px] text-slate-400">{t("Actions & learning paths dapat dikelola setelah plan dibuat.")}</p>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={resetForm} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
+              <button onClick={resetForm} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("Batal")}</button>
               <button onClick={handleSave} disabled={saving}
                 className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white hover:bg-[#0A255A] disabled:opacity-50">
-                {saving ? 'Menyimpan...' : 'Simpan'}
+                {saving ? t("Menyimpan...") : t("Simpan")}
               </button>
             </div>
           </div>
@@ -237,8 +237,8 @@ export default function AdminDevPlansPage() {
           <svg className="h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
           </svg>
-          <p className="mt-4 text-sm font-medium text-slate-900">Belum ada development plan</p>
-          <p className="mt-1 text-xs text-slate-500">Klik &quot;Tambah Plan&quot; untuk membuat baru.</p>
+          <p className="mt-4 text-sm font-medium text-slate-900">{t("Belum ada development plan")}</p>
+          <p className="mt-1 text-xs text-slate-500">{t("Klik \"Tambah Plan\" untuk membuat baru.")}</p>
         </div>
       ) : (
         <div className="ams-panel overflow-hidden">
@@ -280,7 +280,7 @@ export default function AdminDevPlansPage() {
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => openEdit(p)} className="rounded-lg px-2.5 py-1 text-xs font-medium text-[#0B2C6B] hover:bg-[#0B2C6B]/10">Edit</button>
-                        <button onClick={() => handleDelete(p.id)} className="rounded-lg px-2.5 py-1 text-xs font-medium text-red-500 hover:bg-red-50">Hapus</button>
+                        <button onClick={() => handleDelete(p.id)} className="rounded-lg px-2.5 py-1 text-xs font-medium text-red-500 hover:bg-red-50">{t("Hapus")}</button>
                       </div>
                     </td>
                   </tr>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Review = {
   id: string;
@@ -22,6 +23,7 @@ type CapabilityUpdate = {
 };
 
 export default function ReviewsPage() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,14 +63,14 @@ export default function ReviewsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Evaluasi saya</h1>
-        <p className="mt-1 text-sm text-slate-500">Umpan balik dari klien dan penilai.</p>
+        <h1 className="text-2xl font-semibold text-slate-900">{t("Evaluasi saya")}</h1>
+        <p className="mt-1 text-sm text-slate-500">{t("Umpan balik dari klien dan penilai.")}</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <div className="ams-panel p-3 sm:p-4">
-          <p className="break-words text-xs font-medium text-slate-600">Total evaluasi</p>
+          <p className="break-words text-xs font-medium text-slate-600">{t("Total evaluasi")}</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{stats.total}</p>
         </div>
         <div className="ams-panel p-3 sm:p-4">
@@ -81,7 +83,7 @@ export default function ReviewsPage() {
           </div>
         </div>
         <div className="ams-panel p-3 sm:p-4">
-          <p className="break-words text-xs font-medium text-slate-600">Disetujui</p>
+          <p className="break-words text-xs font-medium text-slate-600">{t("Disetujui")}</p>
           <p className="mt-1 text-2xl font-bold text-emerald-600">{stats.approved}</p>
         </div>
       </div>
@@ -93,10 +95,8 @@ export default function ReviewsPage() {
             <svg className="h-16 w-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <h2 className="mt-4 text-lg font-semibold text-slate-900">Belum ada evaluasi</h2>
-            <p className="mt-2 text-sm text-slate-500 text-center max-w-sm">
-              Umpan balik atas penugasan Anda akan muncul di sini.
-            </p>
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">{t("Belum ada evaluasi")}</h2>
+            <p className="mt-2 text-sm text-slate-500 text-center max-w-sm">{t("Umpan balik atas penugasan Anda akan muncul di sini.")}</p>
           </div>
         </div>
       ) : (

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../components/ui';
+import { useAmsLocale } from "@/components/ams-language";
 
 type User = {
   id: string;
@@ -14,6 +15,7 @@ type User = {
 };
 
 export default function AdminUsersPage() {
+  const { t } = useAmsLocale();
   const { user, accessToken } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
@@ -84,13 +86,14 @@ export default function AdminUsersPage() {
   };
 
   const RoleDropdown = ({ u }: { u: User }) => {
+  const { t } = useAmsLocale();
     const currentRole = u.role;
     const isChanging = changingRole === u.id;
     const isSelf = u.id === user?.id;
 
     if (isSelf) {
       const badge = roleBadge(currentRole);
-      return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${badge.cls}`}>{badge.label}</span>;
+      return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${badge.cls}`}>{t(badge.label)}</span>;
     }
 
     return (
@@ -139,7 +142,7 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Users & Reviewers</h1>
-          <p className="mt-1 text-sm text-slate-500">Kelola pengguna dan reviewer sistem. Ubah role melalui dropdown di setiap user.</p>
+          <p className="mt-1 text-sm text-slate-500">{t("Kelola pengguna dan reviewer sistem. Ubah role melalui dropdown di setiap user.")}</p>
         </div>
       </div>
 
@@ -149,7 +152,7 @@ export default function AdminUsersPage() {
         </svg>
         <input
           type="text"
-          placeholder="Cari email atau nama..."
+          placeholder={t("Cari email atau nama...")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-4 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none"
@@ -209,7 +212,7 @@ export default function AdminUsersPage() {
             </div>
             {associates.length === 0 ? (
               <div className="px-5 py-12 text-center">
-                <p className="text-sm text-slate-500">Tidak ada associate ditemukan</p>
+                <p className="text-sm text-slate-500">{t("Tidak ada associate ditemukan")}</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">

@@ -7,6 +7,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { Avatar, StatusBadge, Tabs, useToast } from '../../../../components/ui';
 import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
 import { AdminCVEnrichment, type AdminParsedCV } from './components/admin-cv-enrichment';
+import { useAmsLocale } from "@/components/ams-language";
 
 type DetailData = {
   id: string;
@@ -90,6 +91,7 @@ type DetailData = {
 };
 
 export default function AssociateDetailPage() {
+  const { t } = useAmsLocale();
   const { user, accessToken } = useAuth();
   const params = useParams();
   const { toast } = useToast();
@@ -192,8 +194,8 @@ export default function AssociateDetailPage() {
   if (!data) {
     return (
       <div className="ams-panel flex min-h-[400px] flex-col items-center justify-center">
-        <p className="text-sm text-slate-500">Associate tidak ditemukan</p>
-        <Link href="/admin/associates" className="mt-3 text-sm font-medium text-[#0B2C6B] hover:underline">Kembali ke daftar</Link>
+        <p className="text-sm text-slate-500">{t("Associate tidak ditemukan")}</p>
+        <Link href="/admin/associates" className="mt-3 text-sm font-medium text-[#0B2C6B] hover:underline">{t("Kembali ke daftar")}</Link>
       </div>
     );
   }
@@ -245,25 +247,19 @@ export default function AssociateDetailPage() {
               <button
                 onClick={handleShare}
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                Bagikan Profil
-              </button>
+              >{t("Bagikan Profil")}</button>
               {data.documents?.find((d) => d.type === 'cv') && (
                 <ProtectedFileLink
                   href={`/api/files/${data.documents.find((d) => d.type === 'cv')!.id}/view`}
                   accessToken={accessToken}
                   onOpenError={(message) => toast('error', message)}
                   className="rounded-lg border border-[#0B2C6B] text-[#0B2C6B] bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
-                >
-                  Buka CV Asli (PDF/Word)
-                </ProtectedFileLink>
+                >{t("Buka CV Asli (PDF/Word)")}</ProtectedFileLink>
               )}
               <Link
                 href={`/admin/associates/${params.id}/cv`}
                 className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0A255A]"
-              >
-                Lihat CV Standar
-              </Link>
+              >{t("Lihat CV Standar")}</Link>
             </div>
           </div>
           <div className="mt-4">
@@ -301,7 +297,7 @@ export default function AssociateDetailPage() {
           <textarea
             value={reviewNotes}
             onChange={(e) => setReviewNotes(e.target.value)}
-            placeholder="Catatan untuk associate (wajib jika meminta revisi)..."
+            placeholder={t("Catatan untuk associate (wajib jika meminta revisi)...")}
             rows={3}
             className="mt-3 block w-full rounded-lg border border-amber-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
           />
@@ -317,9 +313,7 @@ export default function AssociateDetailPage() {
               onClick={() => handleReview('rejected')}
               disabled={reviewing || !reviewNotes.trim()}
               className="rounded-lg border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-            >
-              Tolak
-            </button>
+            >{t("Tolak")}</button>
           </div>
         </div>
       )}
@@ -333,8 +327,8 @@ export default function AssociateDetailPage() {
           {activeTab === 'overview' && (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Tentang</h3>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">{data.profile?.bio || 'Belum ada bio.'}</p>
+                <h3 className="text-lg font-semibold text-slate-900">{t("Tentang")}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">{data.profile?.bio || t("Belum ada bio.")}</p>
                 <div className="mt-4 space-y-2">
                   {data.profile?.phone && (
                     <div className="flex items-center gap-2 text-sm">
@@ -356,7 +350,7 @@ export default function AssociateDetailPage() {
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Pengalaman ({data.experiences?.length || 0})</h3>
+                <h3 className="text-lg font-semibold text-slate-900">{t("Pengalaman (")}{data.experiences?.length || 0})</h3>
                 <div className="mt-3 space-y-3">
                   {data.experiences?.slice(0, 3).map((exp) => (
                     <div key={exp.id} className="flex items-start gap-3">
@@ -379,19 +373,19 @@ export default function AssociateDetailPage() {
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Keahlian Utama</h3>
+                <h3 className="text-lg font-semibold text-slate-900">{t("Keahlian Utama")}</h3>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {data.profile?.expertises?.map((exp) => (
                     <span key={exp} className="rounded-full bg-[#0B2C6B]/5 px-3 py-1 text-sm font-medium text-[#0B2C6B]">{exp}</span>
                   ))}
                 </div>
                 {(!data.profile?.expertises || data.profile.expertises.length === 0) && (
-                  <p className="mt-2 text-sm text-slate-500">Belum ada keahlian.</p>
+                  <p className="mt-2 text-sm text-slate-500">{t("Belum ada keahlian.")}</p>
                 )}
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Dokumen</h3>
+                <h3 className="text-lg font-semibold text-slate-900">{t("Dokumen")}</h3>
                 <div className="mt-3 space-y-2">
                   {data.documents?.slice(0, 3).map((doc) => (
                     <ProtectedFileLink
@@ -435,7 +429,7 @@ export default function AssociateDetailPage() {
                 </div>
               ))}
               {(!data.experiences || data.experiences.length === 0) && (
-                <p className="text-center text-sm text-slate-500">Belum ada pengalaman.</p>
+                <p className="text-center text-sm text-slate-500">{t("Belum ada pengalaman.")}</p>
               )}
             </div>
           )}
@@ -454,7 +448,7 @@ export default function AssociateDetailPage() {
                 ))}
               </div>
               {(!data.skills || data.skills.length === 0) && (
-                <p className="text-center text-sm text-slate-500">Belum ada skill.</p>
+                <p className="text-center text-sm text-slate-500">{t("Belum ada skill.")}</p>
               )}
             </div>
           )}
@@ -472,7 +466,7 @@ export default function AssociateDetailPage() {
                 </div>
               ))}
               {(!data.educations || data.educations.length === 0) && (
-                <p className="text-center text-sm text-slate-500">Belum ada pendidikan.</p>
+                <p className="text-center text-sm text-slate-500">{t("Belum ada pendidikan.")}</p>
               )}
             </div>
           )}
@@ -502,9 +496,7 @@ export default function AssociateDetailPage() {
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                            Buka File
-                          </ProtectedFileLink>
+                            </svg>{t("Buka File")}</ProtectedFileLink>
                         </div>
                       ) : (
                         <ProtectedFileLink
@@ -516,7 +508,7 @@ export default function AssociateDetailPage() {
                           <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
-                          <span className="truncate max-w-[150px] text-[10px]">Lihat Dokumen Sertifikat</span>
+                          <span className="truncate max-w-[150px] text-[10px]">{t("Lihat Dokumen Sertifikat")}</span>
                         </ProtectedFileLink>
                       )}
                     </div>
@@ -524,7 +516,7 @@ export default function AssociateDetailPage() {
                 </div>
               ))}
               {(!data.certifications || data.certifications.length === 0) && (
-                <p className="text-center text-sm text-slate-500">Belum ada sertifikasi.</p>
+                <p className="text-center text-sm text-slate-500">{t("Belum ada sertifikasi.")}</p>
               )}
             </div>
           )}
@@ -543,7 +535,7 @@ export default function AssociateDetailPage() {
                       )}
                       {files.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Berkas Lampiran</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("Berkas Lampiran")}</span>
                           <div className="grid grid-cols-2 gap-2">
                             {files.map((file, fIdx) => (
                               <div key={fIdx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-50 flex flex-col justify-between">
@@ -555,9 +547,7 @@ export default function AssociateDetailPage() {
                                       accessToken={accessToken}
                                       onOpenError={(message) => toast('error', message)}
                                       className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
-                                    >
-                                      Buka File
-                                    </ProtectedFileLink>
+                                    >{t("Buka File")}</ProtectedFileLink>
                                   </>
                                 ) : (
                                   <ProtectedFileLink
@@ -582,7 +572,7 @@ export default function AssociateDetailPage() {
                 );
               })}
               {(!data.portfolios || data.portfolios.length === 0) && (
-                <p className="col-span-full text-center text-sm text-slate-500">Belum ada portofolio.</p>
+                <p className="col-span-full text-center text-sm text-slate-500">{t("Belum ada portofolio.")}</p>
               )}
             </div>
           )}
@@ -628,15 +618,13 @@ export default function AssociateDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isCV ? 'bg-[#0B2C6B]/10 text-[#0B2C6B]' : 'bg-slate-100 text-slate-500'}`}>
-                        Buka File ↗
-                      </span>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isCV ? 'bg-[#0B2C6B]/10 text-[#0B2C6B]' : 'bg-slate-100 text-slate-500'}`}>{t("Buka File ↗")}</span>
                     </div>
                   </ProtectedFileLink>
                 );
               })}
               {(!data.documents || data.documents.length === 0) && (
-                <p className="text-center text-sm text-slate-500">Belum ada dokumen.</p>
+                <p className="text-center text-sm text-slate-500">{t("Belum ada dokumen.")}</p>
               )}
             </div>
           )}
@@ -649,7 +637,7 @@ export default function AssociateDetailPage() {
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
-                      <span className="text-xs font-semibold text-amber-700">Data rahasia — hanya visible untuk Admin</span>
+                      <span className="text-xs font-semibold text-amber-700">{t("Data rahasia — hanya visible untuk Admin")}</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
@@ -657,21 +645,21 @@ export default function AssociateDetailPage() {
                         <p className="text-sm font-medium text-slate-900 mt-1">{data.financialDetails.npwp || '-'}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Bank</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("Nama Bank")}</p>
                         <p className="text-sm font-medium text-slate-900 mt-1">{data.financialDetails.bank_name || '-'}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nomor Rekening</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("Nomor Rekening")}</p>
                         <p className="text-sm font-medium text-slate-900 mt-1">{data.financialDetails.bank_account_number || '-'}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Pemilik Rekening</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("Nama Pemilik Rekening")}</p>
                         <p className="text-sm font-medium text-slate-900 mt-1">{data.financialDetails.bank_account_holder || '-'}</p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-center text-sm text-slate-500 py-8">Belum ada data finansial.</p>
+                  <p className="text-center text-sm text-slate-500 py-8">{t("Belum ada data finansial.")}</p>
                 )}
               </div>
             )}
@@ -689,15 +677,14 @@ export default function AssociateDetailPage() {
                           review.status === 'rejected' ? 'bg-red-50 text-red-700' :
                           'bg-amber-50 text-amber-700'
                         }`}>
-                          {statusLabels[review.status] || review.status}
+                          {t(statusLabels[review.status] || review.status)}
                         </span>
                         <span className="text-xs text-slate-400">
                           {new Date(review.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </div>
                       {review.decision_at && (
-                        <span className="text-[10px] text-slate-400">
-                          Keputusan: {new Date(review.decision_at).toLocaleDateString('id-ID')}
+                        <span className="text-[10px] text-slate-400">{t("Keputusan:")} {new Date(review.decision_at).toLocaleDateString('id-ID')}
                         </span>
                       )}
                     </div>
@@ -705,12 +692,12 @@ export default function AssociateDetailPage() {
                       <p className="mt-3 text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{review.notes}</p>
                     )}
                     {!review.notes && (
-                      <p className="mt-3 text-xs text-slate-400 italic">Tidak ada catatan</p>
+                      <p className="mt-3 text-xs text-slate-400 italic">{t("Tidak ada catatan")}</p>
                     )}
                   </div>
                 ))
               ) : (
-                <p className="text-center text-sm text-slate-500">Belum ada review.</p>
+                <p className="text-center text-sm text-slate-500">{t("Belum ada review.")}</p>
               )}
             </div>
           )}

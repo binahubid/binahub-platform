@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type AnchorHTMLAttributes, type ImgHTMLAttributes, type ReactNode } from 'react';
+import { useAmsLocale } from "@/components/ams-language";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -66,6 +67,7 @@ type ProtectedFileImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> 
 };
 
 export function ProtectedFileImage({ src, accessToken, fallback = null, alt = '', ...props }: ProtectedFileImageProps) {
+  const { t } = useAmsLocale();
   const [result, setResult] = useState<{ source: string; token: string; url: string; failed?: boolean } | null>(null);
   const current = result?.source === src && result.token === accessToken ? result : null;
 
@@ -88,7 +90,7 @@ export function ProtectedFileImage({ src, accessToken, fallback = null, alt = ''
 
   if (current?.failed) return <>{fallback}</>;
   if (!current?.url) {
-    return <span className={props.className} aria-label="Memuat berkas" role="status" />;
+    return <span className={props.className} aria-label={t("Memuat berkas")} role="status" />;
   }
 
   // Signed storage URLs are intentionally rendered with a native image: their
@@ -113,6 +115,7 @@ export function ProtectedFileLink({
   children,
   ...props
 }: ProtectedFileLinkProps) {
+  const { t } = useAmsLocale();
   const [opening, setOpening] = useState(false);
 
   const handleOpen = async () => {
@@ -146,7 +149,7 @@ export function ProtectedFileLink({
         void handleOpen();
       }}
     >
-      {opening ? 'Membuka…' : children}
+      {opening ? t("Membuka…") : children}
     </a>
   );
 }

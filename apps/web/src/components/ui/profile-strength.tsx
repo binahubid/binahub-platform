@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useAmsLocale } from "@/components/ams-language";
 
 type ProfileStrengthProps = {
   percentage: number;
@@ -29,6 +30,7 @@ export function ProfileStrength({
   hasAvailability,
   hasFullName,
 }: ProfileStrengthProps) {
+  const { t } = useAmsLocale();
   const items = [
     { label: 'Isi Nama Lengkap', done: hasFullName, href: '/dashboard/profile?tab=profile' },
     { label: 'Unggah Foto Profil', done: hasPhoto, href: '/dashboard/profile?tab=profile' },
@@ -51,7 +53,7 @@ export function ProfileStrength({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-900 mb-1">Kekuatan Profil</h3>
+      <h3 className="text-sm font-semibold text-slate-900 mb-1">{t("Kekuatan Profil")}</h3>
 
       <div className="mt-3 flex items-end gap-2">
         <span className="text-3xl font-bold text-[#0B2C6B]">{percentage}%</span>
@@ -86,7 +88,7 @@ export function ProfileStrength({
             <span className={`text-xs ${
               item.done ? 'text-slate-400 line-through' : 'text-slate-600 group-hover:text-[#0B2C6B]'
             }`}>
-              {item.label}
+              {t(item.label)}
             </span>
           </Link>
         ))}

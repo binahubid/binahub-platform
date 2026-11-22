@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { StepProfile, StepExperience, StepSkills, StepDocuments, StepAvailability, StepCertifications, StepPortfolio, StepFinancial } from './components';
 import { ProfileView } from './components/profile-view';
 import type { ProfileData, AssociateData } from './types';
+import { useAmsLocale } from "@/components/ams-language";
 
 // ============================================
 // STEP DEFINITIONS
@@ -51,6 +52,7 @@ function validHttpUrl(value: unknown): string | null {
 // ============================================
 
 export default function ProfilePage() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const searchParams = useSearchParams();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -354,7 +356,7 @@ export default function ProfilePage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          <p className="mt-3 text-sm text-slate-500">Memuat profil...</p>
+          <p className="mt-3 text-sm text-slate-500">{t("Memuat profil...")}</p>
         </div>
       </div>
     );
@@ -386,7 +388,7 @@ export default function ProfilePage() {
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Perbarui profil</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">{t("Perbarui profil")}</h1>
           </div>
           <button
             onClick={() => setIsEditing(false)}
@@ -395,22 +397,20 @@ export default function ProfilePage() {
             <svg className="h-4 w-4 text-slate-400 group-hover:text-[#0B2C6B] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            Lihat Profil
-          </button>
+            </svg>{t("Lihat Profil")}</button>
         </div>
 
         {/* 2-Column Editing Layout */}
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-4 lg:gap-6">
           <div className="lg:hidden">
-            <label htmlFor="profile-section" className="mb-2 block text-sm font-medium text-slate-700">Bagian profil</label>
+            <label htmlFor="profile-section" className="mb-2 block text-sm font-medium text-slate-700">{t("Bagian profil")}</label>
             <select
               id="profile-section"
               value={currentStep}
               onChange={(event) => setCurrentStep(Number(event.target.value))}
               className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900"
             >
-              {STEPS.map((step, index) => <option key={step.label} value={index}>{step.label}</option>)}
+              {STEPS.map((step, index) => <option key={step.label} value={index}>{t(step.label)}</option>)}
             </select>
           </div>
           
@@ -447,7 +447,7 @@ export default function ProfilePage() {
                       <span className={`text-[11px] font-medium pl-6 mt-0.5 transition-colors ${
                         isActive ? 'text-[#0B2C6B] font-semibold' : 'text-slate-400'
                       }`}>
-                        {step.label}
+                        {t(step.label)}
                       </span>
                     </button>
                   );
@@ -457,7 +457,7 @@ export default function ProfilePage() {
               {/* Progress Bar Mini inside Sidebar */}
               <div className="mt-6 pt-4 border-t border-slate-100">
                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-1.5 px-1.5">
-                  <span>KELENGKAPAN</span>
+                  <span>{t("KELENGKAPAN")}</span>
                   <span className="text-[#D9A441]">{completeness}%</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mx-1.5">
@@ -472,56 +472,56 @@ export default function ProfilePage() {
           <div className="ams-panel min-w-0 p-4 sm:p-6 lg:col-span-3">
             {currentStep === 0 && (
               <div>
-                <h2 className="text-base font-bold text-slate-900 mb-1">Unggah Dokumen CV</h2>
-                <p className="text-xs text-slate-500 mb-6">Unggah dokumen resume/CV Anda untuk melengkapi data secara otomatis</p>
+                <h2 className="text-base font-bold text-slate-900 mb-1">{t("Unggah Dokumen CV")}</h2>
+                <p className="text-xs text-slate-500 mb-6">{t("Unggah dokumen resume/CV Anda untuk melengkapi data secara otomatis")}</p>
                 <StepDocuments associateId={profileData?.id || ''} documents={profileData?.documents || []} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} onParseCV={handleParseCV} parsingCV={parsingCV} />
               </div>
             )}
             
             {currentStep === 1 && (
               <div>
-                <h2 className="text-base font-bold text-slate-900 mb-1">Data Diri & Profil</h2>
-                <p className="text-xs text-slate-500 mb-6">Tinjau atau sesuaikan informasi biodata pribadi Anda</p>
+                <h2 className="text-base font-bold text-slate-900 mb-1">{t("Data Diri & Profil")}</h2>
+                <p className="text-xs text-slate-500 mb-6">{t("Tinjau atau sesuaikan informasi biodata pribadi Anda")}</p>
                 {editProfile && <StepProfile profile={editProfile} saving={saving} onUpdate={(data) => setEditProfile(editProfile ? { ...editProfile, ...data } : null)} onSave={handleSaveProfile} />}
               </div>
             )}
             
             {currentStep === 2 && (
               <div>
-                <h2 className="text-base font-bold text-slate-900 mb-1">Riwayat Pengalaman Kerja</h2>
-                <p className="text-xs text-slate-500 mb-6">Tambahkan riwayat profesional yang pernah Anda lalui</p>
+                <h2 className="text-base font-bold text-slate-900 mb-1">{t("Riwayat Pengalaman Kerja")}</h2>
+                <p className="text-xs text-slate-500 mb-6">{t("Tambahkan riwayat profesional yang pernah Anda lalui")}</p>
                 <StepExperience experiences={profileData?.experiences || []} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} />
               </div>
             )}
             
             {currentStep === 3 && (
               <div>
-                <h2 className="text-base font-bold text-slate-900 mb-1">Kompetensi & Bahasa</h2>
-                <p className="text-xs text-slate-500 mb-6">Lengkapi kemampuan teknis dan penguasaan bahasa Anda</p>
+                <h2 className="text-base font-bold text-slate-900 mb-1">{t("Kompetensi & Bahasa")}</h2>
+                <p className="text-xs text-slate-500 mb-6">{t("Lengkapi kemampuan teknis dan penguasaan bahasa Anda")}</p>
                 <StepSkills skills={profileData?.skills || []} languages={profileData?.languages || []} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} />
               </div>
             )}
             
             {currentStep === 4 && (
               <div>
-                <h2 className="text-base font-bold text-slate-900 mb-1">Sertifikasi & Kredensial</h2>
-                <p className="text-xs text-slate-500 mb-6">Tambahkan sertifikat profesional yang mendukung keahlian Anda</p>
+                <h2 className="text-base font-bold text-slate-900 mb-1">{t("Sertifikasi & Kredensial")}</h2>
+                <p className="text-xs text-slate-500 mb-6">{t("Tambahkan sertifikat profesional yang mendukung keahlian Anda")}</p>
                 <StepCertifications certifications={profileData?.certifications || []} associateId={profileData?.id || ''} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} showToast={showToastNotification} />
               </div>
             )}
 
             {currentStep === 5 && (
               <div>
-                <h2 className="text-base font-bold text-slate-900 mb-1">Portofolio & Hasil Karya</h2>
-                <p className="text-xs text-slate-500 mb-6">Tambahkan link portofolio hasil karya terbaik Anda</p>
+                <h2 className="text-base font-bold text-slate-900 mb-1">{t("Portofolio & Hasil Karya")}</h2>
+                <p className="text-xs text-slate-500 mb-6">{t("Tambahkan link portofolio hasil karya terbaik Anda")}</p>
                 <StepPortfolio portfolios={profileData?.portfolios || []} associateId={profileData?.id || ''} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} showToast={showToastNotification} />
               </div>
             )}
 
             {currentStep === 6 && (
               <div>
-                <h2 className="text-base font-bold text-slate-900 mb-1">Ketersediaan Kolaborasi</h2>
-                <p className="text-xs text-slate-500 mb-6">Tentukan status ketersediaan Anda untuk proyek mendatang</p>
+                <h2 className="text-base font-bold text-slate-900 mb-1">{t("Ketersediaan Kolaborasi")}</h2>
+                <p className="text-xs text-slate-500 mb-6">{t("Tentukan status ketersediaan Anda untuk proyek mendatang")}</p>
                 <StepAvailability availability={profileData?.availability || null} apiUrl={apiUrl} accessToken={accessToken || ''} onRefresh={fetchProfile} />
               </div>
             )}
@@ -529,7 +529,7 @@ export default function ProfilePage() {
             {currentStep === 7 && (
               <div>
                 <h2 className="text-base font-bold text-slate-900 mb-1">Data Finansial</h2>
-                <p className="text-xs text-slate-500 mb-6">NPWP dan informasi rekening bank (rahasia, hanya untuk admin)</p>
+                <p className="text-xs text-slate-500 mb-6">{t("NPWP dan informasi rekening bank (rahasia, hanya untuk admin)")}</p>
                 <StepFinancial apiUrl={apiUrl} accessToken={accessToken || ''} showToast={showToastNotification} />
               </div>
             )}
@@ -543,10 +543,8 @@ export default function ProfilePage() {
               >
                 <svg aria-hidden="true" className="hidden h-4 w-4 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                Sebelumnya
-              </button>
-              <div className="col-span-2 row-start-1 text-center text-xs text-slate-600">Langkah {currentStep + 1} dari {STEPS.length}</div>
+                </svg>{t("Sebelumnya")}</button>
+              <div className="col-span-2 row-start-1 text-center text-xs text-slate-600">Langkah {currentStep + 1} {t("dari")} {STEPS.length}</div>
               {currentStep < STEPS.length - 1 ? (
                 <button
                   onClick={() => { if (currentStep === 1) handleSaveProfile(); else setCurrentStep(currentStep + 1); }}
@@ -564,9 +562,7 @@ export default function ProfilePage() {
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Selesai
-                </button>
+                  </svg>{t("Selesai")}</button>
               )}
             </div>
           </div>
@@ -583,8 +579,8 @@ export default function ProfilePage() {
                     <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">Hasil Analisis AI</h3>
-                    <p className="text-xs text-slate-500">Review data yang ditemukan dari CV Anda sebelum mengimpor</p>
+                    <h3 className="text-base font-bold text-slate-900">{t("Hasil Analisis AI")}</h3>
+                    <p className="text-xs text-slate-500">{t("Review data yang ditemukan dari CV Anda sebelum mengimpor")}</p>
                   </div>
                 </div>
               </div>
@@ -593,12 +589,12 @@ export default function ProfilePage() {
                 {/* Profile Info */}
                 {(parsedCVData.fullName || parsedCVData.email || parsedCVData.phone || parsedCVData.location || parsedCVData.headline) && (
                   <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Data Profil</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{t("Data Profil")}</h4>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1.5">
-                      {parsedCVData.fullName && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Nama:</span> {parsedCVData.fullName}</p>}
-                      {parsedCVData.email && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Email di CV:</span> {parsedCVData.email} <span className="text-xs text-slate-400">(tidak mengubah akun)</span></p>}
-                      {parsedCVData.phone && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Telepon:</span> {parsedCVData.phone}</p>}
-                      {parsedCVData.location && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Lokasi:</span> {parsedCVData.location}</p>}
+                      {parsedCVData.fullName && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">{t("Nama:")}</span> {parsedCVData.fullName}</p>}
+                      {parsedCVData.email && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Email di CV:</span> {parsedCVData.email} <span className="text-xs text-slate-400">{t("(tidak mengubah akun)")}</span></p>}
+                      {parsedCVData.phone && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">{t("Telepon:")}</span> {parsedCVData.phone}</p>}
+                      {parsedCVData.location && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">{t("Lokasi:")}</span> {parsedCVData.location}</p>}
                       {parsedCVData.headline && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Headline:</span> {parsedCVData.headline}</p>}
                       {parsedCVData.bio && <p className="text-sm text-slate-700"><span className="font-medium text-slate-500">Bio:</span> {parsedCVData.bio}</p>}
                     </div>
@@ -608,7 +604,7 @@ export default function ProfilePage() {
                 {/* Experiences */}
                 {parsedCVData.experience && parsedCVData.experience.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Pengalaman Kerja ({parsedCVData.experience.length})</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{t("Pengalaman Kerja (")}{parsedCVData.experience.length})</h4>
                     <div className="space-y-2">
                       {parsedCVData.experience.map((exp: any, i: number) => (
                         <div key={i} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -625,7 +621,7 @@ export default function ProfilePage() {
                 {/* Education */}
                 {parsedCVData.education && parsedCVData.education.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Pendidikan ({parsedCVData.education.length})</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{t("Pendidikan (")}{parsedCVData.education.length})</h4>
                     <div className="space-y-2">
                       {parsedCVData.education.map((edu: any, i: number) => (
                         <div key={i} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -641,7 +637,7 @@ export default function ProfilePage() {
                 {/* Skills */}
                 {parsedCVData.skills && parsedCVData.skills.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Keahlian ({parsedCVData.skills.length})</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{t("Keahlian (")}{parsedCVData.skills.length})</h4>
                     <div className="flex flex-wrap gap-1.5">
                       {parsedCVData.skills.map((sk: any, i: number) => (
                         <span key={i} className="rounded-lg bg-[#0B2C6B]/10 px-2.5 py-1 text-xs font-medium text-[#0B2C6B]">{sk.name}</span>
@@ -653,7 +649,7 @@ export default function ProfilePage() {
                 {/* Languages */}
                 {parsedCVData.languages && parsedCVData.languages.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Bahasa ({parsedCVData.languages.length})</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{t("Bahasa (")}{parsedCVData.languages.length})</h4>
                     <div className="flex flex-wrap gap-1.5">
                       {parsedCVData.languages.map((lang: any, i: number) => (
                         <span key={i} className="rounded-lg bg-[#D9A441]/10 px-2.5 py-1 text-xs font-medium text-[#D9A441]">{lang.language} ({lang.proficiency || '-'})</span>
@@ -666,8 +662,8 @@ export default function ProfilePage() {
                 {!parsedCVData.fullName && !parsedCVData.experience?.length && !parsedCVData.education?.length && !parsedCVData.skills?.length && !parsedCVData.languages?.length && (
                   <div className="text-center py-8">
                     <svg className="mx-auto h-10 w-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <p className="mt-2 text-sm text-slate-500">AI tidak menemukan data terstruktur dari CV ini.</p>
-                    <p className="text-xs text-slate-400">Coba upload CV dalam format PDF dengan teks yang jelas.</p>
+                    <p className="mt-2 text-sm text-slate-500">{t("AI tidak menemukan data terstruktur dari CV ini.")}</p>
+                    <p className="text-xs text-slate-400">{t("Coba upload CV dalam format PDF dengan teks yang jelas.")}</p>
                   </div>
                 )}
               </div>
@@ -676,9 +672,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => { setShowPreviewModal(false); setParsedCVData(null); }}
                   className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Batal
-                </button>
+                >{t("Batal")}</button>
                 <button
                   onClick={handleConfirmImport}
                   disabled={importing}
@@ -687,7 +681,7 @@ export default function ProfilePage() {
                   {importing ? (
                     <><svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Mengimpor...</>
                   ) : (
-                    <><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Import Semua ke Profil</>
+                    <><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>{t("Import Semua ke Profil")}</>
                   )}
                 </button>
               </div>
@@ -704,10 +698,9 @@ export default function ProfilePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-sm font-bold text-center text-slate-900 mb-1.5">Timpa Data Profil?</h3>
+              <h3 className="text-sm font-bold text-center text-slate-900 mb-1.5">{t("Timpa Data Profil?")}</h3>
               <p className="text-xs text-center text-slate-500 mb-5 leading-relaxed">
-                Tindakan ini akan <span className="font-semibold text-red-600">menghapus dan mengganti</span> data riwayat kerja, pendidikan, keahlian, dan bahasa Anda yang sudah ada dengan data hasil analisis CV yang baru.
-              </p>
+                Tindakan ini akan <span className="font-semibold text-red-600">{t("menghapus dan mengganti")}</span> {t("data riwayat kerja, pendidikan, keahlian, dan bahasa Anda yang sudah ada dengan data hasil analisis CV yang baru.")}</p>
               <div className="flex gap-2.5">
                 <button
                   onClick={executeImport}
@@ -718,9 +711,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => setShowOverwriteConfirm(false)}
                   className="flex-1 rounded-xl border border-slate-200 bg-white text-slate-650 py-2.5 text-xs font-semibold hover:bg-slate-50 transition-all"
-                >
-                  Batal
-                </button>
+                >{t("Batal")}</button>
               </div>
             </div>
           </div>

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from 'next/link';
+import { useAmsLocale } from "@/components/ams-language";
 
 type ServiceErrorProps = {
   title?: string;
@@ -15,6 +18,7 @@ export function ServiceError({
   retrying = false,
   className = '',
 }: ServiceErrorProps) {
+  const { t } = useAmsLocale();
   return (
     <div
       role="alert"
@@ -35,15 +39,13 @@ export function ServiceError({
             disabled={retrying}
             className="rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0A255A] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {retrying ? 'Mencoba lagi...' : 'Coba lagi'}
+            {retrying ? 'Mencoba lagi...' : t("Coba lagi")}
           </button>
         )}
         <Link
           href="/status"
           className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-        >
-          Lihat status sistem
-        </Link>
+        >{t("Lihat status sistem")}</Link>
       </div>
     </div>
   );

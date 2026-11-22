@@ -10,6 +10,7 @@ import { ConsultantPortalEntry } from '@/components/consultant-team-context';
 import { InstallAmsCard } from '@/components/notifications/device-settings';
 import { assignmentStatusLabel, assignmentStatusTone, formatAssignmentDate, nextAssignmentTransition, type AssignmentWork } from '@/lib/assignment-display';
 import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
+import { useAmsLocale } from "@/components/ams-language";
 
 type ProfileData = {
   full_name: string;
@@ -86,6 +87,7 @@ function getGreeting() {
 
 
 export default function DashboardPage() {
+  const { t } = useAmsLocale();
   const { user, accessToken } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -291,7 +293,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div role="status" className="space-y-5">
-        <span className="sr-only">Memuat beranda…</span>
+        <span className="sr-only">{t("Memuat beranda…")}</span>
         <div aria-hidden="true" className="h-14 w-40 rounded-2xl bg-slate-200/70" />
         <div aria-hidden="true" className="ams-overview-grid">
           <div className="h-56 rounded-3xl bg-slate-200/70" />
@@ -305,8 +307,8 @@ export default function DashboardPage() {
   if (loadError || !data) {
     return (
       <ServiceError
-        title="Dashboard belum dapat dibuka"
-        message={loadError || 'Data profil tidak tersedia. Silakan coba lagi.'}
+        title={t("Dashboard belum dapat dibuka")}
+        message={loadError || t("Data profil tidak tersedia. Silakan coba lagi.")}
         onRetry={fetchDashboard}
         retrying={loading}
         className="min-h-[420px]"
@@ -333,7 +335,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="mb-1 text-sm text-slate-600">{getGreeting()},</p>
+          <p className="mb-1 text-sm text-slate-600">{t(getGreeting())},</p>
           <h1 className="text-[1.65rem] font-semibold leading-tight tracking-tight text-slate-900 sm:text-3xl">
             {data.profile?.preferred_name || data.profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}
           </h1>
@@ -351,8 +353,8 @@ export default function DashboardPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                aria-label="Cari penugasan atau keahlian"
-                placeholder="Cari penugasan atau keahlian"
+                aria-label={t("Cari penugasan atau keahlian")}
+                placeholder={t("Cari penugasan atau keahlian")}
                 className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-12 text-sm text-slate-900 outline-none transition-colors focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B]/20"
               />
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
@@ -364,7 +366,7 @@ export default function DashboardPage() {
               <div className="absolute top-full right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
                 {searchResults.length === 0 ? (
                   <div className="px-4 py-6 text-center">
-                    <p className="text-sm text-slate-500">Tidak ada hasil untuk &quot;{searchQuery}&quot;</p>
+                    <p className="text-sm text-slate-500">{t("Tidak ada hasil untuk \"")}{searchQuery}&quot;</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
@@ -398,7 +400,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <Link href="/dashboard/profile" aria-label="Buka profil saya" className="rounded-full ring-4 ring-white shadow-sm">
+          <Link href="/dashboard/profile" aria-label={t("Buka profil saya")} className="rounded-full ring-4 ring-white shadow-sm">
             <Avatar name={data.profile?.full_name} src={data.profile?.photo_url} accessToken={accessToken} size="lg" />
           </Link>
         </div>
@@ -416,10 +418,8 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-amber-900">Profil belum diajukan</h4>
-                  <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-                    Ajukan profil agar tim BinaHub dapat meninjaunya sebelum Anda menerima penugasan.
-                  </p>
+                  <h4 className="text-sm font-bold text-amber-900">{t("Profil belum diajukan")}</h4>
+                  <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">{t("Ajukan profil agar tim BinaHub dapat meninjaunya sebelum Anda menerima penugasan.")}</p>
                 </div>
               </div>
               <button
@@ -427,7 +427,7 @@ export default function DashboardPage() {
                 disabled={submitting}
                 className="flex-shrink-0 rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white transition-colors disabled:opacity-50 min-h-11"
               >
-                {submitting ? 'Mengirim...' : 'Ajukan profil'}
+                {submitting ? 'Mengirim...' : t("Ajukan profil")}
               </button>
             </div>
           )}
@@ -440,10 +440,8 @@ export default function DashboardPage() {
                 </svg>
               </div>
               <div>
-                <h4 className="text-sm font-bold text-blue-900">Profil sedang ditinjau</h4>
-                <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
-                  Tim BinaHub sedang meninjau profil Anda untuk penugasan.
-                </p>
+                <h4 className="text-sm font-bold text-blue-900">{t("Profil sedang ditinjau")}</h4>
+                <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">{t("Tim BinaHub sedang meninjau profil Anda untuk penugasan.")}</p>
               </div>
             </div>
           )}
@@ -456,10 +454,8 @@ export default function DashboardPage() {
                 </svg>
               </div>
               <div>
-                <h4 className="text-sm font-bold text-rose-900">Profil ditangguhkan</h4>
-                <p className="text-xs text-rose-700 mt-0.5 leading-relaxed">
-                  Akun Anda saat ini ditangguhkan oleh tim administrator. Silakan hubungi pusat bantuan atau admin BinaHub untuk bantuan lebih lanjut.
-                </p>
+                <h4 className="text-sm font-bold text-rose-900">{t("Profil ditangguhkan")}</h4>
+                <p className="text-xs text-rose-700 mt-0.5 leading-relaxed">{t("Akun Anda saat ini ditangguhkan oleh tim administrator. Silakan hubungi pusat bantuan atau admin BinaHub untuk bantuan lebih lanjut.")}</p>
               </div>
             </div>
           )}
@@ -467,14 +463,14 @@ export default function DashboardPage() {
       )}
       <div className="ams-overview-grid">
         <WorkspaceOverview
-          heading="Ruang kerja Anda"
+          heading={t("Ruang kerja Anda")}
           value={data.assignments_unavailable ? null : inProgressAssignments.length}
-          label="penugasan berjalan"
-          detail={data.assignments_unavailable ? 'Ringkasan penugasan belum dapat dimuat' : upcomingAssignments.length + ' mendatang · ' + needsFollowUp.length + ' perlu tindak lanjut'}
+          label={t("penugasan berjalan")}
+          detail={data.assignments_unavailable ? t('Ringkasan penugasan belum dapat dimuat') : t('{0} mendatang · {1} perlu tindak lanjut', [upcomingAssignments.length, needsFollowUp.length])}
           href="/dashboard/assignments"
-          action="Lihat penugasan"
+          action={t('Lihat penugasan')}
           completion={completionPercentage}
-          completionLabel="Profil terisi"
+          completionLabel={t('Profil terisi')}
           completionHref="/dashboard/profile"
         />
         <WorkspaceShortcuts items={[
@@ -489,10 +485,8 @@ export default function DashboardPage() {
       <div className="ams-dashboard-grid">
       <section aria-labelledby="my-assignments-heading" className="ams-panel overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-x-3 border-b border-slate-100 px-4 py-2 sm:px-5">
-          <h2 id="my-assignments-heading" className="text-base font-semibold text-slate-900">Penugasan saya</h2>
-          <Link href="/dashboard/assignments" className="inline-flex min-h-11 items-center text-sm font-medium text-[#0B2C6B] hover:underline">
-            Lihat semua
-          </Link>
+          <h2 id="my-assignments-heading" className="text-base font-semibold text-slate-900">{t("Penugasan saya")}</h2>
+          <Link href="/dashboard/assignments" className="inline-flex min-h-11 items-center text-sm font-medium text-[#0B2C6B] hover:underline">{t("Lihat semua")}</Link>
         </div>
         {recentAssignments.length ? (
           <ul className="divide-y divide-slate-100">
@@ -505,7 +499,7 @@ export default function DashboardPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                         <span className={'rounded-full px-2 py-1 font-medium ' + assignmentStatusTone(status)}>
-                          {assignment.work_status_label || assignmentStatusLabel(status)}
+                          {t(assignment.work_status_label || assignmentStatusLabel(status))}
                         </span>
                         {date && <time className="text-slate-600" dateTime={date}>{formatAssignmentDate(date)}</time>}
                       </div>
@@ -521,36 +515,36 @@ export default function DashboardPage() {
             })}
           </ul>
         ) : (
-          <p className="px-4 py-5 text-sm text-slate-600 sm:px-5">{data.assignments_unavailable ? 'Penugasan belum dapat dimuat. Coba buka daftar penugasan.' : 'Penugasan aktif dan tindak lanjut Anda akan muncul di sini.'}</p>
+          <p className="px-4 py-5 text-sm text-slate-600 sm:px-5">{data.assignments_unavailable ? t("Penugasan belum dapat dimuat. Coba buka daftar penugasan.") : t("Penugasan aktif dan tindak lanjut Anda akan muncul di sini.")}</p>
         )}
       </section>
 
       <section aria-labelledby="profile-summary-heading" className="ams-panel self-start px-4 sm:px-5">
         <div className="flex flex-wrap items-center gap-3 py-4">
           <div className="min-w-0 flex-1">
-            <h2 id="profile-summary-heading" className="text-base font-semibold text-slate-900">Profil saya</h2>
+            <h2 id="profile-summary-heading" className="text-base font-semibold text-slate-900">{t("Profil saya")}</h2>
             {(data?.profile?.headline || data?.profile?.roles?.length) && (
               <p className="mt-0.5 break-words text-sm text-slate-600">{data.profile.headline || data.profile.roles?.[0]}</p>
             )}
           </div>
-          <Link href="/dashboard/profile" className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium text-[#0B2C6B] hover:underline">Ubah profil</Link>
+          <Link href="/dashboard/profile" className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium text-[#0B2C6B] hover:underline">{t("Ubah profil")}</Link>
         </div>
         {data?.availability?.status && (
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-slate-200 py-3 text-sm">
-            <span className="font-medium text-slate-900">Ketersediaan</span>
+            <span className="font-medium text-slate-900">{t("Ketersediaan")}</span>
             <span className="break-words text-slate-600">
               {data.availability.status === 'available' || data.availability.status === 'open'
-                ? 'Tersedia'
+                ? t("Tersedia")
                 : data.availability.status === 'limited' || data.availability.status === 'busy'
-                  ? 'Terbatas'
-                  : 'Tidak tersedia'}
+                  ? t('Terbatas')
+                  : t("Tidak tersedia")}
               {data.availability.work_locations?.length ? ` · ${data.availability.work_locations.join(', ')}` : ''}
             </span>
           </div>
         )}
         {completionPercentage < 100 && (
           <details className="border-t border-slate-200">
-            <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-[#0B2C6B]">Lengkapi data profil</summary>
+            <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-[#0B2C6B]">{t("Lengkapi data profil")}</summary>
             <div className="pb-4">
               <ProfileStrength
                 percentage={completionPercentage}
@@ -569,9 +563,7 @@ export default function DashboardPage() {
           </details>
         )}
         {needsCvOnboarding && (
-          <Link href="/dashboard/profile?tab=documents" className="flex min-h-11 items-center border-t border-slate-200 py-2 text-sm font-medium text-[#0B2C6B] hover:underline">
-            Unggah CV
-          </Link>
+          <Link href="/dashboard/profile?tab=documents" className="flex min-h-11 items-center border-t border-slate-200 py-2 text-sm font-medium text-[#0B2C6B] hover:underline">{t("Unggah CV")}</Link>
         )}
         {!needsCvOnboarding && cvDoc && completionPercentage < 100 && (
           <ProtectedFileLink
@@ -579,9 +571,7 @@ export default function DashboardPage() {
             accessToken={accessToken}
             onOpenError={(message) => setToast({ message, type: 'error' })}
             className="flex min-h-11 items-center border-t border-slate-200 py-2 text-sm font-medium text-[#0B2C6B] hover:underline"
-          >
-            Lihat CV
-          </ProtectedFileLink>
+          >{t("Lihat CV")}</ProtectedFileLink>
         )}
       </section>
       </div>
@@ -589,13 +579,13 @@ export default function DashboardPage() {
       <div className="grid gap-5 sm:grid-cols-2">
         <section className="ams-panel p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-x-3">
-            <h2 className="text-base font-semibold text-slate-900">Kapabilitas</h2>
-            <Link href="/dashboard/capability" className="inline-flex min-h-11 items-center text-sm font-medium text-[#0B2C6B] hover:underline">Lihat rincian</Link>
+            <h2 className="text-base font-semibold text-slate-900">{t('Kapabilitas')}</h2>
+            <Link href="/dashboard/capability" className="inline-flex min-h-11 items-center text-sm font-medium text-[#0B2C6B] hover:underline">{t("Lihat rincian")}</Link>
           </div>
           {capabilityData.length >= 3 ? (
             <>
               <CapabilityRadar data={capabilityData} size={240} />
-              {data.skills.length > capabilityData.length && <p className="mt-2 text-xs text-slate-600">Menampilkan {capabilityData.length} dari {data.skills.length} keahlian.</p>}
+              {data.skills.length > capabilityData.length && <p className="mt-2 text-xs text-slate-600">{t("Menampilkan")} {capabilityData.length} {t("dari")} {data.skills.length} {t("keahlian.")}</p>}
             </>
           ) : data?.skills.length ? (
             <dl className="divide-y divide-slate-200">
@@ -603,21 +593,21 @@ export default function DashboardPage() {
                 <div key={skill.id} className="flex flex-wrap justify-between gap-x-3 gap-y-1 py-3 text-sm">
                   <dt className="break-words text-slate-900">{skill.skill_name}</dt>
                   <dd className="text-slate-600">
-                    {({ beginner: 'Pemula', intermediate: 'Menengah', advanced: 'Mahir', expert: 'Ahli' } as Record<string, string>)[skill.proficiency || ''] || 'Tingkat belum diisi'}
+                    {t(({ beginner: 'Pemula', intermediate: 'Menengah', advanced: 'Mahir', expert: 'Ahli' } as Record<string, string>)[skill.proficiency || ''] || 'Tingkat belum diisi')}
                   </dd>
                 </div>
               ))}
             </dl>
           ) : (
-            <p className="py-3 text-sm leading-6 text-slate-600">Tambahkan keahlian pada profil Anda untuk melihat ringkasannya.</p>
+            <p className="py-3 text-sm leading-6 text-slate-600">{t("Tambahkan keahlian pada profil Anda untuk melihat ringkasannya.")}</p>
           )}
         </section>
-        <section className="ams-panel self-start overflow-hidden" aria-label="Evaluasi">
+        <section className="ams-panel self-start overflow-hidden" aria-label={t("Evaluasi")}>
           {[
             {href:'/dashboard/reviews',label:'Evaluasi saya'},
           ].map((item) => (
             <Link key={item.href} href={item.href} className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-200 px-4 text-sm font-medium text-slate-900 last:border-b-0 hover:bg-slate-50 sm:px-5">
-              {item.label}
+              {t(item.label)}
               <svg aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m9 18 6-6-6-6" />
               </svg>

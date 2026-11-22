@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAmsLocale } from "@/components/ams-language";
 
 const faqs = [
   {
@@ -22,6 +23,7 @@ const faqs = [
 ];
 
 export function FAQ() {
+  const { t } = useAmsLocale();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
@@ -33,11 +35,9 @@ export function FAQ() {
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D9A441]">
               FAQ
             </span>
-            <h2 className="mt-4 text-3xl font-light tracking-[-0.025em] text-slate-900 sm:text-4xl md:text-5xl">
-              Pertanyaan yang<br />sering diajukan.
+            <h2 className="mt-4 text-3xl font-light tracking-[-0.025em] text-slate-900 sm:text-4xl md:text-5xl">{t("Pertanyaan yang")}<br />sering diajukan.
             </h2>
-            <p className="mt-5 max-w-xs text-sm leading-relaxed text-slate-600 md:text-base">
-              Tidak menemukan jawaban? Tim kami siap membantu di{' '}
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-slate-600 md:text-base">{t("Tidak menemukan jawaban? Tim kami siap membantu di")}{' '}
               <a href="mailto:hello@binahub.id" className="font-medium text-[#0B2C6B] underline underline-offset-2">
                 hello@binahub.id
               </a>.
@@ -55,7 +55,7 @@ export function FAQ() {
                     className="group flex w-full items-center justify-between gap-4 py-5 text-left"
                   >
                     <span className={`text-sm font-medium transition sm:text-base ${isOpen ? 'text-[#0B2C6B]' : 'text-slate-900 group-hover:text-[#0B2C6B]'}`}>
-                      {faq.question}
+                      {t(faq.question)}
                     </span>
                     <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border transition-all ${isOpen ? 'rotate-180 border-[#0B2C6B] bg-[#0B2C6B] text-white' : 'border-slate-300 text-slate-500'}`}>
                       <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -66,7 +66,7 @@ export function FAQ() {
                   {isOpen && (
                     <div className="animate-accordionDown overflow-hidden">
                       <p className="pb-5 pr-8 text-sm leading-relaxed text-slate-600">
-                        {faq.answer}
+                        {t(faq.answer)}
                       </p>
                     </div>
                   )}

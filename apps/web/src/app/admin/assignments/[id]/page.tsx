@@ -8,6 +8,7 @@ import { Avatar, ServiceError, useToast } from '../../../../components/ui';
 import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
 import { assignmentStatusLabel, assignmentStatusTone, formatAssignmentDate, nextAssignmentTransition, type AssignmentLifecycle, type AssignmentWork } from '@/lib/assignment-display';
 import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Assignment = {
   id: string;
@@ -150,6 +151,7 @@ const getStepIndex = (status: string, workStatus?: string) => {
 };
 
 export default function AssignmentDetailPage() {
+  const { t } = useAmsLocale();
   const { id } = useParams();
   const { user, accessToken } = useAuth();
   const { toast } = useToast();
@@ -508,13 +510,13 @@ export default function AssignmentDetailPage() {
     );
   }
 
-  if (loadError) return <ServiceError title="Penugasan belum dapat dimuat" message="Periksa koneksi dan coba lagi." onRetry={fetchAssignees} />;
+  if (loadError) return <ServiceError title={t("Penugasan belum dapat dimuat")} message={t("Periksa koneksi dan coba lagi.")} onRetry={fetchAssignees} />;
 
   if (!assignment) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center">
-        <p className="text-sm font-medium text-slate-900">Assignment tidak ditemukan</p>
-        <Link href="/admin/assignments" className="mt-4 text-sm text-[#0B2C6B] hover:underline">Kembali ke daftar</Link>
+        <p className="text-sm font-medium text-slate-900">{t("Assignment tidak ditemukan")}</p>
+        <Link href="/admin/assignments" className="mt-4 text-sm text-[#0B2C6B] hover:underline">{t("Kembali ke daftar")}</Link>
       </div>
     );
   }
@@ -577,7 +579,7 @@ export default function AssignmentDetailPage() {
           <p className="mt-1 break-words text-sm text-slate-600">{assignment.client_name}</p>
           {assignment.description && <p className="mt-3 break-words text-sm leading-6 text-slate-600">{assignment.description}</p>}
           <p className="mt-3 text-xs leading-5 text-slate-600">
-            {[...new Set([assignment.start_date, assignment.end_date].map(formatAssignmentDate).filter(Boolean))].join(' – ') || 'Jadwal belum ditentukan'}
+            {[...new Set([assignment.start_date, assignment.end_date].map(formatAssignmentDate).filter(Boolean))].join(' – ') || t("Jadwal belum ditentukan")}
             {assignment.needed_roles.length > 0 && ' · ' + assignment.needed_roles.join(', ')}
           </p>
         </div>
@@ -589,12 +591,12 @@ export default function AssignmentDetailPage() {
             </div>
           ))}
         </div>
-        {phase === 'draft' && <p className="text-sm text-slate-600">Aktifkan penugasan sebelum mengirim undangan.</p>}
-        {phase === 'paused' && <p className="text-sm text-slate-600">Undangan, pencatatan, dan pengiriman laporan ditahan sampai penugasan dilanjutkan.</p>}
+        {phase === 'draft' && <p className="text-sm text-slate-600">{t("Aktifkan penugasan sebelum mengirim undangan.")}</p>}
+        {phase === 'paused' && <p className="text-sm text-slate-600">{t("Undangan, pencatatan, dan pengiriman laporan ditahan sampai penugasan dilanjutkan.")}</p>}
         {lifecycle?.ended && ['ended', 'awaiting_report', 'under_review'].includes(phase) && (
-          <p className="text-sm text-slate-600">Jadwal pelaksanaan sudah lewat. Associate masih dapat mengirim laporan yang belum selesai.</p>
+          <p className="text-sm text-slate-600">{t("Jadwal pelaksanaan sudah lewat. Associate masih dapat mengirim laporan yang belum selesai.")}</p>
         )}
-        {lifecycle?.schedule_incomplete && lifecycle.is_active && <p className="text-sm text-slate-600">Lengkapi tanggal mulai dan selesai agar status mengikuti jadwal.</p>}
+        {lifecycle?.schedule_incomplete && lifecycle.is_active && <p className="text-sm text-slate-600">{t("Lengkapi tanggal mulai dan selesai agar status mengikuti jadwal.")}</p>}
         <div className="flex flex-wrap gap-2">
           {canInvite && (
             <button type="button" onClick={() => {
@@ -603,7 +605,7 @@ export default function AssignmentDetailPage() {
             }} className="min-h-11 rounded-xl bg-[#0B2C6B] px-4 text-sm font-semibold text-white hover:bg-[#123575]">Undang associate</button>
           )}
           {changeStatus && <button type="button" disabled={updatingStatus} onClick={() => void handleAssignmentStatus(changeStatus[0])} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-[#0B2C6B] disabled:opacity-50">{changeStatus[1]}</button>}
-          {canClose && <button type="button" disabled={updatingStatus} onClick={() => void handleAssignmentStatus('completed')} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-[#0B2C6B] disabled:opacity-50">Tutup penugasan</button>}
+          {canClose && <button type="button" disabled={updatingStatus} onClick={() => void handleAssignmentStatus('completed')} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-[#0B2C6B] disabled:opacity-50">{t("Tutup penugasan")}</button>}
           {canCancel && <button type="button" disabled={updatingStatus} onClick={() => void handleAssignmentStatus('cancelled')} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-50">Batalkan</button>}
         </div>
       </section>
@@ -612,33 +614,30 @@ export default function AssignmentDetailPage() {
         <div className="ams-panel p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Pilih Associate untuk Diundang</h3>
-              <p className="mt-0.5 text-xs text-slate-500">Tentukan rincian fee setiap orang sebelum undangan dikirim. Undangan cadangan boleh lebih banyak dari slot, tetapi penerimaan berhenti saat slot penuh.</p>
+              <h3 className="text-sm font-semibold text-slate-900">{t("Pilih Associate untuk Diundang")}</h3>
+              <p className="mt-0.5 text-xs text-slate-500">{t("Tentukan rincian fee setiap orang sebelum undangan dikirim. Undangan cadangan boleh lebih banyak dari slot, tetapi penerimaan berhenti saat slot penuh.")}</p>
             </div>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari nama, email, skill, atau kota..."
+              placeholder={t("Cari nama, email, skill, atau kota...")}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none w-64"
             />
           </div>
-          <label className="mb-4 block max-w-sm text-xs font-semibold text-slate-700">Batas respons undangan
-            <input type="datetime-local" value={inviteDeadline} onChange={(event) => setInviteDeadline(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal" />
-            <span className="mt-1 block font-normal text-slate-500">Waktu mengikuti zona waktu perangkat Anda. Setelah lewat, associate tidak dapat menerima undangan.</span>
+          <label className="mb-4 block max-w-sm text-xs font-semibold text-slate-700">{t("Batas respons undangan")}<input type="datetime-local" value={inviteDeadline} onChange={(event) => setInviteDeadline(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal" />
+            <span className="mt-1 block font-normal text-slate-500">{t("Waktu mengikuti zona waktu perangkat Anda. Setelah lewat, associate tidak dapat menerima undangan.")}</span>
           </label>
           {loadingRecs && (
             <div className="flex items-center justify-center gap-2 py-3 bg-blue-50/50 rounded-lg border border-blue-100 mb-4 text-xs font-semibold text-[#0B2C6B] animate-pulse">
               <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              AI sedang menganalisis kecocokan kandidat berdasarkan detail proyek...
-            </div>
+              </svg>{t("AI sedang menganalisis kecocokan kandidat berdasarkan detail proyek...")}</div>
           )}
           <div className="max-h-96 overflow-y-auto space-y-2">
             {associatesWithRanks.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-4">Tidak ada associate tersedia</p>
+              <p className="text-sm text-slate-400 text-center py-4">{t("Tidak ada associate tersedia")}</p>
             ) : (
               associatesWithRanks.map((a) => (
                 <div
@@ -688,9 +687,7 @@ export default function AssignmentDetailPage() {
                           href={`/admin/associates/${a.id}`}
                           target="_blank"
                           className="rounded-md px-2 py-1 text-[10px] font-medium text-[#0B2C6B] hover:bg-blue-100 flex-shrink-0"
-                        >
-                          Lihat Profil
-                        </Link>
+                        >{t("Lihat Profil")}</Link>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
                         {a.city && (
@@ -707,7 +704,7 @@ export default function AssignmentDetailPage() {
                       </div>
                       {a.expertises.length > 0 && (
                         <div className="mt-1">
-                          <span className="text-[10px] font-medium text-slate-400">Keahlian: </span>
+                          <span className="text-[10px] font-medium text-slate-400">{t("Keahlian:")} </span>
                           {a.expertises.map((e, i) => (
                             <span key={i} className="text-[10px] font-medium text-indigo-600">{e}{i < a.expertises.length - 1 ? ', ' : ''}</span>
                           ))}
@@ -727,7 +724,7 @@ export default function AssignmentDetailPage() {
                         <div className="mt-3 rounded-lg bg-[#0B2C6B]/[0.03] border border-[#0B2C6B]/10 p-2.5 flex items-start gap-2">
                           <span className="text-xs">💡</span>
                           <p className="text-xs italic text-slate-600 leading-normal">
-                            <strong className="text-[#0B2C6B] not-italic font-bold">AI Rekomendasi:</strong> &ldquo;{a.reasoning}&rdquo;
+                            <strong className="text-[#0B2C6B] not-italic font-bold">{t("AI Rekomendasi:")}</strong> &ldquo;{a.reasoning}&rdquo;
                           </p>
                         </div>
                       )}
@@ -741,14 +738,14 @@ export default function AssignmentDetailPage() {
                           <div className="mt-3 rounded-xl border border-blue-200 bg-white p-3">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <div>
-                                <p className="text-xs font-bold text-slate-900">Kompensasi untuk {a.full_name || a.email}</p>
-                                <p className="mt-0.5 text-[11px] text-slate-500">Rincian dan total akan ditampilkan di undangan.</p>
+                                <p className="text-xs font-bold text-slate-900">{t("Kompensasi untuk")} {a.full_name || a.email}</p>
+                                <p className="mt-0.5 text-[11px] text-slate-500">{t("Rincian dan total akan ditampilkan di undangan.")}</p>
                               </div>
                             </div>
                             <div className="mt-3 grid gap-2 sm:grid-cols-3">
                               {([['amount', 'Kompensasi *'], ['transport', 'Transportasi'], ['preparation', 'Persiapan']] as const).map(([field, label]) => (
                                 <label key={field} className="text-[11px] font-semibold text-slate-600">{label}
-                                  <input type="number" min={field === 'amount' ? '1' : '0'} step="1" value={draft[field]} onChange={(event) => updateDraft({ [field]: event.target.value })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal outline-none focus:border-[#0B2C6B]" placeholder={field === 'amount' ? '1000000' : 'Opsional'} />
+                                  <input type="number" min={field === 'amount' ? '1' : '0'} step="1" value={draft[field]} onChange={(event) => updateDraft({ [field]: event.target.value })} className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs font-normal outline-none focus:border-[#0B2C6B]" placeholder={field === 'amount' ? '1000000' : t("Opsional")} />
                                 </label>
                               ))}
                             </div>
@@ -763,7 +760,7 @@ export default function AssignmentDetailPage() {
             )}
           </div>
           <div className="mt-4 flex justify-end gap-2">
-            <button onClick={() => { setShowInvite(false); setSelectedIds([]); setInviteCompensations({}); }} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
+            <button onClick={() => { setShowInvite(false); setSelectedIds([]); setInviteCompensations({}); }} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("Batal")}</button>
             <button onClick={handleInvite} disabled={inviting || selectedIds.length === 0} className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white hover:bg-[#0A255A] disabled:opacity-50">
               {inviting ? 'Mengundang...' : `Undang ${selectedIds.length} Associate`}
             </button>
@@ -773,12 +770,12 @@ export default function AssignmentDetailPage() {
 
       <div className="ams-panel">
         <div className="border-b border-slate-200 px-6 py-4">
-          <h2 className="text-base font-semibold text-slate-900">Tim penugasan ({assignees.length})</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t("Tim penugasan (")}{assignees.length})</h2>
         </div>
         {assignees.length === 0 ? (
           <div className="flex min-h-[200px] flex-col items-center justify-center">
-            <p className="text-sm font-medium text-slate-900">Belum ada associate diundang</p>
-            <p className="mt-1 text-xs text-slate-500">Klik &quot;Undang Associate&quot; untuk menambah anggota</p>
+            <p className="text-sm font-medium text-slate-900">{t("Belum ada associate diundang")}</p>
+            <p className="mt-1 text-xs text-slate-500">{t("Klik \"Undang Associate\" untuk menambah anggota")}</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
@@ -811,13 +808,9 @@ export default function AssignmentDetailPage() {
                       <Link
                         href={`/admin/associates/${a.associate_id}`}
                         className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                      >
-                        Lihat Profil
-                      </Link>
+                      >{t("Lihat Profil")}</Link>
                       {['invited', 'applied', 'accepted', 'in_progress'].includes(a.status) && !['cancelled', 'completed'].includes(phase) && (
-                        <button type="button" onClick={() => void handleRemove(a)} className="min-h-11 rounded-lg px-3 text-xs font-medium text-rose-800 hover:bg-rose-50">
-                          Batalkan penugasan
-                        </button>
+                        <button type="button" onClick={() => void handleRemove(a)} className="min-h-11 rounded-lg px-3 text-xs font-medium text-rose-800 hover:bg-rose-50">{t("Batalkan penugasan")}</button>
                       )}
                     </div>
                   </div>
@@ -826,28 +819,26 @@ export default function AssignmentDetailPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Kompensasi associate</p>
+                          <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{t("Kompensasi associate")}</p>
                           <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${compensationOverride ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
-                            {compensationOverride ? 'Nilai khusus' : 'Mengikuti default'}
+                            {compensationOverride ? t("Nilai khusus") : 'Mengikuti default'}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm font-bold text-slate-900">{compensationOverride || assignment.compensation || 'Belum ditetapkan'}</p>
+                        <p className="mt-1 text-sm font-bold text-slate-900">{compensationOverride || assignment.compensation || t("Belum ditetapkan")}</p>
                         {a.transport_amount != null && <p className="mt-1 text-xs text-slate-600">Transportasi: Rp {Number(a.transport_amount).toLocaleString('id-ID')}</p>}
                         {a.preparation_amount != null && <p className="text-xs text-slate-600">Persiapan: Rp {Number(a.preparation_amount).toLocaleString('id-ID')}</p>}
                         {a.compensation_amount != null && <p className="mt-1 text-xs font-bold text-slate-900">Total fee: Rp {(Number(a.compensation_amount) + Number(a.transport_amount || 0) + Number(a.preparation_amount || 0)).toLocaleString('id-ID')}</p>}
-                        {a.status === 'invited' && a.compensation_amount === null && a.invitation_expires_at && <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-900">Penawaran lama ini belum memiliki fee. Jangan minta associate menerimanya. Batalkan penawaran dengan tombol di atas, lalu kirim penawaran baru dengan rincian fee lengkap.</p>}
+                        {a.status === 'invited' && a.compensation_amount === null && a.invitation_expires_at && <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-900">{t("Penawaran lama ini belum memiliki fee. Jangan minta associate menerimanya. Batalkan penawaran dengan tombol di atas, lalu kirim penawaran baru dengan rincian fee lengkap.")}</p>}
                         {a.invitation_expires_at && <p className="mt-1 text-xs text-slate-600">Batas respons: {new Date(a.invitation_expires_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' })} WIB</p>}
                         {a.compensation_notes && <p className="mt-1 text-xs leading-5 text-slate-500">{a.compensation_notes}</p>}
-                        {compensationLocked && <p className="mt-1 text-[10px] font-medium text-amber-700">Fee terkunci setelah penawaran dikirim agar sesuai dengan email associate.</p>}
+                        {compensationLocked && <p className="mt-1 text-[10px] font-medium text-amber-700">{t("Fee terkunci setelah penawaran dikirim agar sesuai dengan email associate.")}</p>}
                       </div>
                       <button
                         type="button"
                         onClick={() => openCompensationEditor(a)}
                         disabled={compensationLocked}
                         className="min-h-9 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
-                      >
-                        Atur kompensasi
-                      </button>
+                      >{t("Atur kompensasi")}</button>
                     </div>
 
                     {compensationEditor?.assigneeId === a.id && (
@@ -859,15 +850,13 @@ export default function AssignmentDetailPage() {
                             className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold ${compensationEditor.mode === 'inherit' ? 'border-[#0B2C6B] bg-blue-50 text-[#0B2C6B]' : 'border-slate-200 text-slate-600'}`}
                           >
                             Ikuti default assignment
-                            <span className="mt-1 block font-normal text-slate-500">{assignment.compensation || 'Default belum ditetapkan'}</span>
+                            <span className="mt-1 block font-normal text-slate-500">{assignment.compensation || t("Default belum ditetapkan")}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setCompensationEditor({ ...compensationEditor, mode: 'override' })}
                             className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold ${compensationEditor.mode === 'override' ? 'border-[#0B2C6B] bg-blue-50 text-[#0B2C6B]' : 'border-slate-200 text-slate-600'}`}
-                          >
-                            Gunakan nilai khusus
-                            <span className="mt-1 block font-normal text-slate-500">Hanya berlaku untuk associate ini</span>
+                          >{t("Gunakan nilai khusus")}<span className="mt-1 block font-normal text-slate-500">{t("Hanya berlaku untuk associate ini")}</span>
                           </button>
                         </div>
 
@@ -884,15 +873,15 @@ export default function AssignmentDetailPage() {
                                 {Object.entries(compensationBasisLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                               </select>
                             </label>
-                            <label className="text-xs font-semibold text-slate-600 sm:col-span-3">Catatan kesepakatan <span className="font-normal text-slate-400">(opsional)</span>
-                              <textarea rows={2} maxLength={2000} value={compensationEditor.notes} onChange={(event) => setCompensationEditor({ ...compensationEditor, notes: event.target.value })} className="mt-1 w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal leading-5 outline-none focus:border-[#0B2C6B]" placeholder="Contoh: termasuk transport lokal, dibayarkan setelah laporan disetujui." />
+                            <label className="text-xs font-semibold text-slate-600 sm:col-span-3">{t("Catatan kesepakatan")} <span className="font-normal text-slate-400">{t("(opsional)")}</span>
+                              <textarea rows={2} maxLength={2000} value={compensationEditor.notes} onChange={(event) => setCompensationEditor({ ...compensationEditor, notes: event.target.value })} className="mt-1 w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal leading-5 outline-none focus:border-[#0B2C6B]" placeholder={t("Contoh: termasuk transport lokal, dibayarkan setelah laporan disetujui.")} />
                             </label>
                           </div>
                         )}
 
                         <div className="flex justify-end gap-2">
-                          <button type="button" onClick={() => setCompensationEditor(null)} className="min-h-9 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600">Batal</button>
-                          <button type="button" onClick={() => void saveCompensation()} disabled={savingCompensation} className="min-h-9 rounded-lg bg-[#0B2C6B] px-4 text-xs font-semibold text-white disabled:opacity-50">{savingCompensation ? 'Menyimpan…' : 'Simpan kompensasi'}</button>
+                          <button type="button" onClick={() => setCompensationEditor(null)} className="min-h-9 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600">{t("Batal")}</button>
+                          <button type="button" onClick={() => void saveCompensation()} disabled={savingCompensation} className="min-h-9 rounded-lg bg-[#0B2C6B] px-4 text-xs font-semibold text-white disabled:opacity-50">{savingCompensation ? t("Menyimpan…") : t("Simpan kompensasi")}</button>
                         </div>
                       </div>
                     )}
@@ -904,9 +893,7 @@ export default function AssignmentDetailPage() {
                     {/* Stepper Header */}
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <svg className="h-4 w-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                        Progres Tugas
-                      </span>
+                        <svg className="h-4 w-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>{t("Progres Tugas")}</span>
                     </div>
 
                     {/* Stepper Timeline Visual */}
@@ -945,7 +932,7 @@ export default function AssignmentDetailPage() {
                                 isActive ? 'text-indigo-600 font-extrabold' : isCompleted ? 'text-slate-700' : 'text-slate-400'
                               }`}
                             >
-                              {step.label}
+                              {t(step.label)}
                             </span>
                           </div>
                         );
@@ -959,16 +946,16 @@ export default function AssignmentDetailPage() {
                         <span>{a.invited_at ? new Date(a.invited_at).toLocaleDateString('id-ID') : '-'}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[9px] font-extrabold uppercase">2. Diterima</span>
-                        <span>{a.accepted_at ? new Date(a.accepted_at).toLocaleDateString('id-ID') : 'Menunggu...'}</span>
+                        <span className="text-slate-400 block text-[9px] font-extrabold uppercase">{t("2. Diterima")}</span>
+                        <span>{a.accepted_at ? new Date(a.accepted_at).toLocaleDateString('id-ID') : t("Menunggu...")}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[9px] font-extrabold uppercase">3. Mulai Kerja</span>
+                        <span className="text-slate-400 block text-[9px] font-extrabold uppercase">{t("3. Mulai Kerja")}</span>
                         <span>{workLabel}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[9px] font-extrabold uppercase">4. Kirim Laporan</span>
-                        <span>{a.evidence_submitted_at ? new Date(a.evidence_submitted_at).toLocaleDateString('id-ID') : 'Belum Kirim'}</span>
+                        <span className="text-slate-400 block text-[9px] font-extrabold uppercase">{t("4. Kirim Laporan")}</span>
+                        <span>{a.evidence_submitted_at ? new Date(a.evidence_submitted_at).toLocaleDateString('id-ID') : t("Belum Kirim")}</span>
                       </div>
                     </div>
                   </div>
@@ -976,7 +963,7 @@ export default function AssignmentDetailPage() {
                   {workStatus === 'applied' && (
                     <div className="flex flex-wrap gap-2">
                       <button type="button" disabled={!canInvite || !hasVacancy} onClick={() => void reviewApplication(a.id, 'accepted')} className="min-h-11 rounded-xl bg-blue-50 px-3 text-sm font-semibold text-[#0B2C6B] disabled:opacity-50">Terima lamaran</button>
-                      <button type="button" onClick={() => void reviewApplication(a.id, 'declined')} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-rose-800 hover:bg-rose-50">Tolak lamaran</button>
+                      <button type="button" onClick={() => void reviewApplication(a.id, 'declined')} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-rose-800 hover:bg-rose-50">{t("Tolak lamaran")}</button>
                     </div>
                   )}
                   {/* Submission Evidence Panel */}
@@ -984,11 +971,9 @@ export default function AssignmentDetailPage() {
                     <div className="ml-0 sm:ml-13 rounded-xl border border-slate-200 bg-slate-50/50 p-5 space-y-4 shadow-inner">
                       <div className="flex items-center justify-between border-b border-slate-100 pb-2 flex-wrap gap-2">
                         <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                          <svg className="h-4 w-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                          Dokumen & Bukti Pekerjaan
-                        </span>
+                          <svg className="h-4 w-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>{t("Dokumen & Bukti Pekerjaan")}</span>
                         {a.evidence_submitted_at && (
-                          <span className="text-[10px] text-slate-400 font-semibold">Kirim Laporan: {new Date(a.evidence_submitted_at).toLocaleString('id-ID')}</span>
+                          <span className="text-[10px] text-slate-400 font-semibold">{t("Kirim Laporan:")} {new Date(a.evidence_submitted_at).toLocaleString('id-ID')}</span>
                         )}
                       </div>
 
@@ -1000,7 +985,7 @@ export default function AssignmentDetailPage() {
                             {assigneeProgressLogs[a.associate_id].map((log: any) => (
                               <div key={log.id} className="rounded-lg bg-white border border-slate-200 p-3 text-xs space-y-1.5 shadow-sm">
                                 <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold">
-                                  <span>Log Kegiatan</span>
+                                  <span>{t("Log Kegiatan")}</span>
                                   <span>{new Date(log.created_at).toLocaleString('id-ID')}</span>
                                 </div>
                                 <p className="text-slate-700 whitespace-pre-wrap">{log.notes}</p>
@@ -1027,32 +1012,32 @@ export default function AssignmentDetailPage() {
 
                       {/* Photos Documentation */}
                       <div className="space-y-1.5">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Foto Dokumentasi Kegiatan (Saat Kerja)</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("Foto Dokumentasi Kegiatan (Saat Kerja)")}</p>
                         {photos.length > 0 ? (
                           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
                             {photos.map((pUrl, pIdx) => (
                               <ProtectedFileLink key={pIdx} href={pUrl} accessToken={accessToken} onOpenError={(message) => toast('error', message)} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 hover:opacity-90 transition shadow-sm">
                                 <ProtectedFileImage src={pUrl} accessToken={accessToken} alt="" className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <span className="text-white text-[10px] font-bold">Buka Foto ↗</span>
+                                  <span className="text-white text-[10px] font-bold">{t("Buka Foto ↗")}</span>
                                 </div>
                               </ProtectedFileLink>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-400 italic">Belum ada foto kegiatan diunggah</p>
+                          <p className="text-xs text-slate-400 italic">{t("Belum ada foto kegiatan diunggah")}</p>
                         )}
                       </div>
 
                       {/* Written Report */}
                       <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ringkasan Laporan Akhir (Setelah Kerja)</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("Ringkasan Laporan Akhir (Setelah Kerja)")}</p>
                         {report ? (
                           <div className="rounded-lg bg-white border border-slate-200 p-3.5 text-xs text-slate-700 whitespace-pre-wrap leading-relaxed shadow-sm">
                             {report}
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-400 italic">Belum ada ulasan/catatan laporan akhir</p>
+                          <p className="text-xs text-slate-400 italic">{t("Belum ada ulasan/catatan laporan akhir")}</p>
                         )}
                       </div>
 
@@ -1067,19 +1052,17 @@ export default function AssignmentDetailPage() {
                           >
                             <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Download / Buka Berkas Laporan Akhir
-                          </ProtectedFileLink>
+                            </svg>{t("Download / Buka Berkas Laporan Akhir")}</ProtectedFileLink>
                         </div>
                       )}
 
                       {/* Admin Review Console */}
                       {workStatus === 'under_review' && canReview && (
                         <div className="pt-4 border-t border-slate-200 space-y-3">
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Penilaian / Feedback Review Admin</label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t("Penilaian / Feedback Review Admin")}</label>
                           <textarea
                             rows={2}
-                            placeholder="Tulis umpan balik penilaian kerja atau detail yang perlu direvisi..."
+                            placeholder={t("Tulis umpan balik penilaian kerja atau detail yang perlu direvisi...")}
                             value={revisionNotes[a.id] || ''}
                             onChange={(e) => setRevisionNotes({ ...revisionNotes, [a.id]: e.target.value })}
                             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs outline-none focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 resize-none transition shadow-sm"
@@ -1088,15 +1071,11 @@ export default function AssignmentDetailPage() {
                             <button
                               onClick={() => handleReviewEvidence(a.id, 'reviewed')}
                               className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-1.5"
-                            >
-                              ✓ Setujui Laporan
-                            </button>
+                            >{t("✓ Setujui Laporan")}</button>
                             <button
                               onClick={() => handleReviewEvidence(a.id, 'in_progress')}
                               className="rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-white hover:bg-amber-600 transition-colors shadow-sm flex items-center gap-1.5"
-                            >
-                              ⚠ Minta Revisi
-                            </button>
+                            >{t("⚠ Minta Revisi")}</button>
                           </div>
                         </div>
                       )}
@@ -1106,10 +1085,10 @@ export default function AssignmentDetailPage() {
                         <div className="rounded-xl border border-emerald-100 p-3.5 bg-emerald-50/50 text-xs text-slate-700 flex items-start gap-2 pt-3 border-t border-slate-200">
                           <span className="text-xs">✓</span>
                           <div>
-                            <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">Umpan Balik Terakhir Admin</p>
+                            <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">{t("Umpan Balik Terakhir Admin")}</p>
                             <p className="text-slate-600 italic">&ldquo;{a.evidence_reviewer_notes}&rdquo;</p>
                             {a.evidence_reviewed_at && (
-                              <p className="text-[9px] text-slate-400 mt-1 font-semibold">Tinjau Tanggal: {new Date(a.evidence_reviewed_at).toLocaleDateString('id-ID')}</p>
+                              <p className="text-[9px] text-slate-400 mt-1 font-semibold">{t("Tinjau Tanggal:")} {new Date(a.evidence_reviewed_at).toLocaleDateString('id-ID')}</p>
                             )}
                           </div>
                         </div>

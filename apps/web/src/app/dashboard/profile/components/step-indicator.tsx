@@ -1,4 +1,5 @@
 'use client';
+import { useAmsLocale } from "@/components/ams-language";
 
 type StepIndicatorProps = {
   currentStep: number;
@@ -7,6 +8,7 @@ type StepIndicatorProps = {
 };
 
 export function StepIndicator({ currentStep, totalSteps, steps }: StepIndicatorProps) {
+  const { t } = useAmsLocale();
   return (
     <div className="mb-8">
       {/* Desktop: horizontal */}
@@ -42,7 +44,7 @@ export function StepIndicator({ currentStep, totalSteps, steps }: StepIndicatorP
                     isCurrent ? 'text-[#0B2C6B]' : isDone ? 'text-emerald-600' : 'text-slate-400'
                   }`}
                 >
-                  {step.label}
+                  {t(step.label)}
                 </span>
               </div>
               {!isLast && (
@@ -63,7 +65,7 @@ export function StepIndicator({ currentStep, totalSteps, steps }: StepIndicatorP
       <div className="sm:hidden">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-bold text-[#0B2C6B]">
-            Langkah {currentStep + 1} dari {totalSteps}
+            Langkah {currentStep + 1} {t("dari")} {totalSteps}
           </span>
           <span className="text-xs text-slate-500">{steps[currentStep]?.label}</span>
         </div>

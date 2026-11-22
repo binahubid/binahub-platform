@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Avatar } from '@/components/ui/avatar';
+import { useAmsLocale } from "@/components/ams-language";
 
 type ProfileDraft = {
   full_name: string;
@@ -190,6 +191,7 @@ export function StepReviewProfile({
   apiUrl,
   accessToken,
 }: StepReviewProfileProps) {
+  const { t } = useAmsLocale();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState('');
@@ -269,7 +271,7 @@ export function StepReviewProfile({
     <div className="space-y-5">
       {/* Profile Photo Uploader */}
       <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Foto Profil</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">{t("Foto Profil")}</h3>
         <div className="flex items-center gap-4">
           <div className="relative h-16 w-16 flex-shrink-0">
             <Avatar src={previewSrc || draft.photo_url} name={draft.full_name || 'Foto profil'} accessToken={accessToken} size="xl" />
@@ -295,9 +297,7 @@ export function StepReviewProfile({
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPhoto}
               className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              Pilih Foto
-            </button>
+            >{t("Pilih Foto")}</button>
             <p className="mt-1 text-[10px] text-slate-400">JPG, PNG, atau GIF · Maks. 5MB</p>
             {photoError && <p className="mt-1 text-[10px] text-red-500 font-medium">{photoError}</p>}
           </div>
@@ -306,32 +306,32 @@ export function StepReviewProfile({
 
       {/* Section: Identitas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Nama Lengkap *" fieldKey="full_name" value={draft.full_name} isAI={aiFilledFields.has('full_name')} onChange={handleChange} placeholder="Misal: Budi Santoso" />
-        <Field label="Nama Panggilan" fieldKey="preferred_name" value={draft.preferred_name} isAI={aiFilledFields.has('preferred_name')} onChange={handleChange} placeholder="Misal: Budi" hint="Nama panggilan" />
+        <Field label={t("Nama Lengkap *")} fieldKey="full_name" value={draft.full_name} isAI={aiFilledFields.has('full_name')} onChange={handleChange} placeholder="Misal: Budi Santoso" />
+        <Field label={t("Nama Panggilan")} fieldKey="preferred_name" value={draft.preferred_name} isAI={aiFilledFields.has('preferred_name')} onChange={handleChange} placeholder="Misal: Budi" hint={t("Nama panggilan")} />
       </div>
 
-      <Field label="Headline Profesional" fieldKey="headline" value={draft.headline} isAI={aiFilledFields.has('headline')} onChange={handleChange} placeholder="Misal: Senior Trainer & Facilitator | Leadership Coach" />
+      <Field label={t("Headline Profesional")} fieldKey="headline" value={draft.headline} isAI={aiFilledFields.has('headline')} onChange={handleChange} placeholder="Misal: Senior Trainer & Facilitator | Leadership Coach" />
       
-      <Field label="Bio / Ringkasan Profesional" fieldKey="bio" value={draft.bio} isAI={aiFilledFields.has('bio')} onChange={handleChange} placeholder="Ceritakan keahlian dan nilai yang Anda tawarkan..." multiline />
+      <Field label={t("Bio / Ringkasan Profesional")} fieldKey="bio" value={draft.bio} isAI={aiFilledFields.has('bio')} onChange={handleChange} placeholder={t("Ceritakan keahlian dan nilai yang Anda tawarkan...")} multiline />
 
       {/* Section: Kontak & Lokasi */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Nomor WhatsApp" fieldKey="phone" value={draft.phone} isAI={aiFilledFields.has('phone')} onChange={handleChange} type="tel" placeholder="08xxxxxxxxxx" />
-        <Field label="Kota / Domisili" fieldKey="city" value={draft.city} isAI={aiFilledFields.has('city')} onChange={handleChange} placeholder="Jakarta" />
+        <Field label={t("Nomor WhatsApp")} fieldKey="phone" value={draft.phone} isAI={aiFilledFields.has('phone')} onChange={handleChange} type="tel" placeholder="08xxxxxxxxxx" />
+        <Field label={t("Kota / Domisili")} fieldKey="city" value={draft.city} isAI={aiFilledFields.has('city')} onChange={handleChange} placeholder="Jakarta" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Kewarganegaraan" fieldKey="nationality" value={draft.nationality} isAI={aiFilledFields.has('nationality')} onChange={handleChange} placeholder="Indonesia" />
-        <CustomSelect label="Zona Waktu" value={draft.timezone} options={TIMEZONE_OPTIONS} isAI={false} onChange={(val) => handleChange('timezone', val)} />
+        <CustomSelect label={t("Zona Waktu")} value={draft.timezone} options={TIMEZONE_OPTIONS} isAI={false} onChange={(val) => handleChange('timezone', val)} />
       </div>
 
       {/* Section: Data Pribadi */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Tanggal Lahir" fieldKey="date_of_birth" value={draft.date_of_birth} isAI={aiFilledFields.has('date_of_birth')} onChange={handleChange} type="date" />
+        <Field label={t("Tanggal Lahir")} fieldKey="date_of_birth" value={draft.date_of_birth} isAI={aiFilledFields.has('date_of_birth')} onChange={handleChange} type="date" />
         <CustomSelect label="Gender" value={draft.gender} options={GENDER_OPTIONS} isAI={aiFilledFields.has('gender')} onChange={(val) => handleChange('gender', val)} />
       </div>
 
-      <p className="text-xs text-slate-400">* Wajib diisi</p>
+      <p className="text-xs text-slate-400">{t("* Wajib diisi")}</p>
     </div>
   );
 }

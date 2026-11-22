@@ -1,4 +1,5 @@
 'use client';
+import { useAmsLocale } from "@/components/ams-language";
 
 const benefits = [
   {
@@ -34,6 +35,7 @@ const benefits = [
 ];
 
 export function Benefits() {
+  const { t } = useAmsLocale();
   return (
     <section className="border-t border-slate-200/70 bg-white py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
@@ -43,13 +45,9 @@ export function Benefits() {
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D9A441]">
               Manfaat
             </span>
-            <h2 className="mt-4 text-3xl font-light tracking-[-0.025em] text-slate-900 sm:text-4xl md:text-5xl">
-              Dirancang untuk<br />pertumbuhan karir Anda.
-            </h2>
+            <h2 className="mt-4 text-3xl font-light tracking-[-0.025em] text-slate-900 sm:text-4xl md:text-5xl">{t("Dirancang untuk")}<br />{t("pertumbuhan karir Anda.")}</h2>
           </div>
-          <p className="max-w-sm text-sm leading-relaxed text-slate-600 md:text-base">
-            Platform yang mendukung associate dari pendaftaran hingga karir senior berkembang.
-          </p>
+          <p className="max-w-sm text-sm leading-relaxed text-slate-600 md:text-base">{t("Platform yang mendukung associate dari pendaftaran hingga karir senior berkembang.")}</p>
         </div>
 
         {/* Benefits list - clean rows with category tag */}
@@ -71,10 +69,10 @@ export function Benefits() {
               </div>
               <div>
                 <h3 className="text-base font-semibold text-slate-900 md:text-lg">
-                  {benefit.title}
+                  {t(benefit.title)}
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  {benefit.description}
+                  {t(benefit.description)}
                 </p>
               </div>
             </div>

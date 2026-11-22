@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useOnboarding } from './context';
+import { useAmsLocale } from "@/components/ams-language";
 
 const steps = [
   {
@@ -29,6 +30,7 @@ export function OnboardingChecklist({
   hasCV,
   hasProfile,
 }: OnboardingChecklistProps) {
+  const { t } = useAmsLocale();
   const { completedSteps, reopenModal } = useOnboarding();
 
   // Dynamic status evaluation
@@ -49,15 +51,13 @@ export function OnboardingChecklist({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Lengkapi Profil Anda</h3>
-          <p className="text-xs text-slate-500 mt-0.5">{completionPercent}% selesai</p>
+          <h3 className="text-sm font-bold text-slate-900">{t("Lengkapi Profil Anda")}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{completionPercent}{t("% selesai")}</p>
         </div>
         <button
           onClick={reopenModal}
           className="text-xs font-semibold text-[#0B2C6B] hover:text-[#0A255A] transition-colors"
-        >
-          Lihat Panduan
-        </button>
+        >{t("Lihat Panduan")}</button>
       </div>
 
       {/* Progress bar */}
@@ -97,9 +97,9 @@ export function OnboardingChecklist({
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-medium ${isDone ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
-                  {step.title}
+                  {t(step.title)}
                 </p>
-                <p className="text-xs text-slate-400">{step.description}</p>
+                <p className="text-xs text-slate-400">{t(step.description)}</p>
               </div>
               {!isDone && (
                 <svg className="h-4 w-4 text-slate-300 group-hover:text-[#0B2C6B] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">

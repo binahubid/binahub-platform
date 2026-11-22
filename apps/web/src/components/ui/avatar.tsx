@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ProtectedFileImage } from './protected-file';
+import { useAmsLocale } from "@/components/ams-language";
 
 export function Avatar({
   src,
@@ -18,6 +19,7 @@ export function Avatar({
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }) {
+  const { t } = useAmsLocale();
   const sizeClasses = {
     sm: 'h-8 w-8 text-xs',
     md: 'h-10 w-10 text-sm',
@@ -34,7 +36,7 @@ export function Avatar({
     .slice(0, 2) || '??';
 
   return (
-    <span role="img" aria-label={alt || name || 'Foto profil'} className={`ams-avatar ${sizeClasses[size]} ${className}`}>
+    <span role="img" aria-label={alt || name || t("Foto profil")} className={`ams-avatar ${sizeClasses[size]} ${className}`}>
       <span aria-hidden="true">{initials}</span>
       {src && accessToken ? (
         <ProtectedFileImage key={src} src={src} accessToken={accessToken} alt="" className="ams-avatar-image" />

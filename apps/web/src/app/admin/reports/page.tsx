@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../components/ui';
+import { useAmsLocale } from "@/components/ams-language";
 
 type ReportSummary = {
   total_associates: number;
@@ -20,6 +21,7 @@ type ReportSummary = {
 };
 
 export default function AdminReportsPage() {
+  const { t } = useAmsLocale();
   const { user, accessToken } = useAuth();
   const { toast } = useToast();
   const [data, setData] = useState<ReportSummary | null>(null);
@@ -87,7 +89,7 @@ export default function AdminReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Reports</h1>
-          <p className="mt-1 text-sm text-slate-500">Statistik dan laporan operasional BinaHub.</p>
+          <p className="mt-1 text-sm text-slate-500">{t("Statistik dan laporan operasional BinaHub.")}</p>
         </div>
         {data && (
           <div className="flex items-center gap-2">
@@ -122,7 +124,7 @@ export default function AdminReportsPage() {
         </div>
       ) : !data ? (
         <div className="ams-panel flex min-h-[400px] items-center justify-center">
-          <p className="text-sm text-slate-500">Gagal memuat data</p>
+          <p className="text-sm text-slate-500">{t("Gagal memuat data")}</p>
         </div>
       ) : (
         <>
@@ -130,8 +132,8 @@ export default function AdminReportsPage() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <ReportCard label="Total Associate" value={data.total_associates} sub={`${data.active_associates} aktif`} color="bg-[#0B2C6B]/10 text-[#0B2C6B]" />
             <ReportCard label="Pending Review" value={data.pending_associates} sub="Menunggu review" color="bg-amber-100 text-amber-700" />
-            <ReportCard label="Profile Belum Lengkap" value={data.incomplete_profiles} sub="Perlu diperbaiki" color="bg-red-50 text-red-600" />
-            <ReportCard label="Total Dokumen" value={data.total_documents} sub="CV & sertifikat" color="bg-blue-50 text-blue-700" />
+            <ReportCard label={t("Profile Belum Lengkap")} value={data.incomplete_profiles} sub="Perlu diperbaiki" color="bg-red-50 text-red-600" />
+            <ReportCard label={t("Total Dokumen")} value={data.total_documents} sub="CV & sertifikat" color="bg-blue-50 text-blue-700" />
           </div>
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
@@ -146,7 +148,7 @@ export default function AdminReportsPage() {
             <div className="ams-panel p-5">
               <h2 className="text-sm font-semibold text-slate-900 mb-4">Top Skills</h2>
               {data.top_skills.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8">Belum ada data skill</p>
+                <p className="text-sm text-slate-400 text-center py-8">{t("Belum ada data skill")}</p>
               ) : (
                 <div className="space-y-3">
                   {data.top_skills.map((s) => (
@@ -165,13 +167,13 @@ export default function AdminReportsPage() {
             {/* Top Cities */}
             <div className="ams-panel p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-slate-900">Top Lokasi</h2>
+                <h2 className="text-sm font-semibold text-slate-900">{t("Top Lokasi")}</h2>
                 {data.unknown_city_count > 0 && (
-                  <span className="text-[11px] text-slate-500">{data.unknown_city_count} belum diisi</span>
+                  <span className="text-[11px] text-slate-500">{data.unknown_city_count} {t("belum diisi")}</span>
                 )}
               </div>
               {data.top_cities.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8">Belum ada data lokasi</p>
+                <p className="text-sm text-slate-400 text-center py-8">{t("Belum ada data lokasi")}</p>
               ) : (
                 <div className="space-y-3">
                   {data.top_cities.map((c) => (

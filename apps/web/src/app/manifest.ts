@@ -1,11 +1,16 @@
 import type { MetadataRoute } from "next";
-export default function manifest(): MetadataRoute.Manifest {
+import { cookies } from "next/headers";
+import { amsLanguageCookie, amsLocale, amsTranslator } from "@/lib/ams-locale";
+
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const locale = amsLocale((await cookies()).get(amsLanguageCookie)?.value);
+  const t = amsTranslator(locale);
   return {
     id: "/",
     name: "BinaHub AMS",
     short_name: "BinaHub AMS",
-    lang: "id",
-    description: "Undangan, penugasan, dan ruang kerja associate BinaHub.",
+    lang: locale,
+    description: t("Undangan, penugasan, dan ruang kerja associate BinaHub."),
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",
@@ -32,8 +37,8 @@ export default function manifest(): MetadataRoute.Manifest {
       },
     ],
     shortcuts: [
-      { name: "Notifikasi AMS", url: "/dashboard/notifications" },
-      { name: "Penugasan saya", url: "/dashboard/assignments" },
+      { name: t("Notifikasi AMS"), url: "/dashboard/notifications" },
+      { name: t("Penugasan saya"), url: "/dashboard/assignments" },
     ],
   };
 }

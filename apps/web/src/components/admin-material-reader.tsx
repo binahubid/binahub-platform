@@ -13,6 +13,7 @@ import { downloadMaterialFile, fetchMaterialFile } from "@/lib/materials";
 import type { MaterialDocument } from "@ams/shared/types/materials";
 
 import s from "@/app/admin/materials/materials.module.css";
+import { useAmsLocale } from "@/components/ams-language";
 
 type LoadedPdf = { pdf: PDFDocumentProxy; lib: typeof import("pdfjs-dist") };
 
@@ -21,6 +22,7 @@ export function AdminMaterialReader({
 }: {
   material: MaterialDocument;
 }) {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const path = `/api/admin/materials/${material.slug}`;
   const [source, setSource] = useState<{
@@ -81,8 +83,7 @@ export function AdminMaterialReader({
   return (
     <div className={s.page}>
       <Link href="/admin/materials" className={s.readerBack}>
-        <span aria-hidden="true">←</span> Semua materi
-      </Link>
+        <span aria-hidden="true">←</span> {t("Semua materi")}</Link>
       <header className={s.heading}>
         <h1>{material.title}</h1>
         <p>{material.description}</p>
@@ -94,7 +95,7 @@ export function AdminMaterialReader({
             onClick={() => void download()}
           >
             <span aria-hidden="true">↓</span>{" "}
-            {downloading ? "Memuat…" : "Unduh PDF"}
+            {downloading ? t("Memuat…") : t("Unduh PDF")}
           </button>
         </div>
       </header>
@@ -119,14 +120,10 @@ export function AdminMaterialReader({
                   setSource(undefined);
                   setRetry((n) => n + 1);
                 }}
-              >
-                Coba lagi
-              </button>
+              >{t("Coba lagi")}</button>
             </>
           ) : (
-            <p role="status" className={s.muted}>
-              Memuat dokumen…
-            </p>
+            <p role="status" className={s.muted}>{t("Memuat dokumen…")}</p>
           )}
         </section>
       )}
@@ -141,6 +138,7 @@ function PdfPages({
   document: LoadedPdf;
   title: string;
 }) {
+  const { t } = useAmsLocale();
   const [number, setNumber] = useState(1);
   const [zoom, setZoom] = useState(false);
   const [width, setWidth] = useState(0);
@@ -221,24 +219,23 @@ function PdfPages({
         <div
           className={s.actions}
           role="group"
-          aria-label="Navigasi halaman dokumen"
+          aria-label={t("Navigasi halaman dokumen")}
         >
           <button
             className={s.button}
             type="button"
-            aria-label="Halaman sebelumnya"
+            aria-label={t("Halaman sebelumnya")}
             disabled={number <= 1}
             onClick={() => goTo(number - 1)}
           >
             <span aria-hidden="true">‹</span>
           </button>
-          <output className={s.readerPage}>
-            Halaman {number} dari {pdf.numPages}
+          <output className={s.readerPage}>{t("Halaman")} {number} {t("dari")} {pdf.numPages}
           </output>
           <button
             className={s.button}
             type="button"
-            aria-label="Halaman berikutnya"
+            aria-label={t("Halaman berikutnya")}
             disabled={number >= pdf.numPages}
             onClick={() => goTo(number + 1)}
           >
@@ -263,7 +260,7 @@ function PdfPages({
         ref={scroll}
         tabIndex={0}
         role="region"
-        aria-label={`Isi halaman ${number}`}
+        aria-label={t("Isi halaman {0}", [number])}
       >
         {!ready && (
           <p
@@ -271,8 +268,8 @@ function PdfPages({
             role={failed === renderKey ? "alert" : "status"}
           >
             {failed === renderKey
-              ? "Halaman ini belum dapat ditampilkan. Coba buka halaman lain atau unduh PDF."
-              : "Menyiapkan halaman…"}
+              ? t("Halaman ini belum dapat ditampilkan. Coba buka halaman lain atau unduh PDF.")
+              : t("Menyiapkan halaman…")}
           </p>
         )}
         <div

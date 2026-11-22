@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ServiceError } from '@/components/ui';
 import { assignmentStatusLabel, assignmentStatusTone, formatAssignmentDate, nextAssignmentTransition, type AssignmentWork } from '@/lib/assignment-display';
 import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Assignment = AssignmentWork & {
   id: string;
@@ -35,6 +36,7 @@ function bucketOf(assignment: Assignment) {
 }
 
 export default function AssignmentsPage() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,16 +79,16 @@ export default function AssignmentsPage() {
   const counts = { active: 0, follow_up: 0, history: 0 };
   for (const assignment of assignments) counts[bucketOf(assignment)]++;
 
-  if (loading) return <p role="status" className="py-8 text-center text-sm text-slate-600">Memuat penugasan…</p>;
+  if (loading) return <p role="status" className="py-8 text-center text-sm text-slate-600">{t("Memuat penugasan…")}</p>;
   if (loadError) {
-    return <ServiceError title="Penugasan belum dapat dimuat" message="Periksa koneksi Anda dan coba lagi." onRetry={load} />;
+    return <ServiceError title={t("Penugasan belum dapat dimuat")} message={t("Periksa koneksi Anda dan coba lagi.")} onRetry={load} />;
   }
 
   return (
     <div className="space-y-4">
-      <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">Penugasan</h1>
+      <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">{t("Penugasan")}</h1>
 
-      <div role="group" aria-label="Filter penugasan" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 sm:max-w-md">
+      <div role="group" aria-label={t("Filter penugasan")} className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 sm:max-w-md">
         {filters.map(({ key, label }) => (
           <button
             key={key}
@@ -97,7 +99,7 @@ export default function AssignmentsPage() {
               ? 'bg-white font-semibold text-[#0B2C6B] shadow-sm ring-1 ring-slate-200'
               : 'font-medium text-slate-600 hover:bg-white/70'}`}
           >
-            {label}
+            {t(label)}
             <span className="text-[11px] tabular-nums">{counts[key]}</span>
           </button>
         ))}
@@ -123,7 +125,7 @@ export default function AssignmentsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
                       <span className={'rounded-full px-2.5 py-1 text-xs font-medium ' + assignmentStatusTone(status)}>
-                        {assignment.work_status_label || assignmentStatusLabel(status)}
+                        {t(assignment.work_status_label || assignmentStatusLabel(status))}
                       </span>
                     </div>
                     <h2 className="break-words text-base font-semibold leading-snug text-slate-900">{assignment.title}</h2>

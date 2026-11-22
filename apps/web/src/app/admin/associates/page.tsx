@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
 import { Avatar, ServiceError, StatusBadge, Tabs, SearchInput, useToast } from '../../../components/ui';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Associate = {
   id: string;
@@ -18,6 +19,7 @@ type Associate = {
 };
 
 function ActionMenu({ associate, onInvite, onRemind }: { associate: Associate; onInvite: (a: Associate) => void; onRemind: (a: Associate) => void }) {
+  const { t } = useAmsLocale();
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -66,9 +68,7 @@ function ActionMenu({ associate, onInvite, onRemind }: { associate: Associate; o
             </button>
             <div className="border-t border-slate-100 my-1" />
             {associate.status === 'draft' && (
-              <button onClick={() => { onRemind(associate); setOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-[#0B2C6B] hover:bg-slate-50">
-                Ingatkan lengkapi & kirim profil
-              </button>
+              <button onClick={() => { onRemind(associate); setOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-[#0B2C6B] hover:bg-slate-50">{t("Ingatkan lengkapi & kirim profil")}</button>
             )}
             <button
               onClick={() => copyToClipboard(associate.email)}
@@ -86,9 +86,7 @@ function ActionMenu({ associate, onInvite, onRemind }: { associate: Associate; o
             >
               <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              Kirim Email
-            </a>
+              </svg>{t("Kirim Email")}</a>
             {phone && (
               <>
                 <button
@@ -97,9 +95,7 @@ function ActionMenu({ associate, onInvite, onRemind }: { associate: Associate; o
                 >
                   <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  Copy Nomor Telepon
-                </button>
+                  </svg>{t("Copy Nomor Telepon")}</button>
                 {waFormatted && (
                   <a
                     href={`https://wa.me/${waFormatted}`}
@@ -124,9 +120,7 @@ function ActionMenu({ associate, onInvite, onRemind }: { associate: Associate; o
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Lihat Profil
-            </Link>
+              </svg>{t("Lihat Profil")}</Link>
           </div>
         </>
       )}
@@ -135,6 +129,7 @@ function ActionMenu({ associate, onInvite, onRemind }: { associate: Associate; o
 }
 
 export default function AdminAssociatesPage() {
+  const { t } = useAmsLocale();
   const { user, accessToken } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -308,9 +303,7 @@ export default function AdminAssociatesPage() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D9A441]">Talent Operations</p>
           <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900">Associates</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Kelola dan lihat semua associate di organisasi.
-          </p>
+          <p className="mt-1 text-sm text-slate-500">{t("Kelola dan lihat semua associate di organisasi.")}</p>
         </div>
         <button
           onClick={() => {
@@ -324,9 +317,7 @@ export default function AdminAssociatesPage() {
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          Bagikan Link Pendaftaran
-        </button>
+          </svg>{t("Bagikan Link Pendaftaran")}</button>
       </div>
 
       {/* Tabs and Search */}
@@ -336,7 +327,7 @@ export default function AdminAssociatesPage() {
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="Cari nama, email, peran, atau keahlian..."
+            placeholder={t("Cari nama, email, peran, atau keahlian...")}
             className="w-full sm:w-80"
           />
           <button
@@ -345,9 +336,7 @@ export default function AdminAssociatesPage() {
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            Cari
-          </button>
+            </svg>{t("Cari")}</button>
         </form>
       </div>
 
@@ -361,7 +350,7 @@ export default function AdminAssociatesPage() {
         </div>
       ) : loadError ? (
         <ServiceError
-          title="Daftar associate gagal dimuat"
+          title={t("Daftar associate gagal dimuat")}
           message={loadError}
           onRetry={fetchAssociates}
           retrying={loading}
@@ -373,7 +362,7 @@ export default function AdminAssociatesPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
           <p className="mt-4 text-sm text-slate-500">
-            {search ? `Tidak ada hasil untuk "${search}"` : 'Belum ada associate'}
+            {search ? t("Tidak ada hasil untuk \"{0}\"", [search]) : t("Belum ada associate")}
           </p>
         </div>
       ) : (
@@ -382,11 +371,11 @@ export default function AdminAssociatesPage() {
           <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 backdrop-blur-sm">
-                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Nama</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Bidang</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{t("Nama")}</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{t("Bidang")}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ketersediaan</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Kelengkapan</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{t("Ketersediaan")}</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{t("Kelengkapan")}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Bergabung</th>
                 <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Aksi</th>
               </tr>
@@ -428,8 +417,8 @@ export default function AdminAssociatesPage() {
                         (associate.availability[0].status === 'available' || associate.availability[0].status === 'open') ? 'bg-emerald-50 text-emerald-700' :
                         (associate.availability[0].status === 'busy' || associate.availability[0].status === 'limited') ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'
                       }`}>
-                        {(associate.availability[0].status === 'available' || associate.availability[0].status === 'open') ? 'Tersedia' :
-                         (associate.availability[0].status === 'busy' || associate.availability[0].status === 'limited') ? 'Sibuk' : 'Tidak Tersedia'}
+                        {(associate.availability[0].status === 'available' || associate.availability[0].status === 'open') ? t("Tersedia") :
+                         (associate.availability[0].status === 'busy' || associate.availability[0].status === 'limited') ? 'Sibuk' : t("Tidak Tersedia")}
                       </span>
                     ) : (
                       <span className="text-xs text-slate-400">-</span>
@@ -472,17 +461,13 @@ export default function AdminAssociatesPage() {
 
           {/* Pagination */}
           <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <p className="text-xs text-slate-500">
-              Menampilkan {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, associates.length)} dari {total} hasil
-            </p>
+            <p className="text-xs text-slate-500">{t("Menampilkan")} {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, associates.length)} {t("dari")} {total} {t("hasil")}</p>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
                 className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:opacity-50"
-              >
-                Sebelumnya
-              </button>
+              >{t("Sebelumnya")}</button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map((page) => (
                 <button
                   key={page}
@@ -498,9 +483,7 @@ export default function AdminAssociatesPage() {
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:opacity-50"
-              >
-                Berikutnya
-              </button>
+              >{t("Berikutnya")}</button>
             </div>
           </div>
         </div>
@@ -514,25 +497,25 @@ export default function AdminAssociatesPage() {
               Associate: <span className="font-medium text-slate-700">{inviteAssociate.profile?.full_name || inviteAssociate.email}</span>
             </p>
             <div className="mt-4">
-              <label className="block text-xs font-medium text-slate-600 mb-1">Pilih Assignment</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{t("Pilih Assignment")}</label>
               <select
                 value={selectedAssignment}
                 onChange={(e) => setSelectedAssignment(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B] outline-none"
               >
-                <option value="">— Pilih Assignment —</option>
+                <option value="">{t("— Pilih Assignment —")}</option>
                 {assignments.map((a) => (
                   <option key={a.id} value={a.id}>{a.title} ({a.client_name})</option>
                 ))}
               </select>
               {assignments.length === 0 && (
-                  <p className="mt-2 text-xs text-slate-600">Belum ada penugasan aktif. Aktifkan penugasan dengan jadwal yang masih berlaku di halaman Penugasan.</p>
+                  <p className="mt-2 text-xs text-slate-600">{t("Belum ada penugasan aktif. Aktifkan penugasan dengan jadwal yang masih berlaku di halaman Penugasan.")}</p>
               )}
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {([['compensation', 'Kompensasi *'], ['transport', 'Transportasi'], ['preparation', 'Persiapan']] as const).map(([field, label]) => (
                 <label key={field} className="text-xs font-medium text-slate-600">{label}
-                  <input type="number" min={field === 'compensation' ? '1' : '0'} step="1" value={inviteFee[field]} onChange={(event) => setInviteFee((current) => ({ ...current, [field]: event.target.value }))} placeholder={field === 'compensation' ? '1000000' : 'Opsional'} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                  <input type="number" min={field === 'compensation' ? '1' : '0'} step="1" value={inviteFee[field]} onChange={(event) => setInviteFee((current) => ({ ...current, [field]: event.target.value }))} placeholder={field === 'compensation' ? '1000000' : t("Opsional")} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
                 </label>
               ))}
             </div>
@@ -541,13 +524,13 @@ export default function AdminAssociatesPage() {
               <input type="datetime-local" value={inviteDeadline} onChange={(event) => setInviteDeadline(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
             </label>
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setInviteAssociate(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
+              <button onClick={() => setInviteAssociate(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("Batal")}</button>
               <button
                 onClick={handleSendInvite}
                 disabled={inviting || !selectedAssignment || !inviteFee.compensation || !inviteDeadline}
                 className="rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-medium text-white hover:bg-[#0A255A] disabled:opacity-50"
               >
-                {inviting ? 'Mengirim...' : 'Kirim Undangan'}
+                {inviting ? 'Mengirim...' : t("Kirim Undangan")}
               </button>
             </div>
           </div>

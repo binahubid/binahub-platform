@@ -1,4 +1,5 @@
 'use client';
+import { useAmsLocale } from "@/components/ams-language";
 
 export function Tabs({
   tabs,
@@ -11,9 +12,10 @@ export function Tabs({
   onChange: (id: string) => void;
   className?: string;
 }) {
+  const { t } = useAmsLocale();
   return (
     <div className={`border-b border-slate-200 ${className}`}>
-      <nav className="flex gap-6 overflow-x-auto" aria-label="Pilihan tampilan">
+      <nav className="flex gap-6 overflow-x-auto" aria-label={t("Pilihan tampilan")}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -26,7 +28,7 @@ export function Tabs({
                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
             }`}
           >
-            {tab.label}
+            {t(tab.label)}
             {tab.count !== undefined && (
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-medium ${

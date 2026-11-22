@@ -8,6 +8,7 @@ import { ServiceError, useToast } from '../../../../components/ui';
 import { ProtectedFileImage, ProtectedFileLink } from '../../../../components/ui/protected-file';
 import { assignmentStatusLabel, formatAssignmentDate, type AssignmentWork } from '@/lib/assignment-display';
 import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
+import { useAmsLocale } from "@/components/ams-language";
 
 type AssignmentDetail = AssignmentWork & {
   id: string;
@@ -111,6 +112,7 @@ function effectiveCompensation(assignment: AssignmentDetail) {
 
 
 export default function AssignmentDetailPage() {
+  const { t } = useAmsLocale();
   const { id } = useParams();
   const { user, accessToken } = useAuth();
   const { toast } = useToast();
@@ -384,7 +386,7 @@ export default function AssignmentDetailPage() {
   }
 
   if (loadError) {
-    return <ServiceError title="Detail penugasan belum dapat dibuka" message={loadError} onRetry={refreshDetail} />;
+    return <ServiceError title={t("Detail penugasan belum dapat dibuka")} message={loadError} onRetry={refreshDetail} />;
   }
   if (!assignment) return null;
 
@@ -421,7 +423,7 @@ export default function AssignmentDetailPage() {
   return (
     <div className="space-y-5 pb-8">
       <nav className="flex items-center gap-2 text-sm">
-        <Link href="/dashboard/assignments" className="text-slate-400 hover:text-slate-600 transition-colors">Penugasan</Link>
+        <Link href="/dashboard/assignments" className="text-slate-400 hover:text-slate-600 transition-colors">{t("Penugasan")}</Link>
         <span className="text-slate-300">/</span>
         <span className="font-medium text-slate-700 truncate max-w-[220px]">{assignment.title}</span>
       </nav>
@@ -440,7 +442,7 @@ export default function AssignmentDetailPage() {
             </div>
             {myRole && (
               <div className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm">
-                <p className="text-[10px] text-white/50 uppercase tracking-wider font-semibold">Peran Anda</p>
+                <p className="text-[10px] text-white/50 uppercase tracking-wider font-semibold">{t("Peran Anda")}</p>
                 <p className="text-sm font-bold text-white mt-0.5">{myRole}</p>
               </div>
             )}
@@ -449,25 +451,25 @@ export default function AssignmentDetailPage() {
             {assignment.start_date && (
               <div className="flex items-center gap-1.5">
                 <svg className="h-4 w-4 text-white/40 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                <span>Mulai: <strong className="text-white/90">{fmtDate(assignment.start_date)}</strong></span>
+                <span>{t("Mulai:")} <strong className="text-white/90">{fmtDate(assignment.start_date)}</strong></span>
               </div>
             )}
             {assignment.end_date && (
               <div className="flex items-center gap-1.5">
                 <svg className="h-4 w-4 text-white/40 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>Selesai: <strong className="text-white/90">{fmtDate(assignment.end_date)}</strong></span>
+                <span>{t("Selesai:")} <strong className="text-white/90">{fmtDate(assignment.end_date)}</strong></span>
               </div>
             )}
             {!!assignment.mandays && assignment.mandays > 0 && (
               <div className="flex items-center gap-1.5">
                 <svg className="h-4 w-4 text-white/40 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                <span>Durasi: <strong className="text-white/90">{assignment.mandays} Manday{assignment.mandays > 1 ? 's' : ''}</strong></span>
+                <span>{t("Durasi:")} <strong className="text-white/90">{assignment.mandays} Manday{assignment.mandays > 1 ? 's' : ''}</strong></span>
               </div>
             )}
             {compensation && (
               <div className="flex items-center gap-1.5">
                 <svg className="h-4 w-4 text-white/40 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>Kompensasi{compensation.individual ? ' Anda' : ''}: <strong className="text-white/90">{compensation.label}</strong></span>
+                <span>{t("Kompensasi")}{compensation.individual ? t("Anda") : ''}: <strong className="text-white/90">{compensation.label}</strong></span>
               </div>
             )}
           </div>
@@ -477,7 +479,7 @@ export default function AssignmentDetailPage() {
       {/* Stepper */}
       {my && stepIndex >= 0 && !['cancelled', 'declined', 'expired', 'closed', 'withdrawn', 'draft'].includes(workStatus) && (
         <div className="ams-panel p-5">
-          <h2 className="mb-5 text-sm font-semibold text-slate-900">Alur penugasan</h2>
+          <h2 className="mb-5 text-sm font-semibold text-slate-900">{t("Alur penugasan")}</h2>
           <div className="relative flex items-start justify-between">
             <div className="absolute top-4 left-8 right-8 h-0.5 bg-slate-100" />
             {WORKFLOW_STEPS.map((step, idx) => {
@@ -494,7 +496,7 @@ export default function AssignmentDetailPage() {
                       </svg>
                     )}
                   </div>
-                  <p className={`text-center text-[10px] font-semibold leading-tight ${done || active ? 'text-[#0B2C6B]' : 'text-slate-400'}`}>{step.label}</p>
+                  <p className={`text-center text-[10px] font-semibold leading-tight ${done || active ? 'text-[#0B2C6B]' : 'text-slate-400'}`}>{t(step.label)}</p>
                 </div>
               );
             })}
@@ -510,16 +512,12 @@ export default function AssignmentDetailPage() {
         <section className="ams-panel p-6" aria-labelledby="apply-heading">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-2xl">
-              <h2 id="apply-heading" className="mt-1 text-lg font-semibold text-slate-900">Daftar untuk penugasan ini</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                Pendaftaran akan masuk ke antrean admin. Anda belum dianggap bergabung sampai admin menerima pendaftaran.
-              </p>
+              <h2 id="apply-heading" className="mt-1 text-lg font-semibold text-slate-900">{t("Daftar untuk penugasan ini")}</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{t("Pendaftaran akan masuk ke antrean admin. Anda belum dianggap bergabung sampai admin menerima pendaftaran.")}</p>
             </div>
             <div className="w-full sm:w-72">
               {assignment.needed_roles.length > 0 && (
-                <label className="mb-3 block text-xs font-semibold text-slate-700">
-                  Peran yang diminati
-                  <select
+                <label className="mb-3 block text-xs font-semibold text-slate-700">{t("Peran yang diminati")}<select
                     value={applyRole || assignment.needed_roles[0]}
                     onChange={(event) => setApplyRole(event.target.value)}
                     className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10"
@@ -534,7 +532,7 @@ export default function AssignmentDetailPage() {
                 disabled={acting}
                 className="w-full rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#082358] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {acting ? 'Mengirim pendaftaran…' : 'Daftar ke penugasan'}
+                {acting ? t("Mengirim pendaftaran…") : t("Daftar ke penugasan")}
               </button>
             </div>
           </div>
@@ -551,35 +549,35 @@ export default function AssignmentDetailPage() {
                     <svg className="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">Anda Mendapat Undangan</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">Diundang sebagai <strong className="text-slate-700">{myRole || 'Associate'}</strong>. Baca detail, lalu terima atau tolak.</p>
+                    <h2 className="text-base font-bold text-slate-900">{t("Anda Mendapat Undangan")}</h2>
+                    <p className="text-sm text-slate-500 mt-0.5">Diundang sebagai <strong className="text-slate-700">{myRole || 'Associate'}</strong>{t(". Baca detail, lalu terima atau tolak.")}</p>
                   </div>
                 </div>
               </div>
               {my.notes && (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
-                  <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">Pesan dari Admin</p>
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">{t("Pesan dari Admin")}</p>
                   <p className="text-sm text-amber-800">{my.notes}</p>
                 </div>
               )}
-              {my.invitation_expires_at && <p className="text-sm font-semibold text-slate-700">Jawab paling lambat {new Date(my.invitation_expires_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short' })} WIB.</p>}
-              {compensation ? <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{compensation.breakdown.map((line) => <p key={line}>{line}</p>)}<p className="mt-2 border-t border-slate-200 pt-2 font-bold">Total: {compensation.label}</p></div> : <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Rincian fee belum tersedia. Hubungi admin sebelum menerima undangan ini.</p>}
+              {my.invitation_expires_at && <p className="text-sm font-semibold text-slate-700">{t("Jawab paling lambat")} {new Date(my.invitation_expires_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short' })} WIB.</p>}
+              {compensation ? <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{compensation.breakdown.map((line) => <p key={line}>{line}</p>)}<p className="mt-2 border-t border-slate-200 pt-2 font-bold">Total: {compensation.label}</p></div> : <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("Rincian fee belum tersedia. Hubungi admin sebelum menerima undangan ini.")}</p>}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button onClick={() => setShowAgreementModal(true)} disabled={acting || !compensation || !canAccept} className="w-full rounded-xl bg-[#0B2C6B] py-3 text-sm font-semibold text-white hover:bg-[#0A255A] disabled:opacity-50 sm:flex-1">{!compensation ? 'Menunggu rincian fee' : !canAccept ? 'Posisi sudah terisi' : 'Terima undangan'}</button>
-                <button onClick={() => handleStatusUpdate('declined')} disabled={acting || !canDecline} className="w-full sm:w-32 rounded-xl border border-red-200 bg-red-50/50 py-3 text-sm font-semibold text-red-600 hover:bg-red-100/70 disabled:opacity-50 transition-colors text-center">Tolak</button>
+                <button onClick={() => setShowAgreementModal(true)} disabled={acting || !compensation || !canAccept} className="w-full rounded-xl bg-[#0B2C6B] py-3 text-sm font-semibold text-white hover:bg-[#0A255A] disabled:opacity-50 sm:flex-1">{!compensation ? t("Menunggu rincian fee") : !canAccept ? 'Posisi sudah terisi' : t("Terima undangan")}</button>
+                <button onClick={() => handleStatusUpdate('declined')} disabled={acting || !canDecline} className="w-full sm:w-32 rounded-xl border border-red-200 bg-red-50/50 py-3 text-sm font-semibold text-red-600 hover:bg-red-100/70 disabled:opacity-50 transition-colors text-center">{t("Tolak")}</button>
               </div>
             </div>
           )}
 
           {myStatus === 'accepted' && !showWork && (canStart || workStatus === 'scheduled') && (
             <section className="space-y-3 p-4 sm:p-6">
-              <h2 className="text-base font-semibold text-slate-900">Undangan diterima</h2>
+              <h2 className="text-base font-semibold text-slate-900">{t("Undangan diterima")}</h2>
               <p className="text-sm leading-6 text-slate-600">
-                {canStart ? 'Anda dapat mulai bekerja sekarang.' : 'Pekerjaan dimulai pada ' + fmtDate(assignment.start_date) + '.'}
+                {canStart ? t("Anda dapat mulai bekerja sekarang.") : 'Pekerjaan dimulai pada ' + fmtDate(assignment.start_date) + '.'}
               </p>
               {canStart && (
                 <button type="button" onClick={() => handleStatusUpdate('in_progress')} disabled={acting} className="inline-flex min-h-11 items-center rounded-xl bg-[#0B2C6B] px-4 text-sm font-semibold text-white hover:bg-[#123575] disabled:opacity-50">
-                  {acting ? 'Memproses…' : 'Mulai bekerja'}
+                  {acting ? 'Memproses…' : t("Mulai bekerja")}
                 </button>
               )}
             </section>
@@ -591,8 +589,8 @@ export default function AssignmentDetailPage() {
                 <div className="bg-blue-50/70 p-5">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm font-bold text-slate-900">Workspace program sudah siap</p>
-                      <p className="mt-1 text-xs leading-relaxed text-slate-600">Masuk dengan akun yang sama. Akses hanya berlaku untuk program yang ditugaskan kepada Anda.</p>
+                      <p className="text-sm font-bold text-slate-900">{t("Workspace program sudah siap")}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-600">{t("Masuk dengan akun yang sama. Akses hanya berlaku untuk program yang ditugaskan kepada Anda.")}</p>
                     </div>
                     <button
                       type="button"
@@ -600,7 +598,7 @@ export default function AssignmentDetailPage() {
                       disabled={openingProgram}
                       className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#0B2C6B] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#092458] disabled:cursor-wait disabled:opacity-60"
                     >
-                      {openingProgram ? 'Menyiapkan akses...' : 'Buka workspace program'}
+                      {openingProgram ? t("Menyiapkan akses...") : t("Buka workspace program")}
                       {!openingProgram && <span aria-hidden="true">→</span>}
                     </button>
                   </div>
@@ -617,15 +615,11 @@ export default function AssignmentDetailPage() {
 
               {canLog && canReport && (
                 <div className="px-4 sm:px-6">
-                  <nav className="flex gap-4" aria-label="Pencatatan penugasan">
+                  <nav className="flex gap-4" aria-label={t("Pencatatan penugasan")}>
                     <button type="button" aria-pressed={activeTab === 'log'} onClick={() => setActiveTab('log')}
-                      className={'min-h-11 border-b-2 px-1 text-sm font-medium ' + (activeTab === 'log' ? 'border-[#0B2C6B] text-[#0B2C6B]' : 'border-transparent text-slate-600')}>
-                      Catatan kegiatan
-                    </button>
+                      className={'min-h-11 border-b-2 px-1 text-sm font-medium ' + (activeTab === 'log' ? 'border-[#0B2C6B] text-[#0B2C6B]' : 'border-transparent text-slate-600')}>{t("Catatan kegiatan")}</button>
                     <button type="button" aria-pressed={activeTab === 'report'} onClick={() => setActiveTab('report')}
-                      className={'min-h-11 border-b-2 px-1 text-sm font-medium ' + (activeTab === 'report' ? 'border-[#0B2C6B] text-[#0B2C6B]' : 'border-transparent text-slate-600')}>
-                      Laporan akhir
-                    </button>
+                      className={'min-h-11 border-b-2 px-1 text-sm font-medium ' + (activeTab === 'report' ? 'border-[#0B2C6B] text-[#0B2C6B]' : 'border-transparent text-slate-600')}>{t("Laporan akhir")}</button>
                   </nav>
                 </div>
               )}
@@ -635,29 +629,29 @@ export default function AssignmentDetailPage() {
                 <div className="p-6 space-y-6">
                   <div>
                     <h2 className="text-base font-bold text-slate-900">Log Aktivitas & Progres Lapangan</h2>
-                    <p className="text-xs text-slate-500 mt-1">Gunakan form ini untuk mencatat perkembangan pekerjaan Anda kapan saja. Log ini langsung tersimpan dan tidak mengubah status penugasan Anda.</p>
+                    <p className="text-xs text-slate-500 mt-1">{t("Gunakan form ini untuk mencatat perkembangan pekerjaan Anda kapan saja. Log ini langsung tersimpan dan tidak mengubah status penugasan Anda.")}</p>
                   </div>
 
                   <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Catatan Kegiatan / Hambatan</label>
+                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">{t("Catatan Kegiatan / Hambatan")}</label>
                       <textarea
                         value={newLogNotes}
                         onChange={(e) => setNewLogNotes(e.target.value)}
-                        placeholder="Contoh: Hari ini melakukan survey lokasi A, kendala cuaca hujan deras..."
+                        placeholder={t("Contoh: Hari ini melakukan survey lokasi A, kendala cuaca hujan deras...")}
                         rows={3}
                         className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm"
                       />
                     </div>
 
                     <div className="space-y-3">
-                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Foto Dokumentasi Kegiatan (Opsional)</label>
+                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">{t("Foto Dokumentasi Kegiatan (Opsional)")}</label>
                       <div onClick={() => !uploadingFile && newLogPhotoInputRef.current?.click()} className="cursor-pointer rounded-xl border-2 border-dashed border-slate-200 hover:border-[#0B2C6B]/50 hover:bg-[#0B2C6B]/[0.02] transition-all p-5 flex flex-col items-center gap-1.5 group bg-white shadow-sm">
                         {uploadingFile
                           ? <svg className="h-6 w-6 animate-spin text-[#0B2C6B]" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                           : <svg className="h-6 w-6 text-slate-400 group-hover:text-[#0B2C6B]/40 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         }
-                        <p className="text-xs font-bold text-[#0B2C6B] group-hover:underline transition-colors">{uploadingFile ? 'Sedang Mengunggah...' : 'Klik untuk Ambil/Unggah Foto Progres'}</p>
+                        <p className="text-xs font-bold text-[#0B2C6B] group-hover:underline transition-colors">{uploadingFile ? t("Sedang Mengunggah...") : t("Klik untuk Ambil/Unggah Foto Progres")}</p>
                         <input ref={newLogPhotoInputRef} type="file" accept="image/*" multiple onChange={handleNewLogPhotoUpload} className="hidden" />
                       </div>
 
@@ -667,7 +661,7 @@ export default function AssignmentDetailPage() {
                             <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100 shadow-sm">
                               <ProtectedFileImage src={photo.url} accessToken={accessToken} alt={photo.name} className="w-full h-full object-cover animate-fade-in" />
                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <button onClick={() => setNewLogPhotos(prev => prev.filter((_, i) => i !== idx))} className="text-white text-[10px] font-bold bg-red-500 rounded px-2 py-1 shadow-sm">Hapus</button>
+                                <button onClick={() => setNewLogPhotos(prev => prev.filter((_, i) => i !== idx))} className="text-white text-[10px] font-bold bg-red-500 rounded px-2 py-1 shadow-sm">{t("Hapus")}</button>
                               </div>
                             </div>
                           ))}
@@ -681,16 +675,14 @@ export default function AssignmentDetailPage() {
                         disabled={submittingLog || uploadingFile}
                         className="px-5 py-2.5 rounded-xl bg-[#0B2C6B] text-xs font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-md flex items-center gap-1.5"
                       >
-                        {submittingLog && <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
-                        Simpan Log Progres
-                      </button>
+                        {submittingLog && <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}{t("Simpan Log Progres")}</button>
                     </div>
                   </div>
 
                   {/* Timeline Log Progres yang Sudah Ada */}
                   {progressLogs.length > 0 && (
                     <div className="space-y-4 pt-4 border-t border-slate-100">
-                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Riwayat Aktivitas Lapangan ({progressLogs.length})</h3>
+                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t("Riwayat Aktivitas Lapangan (")}{progressLogs.length})</h3>
                       <div className="flow-root">
                         <ul className="-mb-8">
                           {progressLogs.map((log, logIdx) => (
@@ -743,36 +735,34 @@ export default function AssignmentDetailPage() {
               {canReport && selectedTab === 'report' && (
                 <div className="p-6 bg-slate-50/30 space-y-5">
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">Kirim Laporan Akhir</h2>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">Kirim setelah pekerjaan selesai. Admin akan meninjau laporan Anda.</p>
+                    <h2 className="text-base font-bold text-slate-900">{t("Kirim Laporan Akhir")}</h2>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{t("Kirim setelah pekerjaan selesai. Admin akan meninjau laporan Anda.")}</p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Kesimpulan / Laporan Akhir</label>
+                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">{t("Kesimpulan / Laporan Akhir")}</label>
                       <textarea
                         value={evidenceNotes}
                         onChange={(e) => setEvidenceNotes(e.target.value)}
-                        placeholder="Tuliskan di sini ringkasan akhir hasil pekerjaan Anda untuk diserahkan ke admin..."
+                        placeholder={t("Tuliskan di sini ringkasan akhir hasil pekerjaan Anda untuk diserahkan ke admin...")}
                         rows={4}
                         className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none transition shadow-sm"
                       />
                     </div>
 
                     <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-150 shadow-sm">
-                      <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Berkas Laporan Pendukung / Dokumen Final</p>
+                      <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">{t("Berkas Laporan Pendukung / Dokumen Final")}</p>
                       <div className="flex flex-wrap items-center gap-3">
                         <button type="button" onClick={() => evidenceFileRef.current?.click()} disabled={uploadingFile} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm">
                           <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                          {uploadingFile ? 'Mengunggah Berkas...' : 'Upload Berkas Laporan'}
+                          {uploadingFile ? t("Mengunggah Berkas...") : t("Upload Berkas Laporan")}
                         </button>
                         <input ref={evidenceFileRef} type="file" onChange={handleEvidenceFileUpload} className="hidden" />
                         {evidenceUrl ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                            &#10003; Berkas berhasil dilampirkan
-                          </span>
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">{t("✓ Berkas berhasil dilampirkan")}</span>
                         ) : (
-                          <span className="text-xs text-slate-400">PDF, Word, Excel, ZIP (Opsional)</span>
+                          <span className="text-xs text-slate-400">{t("PDF, Word, Excel, ZIP (Opsional)")}</span>
                         )}
                       </div>
                       {evidenceUrl && (
@@ -782,18 +772,14 @@ export default function AssignmentDetailPage() {
                             accessToken={accessToken}
                             onOpenError={(message) => toast('error', message)}
                             className="text-xs text-[#0B2C6B] hover:underline font-bold"
-                          >
-                            Lihat file terlampir
-                          </ProtectedFileLink>
+                          >{t("Lihat file terlampir")}</ProtectedFileLink>
                         </div>
                       )}
                     </div>
 
                     <div className="pt-2">
                       <button onClick={submitFinalReport} disabled={acting || uploadingFile} className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                        Kirim laporan untuk ditinjau
-                      </button>
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>{t("Kirim laporan untuk ditinjau")}</button>
                     </div>
                   </div>
                 </div>
@@ -808,26 +794,24 @@ export default function AssignmentDetailPage() {
                   <svg className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Laporan Telah Dikirim</h2>
-                  <p className="text-sm text-slate-500 mt-0.5">Sedang dalam proses review admin.</p>
-                  {my.evidence_submitted_at && <p className="text-xs text-slate-400 mt-1">Dikirim: {new Date(my.evidence_submitted_at).toLocaleString('id-ID')}</p>}
+                  <h2 className="text-base font-bold text-slate-900">{t("Laporan Telah Dikirim")}</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">{t("Sedang dalam proses review admin.")}</p>
+                  {my.evidence_submitted_at && <p className="text-xs text-slate-400 mt-1">{t("Dikirim:")} {new Date(my.evidence_submitted_at).toLocaleString('id-ID')}</p>}
                 </div>
               </div>
               {(my.evidence_notes || my.evidence_url) && (
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-3">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Laporan yang Dikirim</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t("Laporan yang Dikirim")}</p>
                   {my.evidence_notes && <p className="text-sm text-slate-700 whitespace-pre-wrap">{my.evidence_notes}</p>}
                   {my.evidence_url && (
                     <ProtectedFileLink href={my.evidence_url} accessToken={accessToken} onOpenError={(message) => toast('error', message)} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors">
-                      <svg className="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                      Buka File Laporan
-                    </ProtectedFileLink>
+                      <svg className="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>{t("Buka File Laporan")}</ProtectedFileLink>
                   )}
                 </div>
               )}
               <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-4 flex items-center gap-3">
                 <svg className="h-5 w-5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <p className="text-sm text-indigo-700">Admin sedang memeriksa laporan Anda. Anda akan menerima notifikasi setelah review selesai.</p>
+                <p className="text-sm text-indigo-700">{t("Admin sedang memeriksa laporan Anda. Anda akan menerima notifikasi setelah review selesai.")}</p>
               </div>
             </div>
           )}
@@ -839,20 +823,20 @@ export default function AssignmentDetailPage() {
                   <svg className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Laporan disetujui</h2>
-                  <p className="text-sm text-slate-500 mt-0.5">Admin telah meninjau dan menyetujui laporan akhir Anda. Terima kasih atas kontribusi Anda!</p>
-                  {my.evidence_reviewed_at && <p className="text-xs text-slate-400 mt-1">Disetujui: {new Date(my.evidence_reviewed_at).toLocaleString('id-ID')}</p>}
+                  <h2 className="text-base font-bold text-slate-900">{t("Laporan disetujui")}</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">{t("Admin telah meninjau dan menyetujui laporan akhir Anda. Terima kasih atas kontribusi Anda!")}</p>
+                  {my.evidence_reviewed_at && <p className="text-xs text-slate-400 mt-1">{t("Disetujui:")} {new Date(my.evidence_reviewed_at).toLocaleString('id-ID')}</p>}
                 </div>
               </div>
               {my.evidence_reviewer_notes && (
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Catatan Penilai (Admin)</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t("Catatan Penilai (Admin)")}</p>
                   <p className="text-sm text-slate-700 whitespace-pre-wrap">{my.evidence_reviewer_notes}</p>
                 </div>
               )}
               <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 flex items-center gap-3">
                 <svg className="h-5 w-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                <p className="text-sm text-emerald-800 font-semibold">Tugas diselesaikan dengan sukses. Nilai performa Anda telah terhitung.</p>
+                <p className="text-sm text-emerald-800 font-semibold">{t("Tugas diselesaikan dengan sukses. Nilai performa Anda telah terhitung.")}</p>
               </div>
             </div>
           )}
@@ -863,17 +847,17 @@ export default function AssignmentDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="relative w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl border border-slate-200 flex flex-col max-h-[85vh]">
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-[#0B2C6B] to-[#1a4dab]">
-              <h3 className="text-base font-bold text-white">Surat Perjanjian Kerja (SPK)</h3>
+              <h3 className="text-base font-bold text-white">{t("Surat Perjanjian Kerja (SPK)")}</h3>
               <button onClick={() => setShowAgreementModal(false)} className="text-white/60 hover:text-white transition-colors">
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 text-sm text-slate-700 leading-relaxed">
               <div className="text-center space-y-1">
-                <p className="text-base font-bold text-slate-900 uppercase tracking-wide">Surat Perjanjian Kerja Sama (SPK)</p>
+                <p className="text-base font-bold text-slate-900 uppercase tracking-wide">{t("Surat Perjanjian Kerja Sama (SPK)")}</p>
                 <p className="text-[11px] text-slate-400">No. SPK/BINAHUB/{assignment.id.substring(0,8).toUpperCase()}/{new Date().getFullYear()}</p>
               </div>
-              <p className="text-xs text-slate-600">Perjanjian ini dibuat oleh dan antara <strong className="text-slate-800">PT Binahub Solusi Transformasi (BinaHub)</strong> sebagai Pemberi Kerja dan <strong className="text-slate-800">{user?.email}</strong> sebagai Mitra Pelaksana.</p>
+              <p className="text-xs text-slate-600">{t("Perjanjian ini dibuat oleh dan antara")} <strong className="text-slate-800">PT Binahub Solusi Transformasi (BinaHub)</strong> {t("sebagai Pemberi Kerja dan")} <strong className="text-slate-800">{user?.email}</strong> {t("sebagai Mitra Pelaksana.")}</p>
               {[
                 { title: 'Pasal 1: Ruang Lingkup', items: [`Nama Proyek: ${assignment.title}`, `Klien: ${assignment.client_name}`, `Peran/Role: ${myRole || 'Associate'}`] },
                 { title: 'Pasal 2: Jangka Waktu', items: ([assignment.start_date && `Tanggal Mulai: ${fmtDate(assignment.start_date)}`, assignment.end_date && `Tanggal Selesai: ${fmtDate(assignment.end_date)}`, assignment.mandays ? `Durasi: ${assignment.mandays} Manday(s)` : null] as (string | null | false)[]).filter((x): x is string => !!x) },
@@ -889,12 +873,12 @@ export default function AssignmentDetailPage() {
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 space-y-4">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" checked={agreementChecked} onChange={(e) => setAgreementChecked(e.target.checked)} className="mt-0.5 rounded text-[#0B2C6B] focus:ring-[#0B2C6B]" />
-                <span className="text-xs text-slate-600 font-medium select-none leading-normal">Saya menyetujui seluruh ketentuan SPK di atas secara sadar dan bersedia menaati semua peraturan kerja sama.</span>
+                <span className="text-xs text-slate-600 font-medium select-none leading-normal">{t("Saya menyetujui seluruh ketentuan SPK di atas secara sadar dan bersedia menaati semua peraturan kerja sama.")}</span>
               </label>
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setShowAgreementModal(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors">Batal</button>
+                <button onClick={() => setShowAgreementModal(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors">{t("Batal")}</button>
                 <button onClick={() => handleStatusUpdate('accepted')} disabled={!agreementChecked || !compensation || acting} className="rounded-xl bg-[#0B2C6B] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#0A255A] disabled:opacity-50 transition-colors shadow-sm">
-                  {acting ? 'Memproses...' : 'Setujui & Terima Undangan'}
+                  {acting ? 'Memproses...' : t("Setujui & Terima Undangan")}
                 </button>
               </div>
             </div>

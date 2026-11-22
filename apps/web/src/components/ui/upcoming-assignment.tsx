@@ -1,4 +1,5 @@
 'use client';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Assignment = {
   id: string;
@@ -15,6 +16,7 @@ const statusConfig = {
 };
 
 export function UpcomingAssignment({ assignments }: { assignments: Assignment[] }) {
+  const { t } = useAmsLocale();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 className="text-sm font-semibold text-slate-900">Upcoming Assignments</h3>
@@ -33,7 +35,7 @@ export function UpcomingAssignment({ assignments }: { assignments: Assignment[] 
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-slate-900">{a.project_name}</p>
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${config.bg} ${config.text}`}>
-                  {config.label}
+                  {t(config.label)}
                 </span>
               </div>
               {a.client && <p className="mt-1 text-xs text-slate-500">{a.client}</p>}

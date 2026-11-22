@@ -5,8 +5,10 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../../../context/AuthContext';
 import { CVDocument, type CvData } from './cv-document';
+import { useAmsLocale } from "@/components/ams-language";
 
 export default function CvPage() {
+  const { t } = useAmsLocale();
   const { id } = useParams();
   const { accessToken } = useAuth();
   const [data, setData] = useState<CvData | null>(null);
@@ -41,8 +43,8 @@ export default function CvPage() {
   if (!data || !data.profile) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center">
-        <p className="text-sm font-medium text-slate-900">Data CV tidak ditemukan</p>
-        <Link href={`/admin/associates/${id}`} className="mt-4 text-sm text-[#0B2C6B] hover:underline">Kembali</Link>
+        <p className="text-sm font-medium text-slate-900">{t("Data CV tidak ditemukan")}</p>
+        <Link href={`/admin/associates/${id}`} className="mt-4 text-sm text-[#0B2C6B] hover:underline">{t("Kembali")}</Link>
       </div>
     );
   }
@@ -61,14 +63,12 @@ export default function CvPage() {
         </nav>
         <button
           onClick={() => window.print()}
-          title="Pilih kertas A4 dan nonaktifkan header/footer browser agar informasi halaman tidak tercetak ganda."
+          title={t("Pilih kertas A4 dan nonaktifkan header/footer browser agar informasi halaman tidak tercetak ganda.")}
           className="flex items-center gap-2 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0A255A] print:hidden"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          Cetak / Simpan PDF
-        </button>
+          </svg>{t("Cetak / Simpan PDF")}</button>
       </div>
 
       <CVDocument data={data} accessToken={accessToken} apiUrl={apiUrl} />

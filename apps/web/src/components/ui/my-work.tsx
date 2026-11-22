@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Assignment = {
   id: string;
@@ -19,6 +20,7 @@ const statusConfig = {
 };
 
 export function MyWork({ assignments }: { assignments: Assignment[] }) {
+  const { t } = useAmsLocale();
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -49,7 +51,7 @@ export function MyWork({ assignments }: { assignments: Assignment[] }) {
                     </div>
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${config.bg} ${config.text}`}>
                       <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
-                      {config.label}
+                      {t(config.label)}
                     </span>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs text-slate-400">

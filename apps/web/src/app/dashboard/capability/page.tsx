@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { CapabilityRadar } from '../../../components/ui/capability-radar';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Skill = {
   id: string;
@@ -40,6 +41,7 @@ const proficiencyConfig = {
 };
 
 export default function CapabilityPage() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -105,13 +107,13 @@ export default function CapabilityPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Kapabilitas</h1>
-        <p className="mt-1 text-sm text-slate-500">Ringkasan keahlian dan area pengembangan Anda.</p>
+        <p className="mt-1 text-sm text-slate-500">{t("Ringkasan keahlian dan area pengembangan Anda.")}</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="ams-panel p-4">
-          <p className="text-xs font-medium text-slate-600">Total keahlian</p>
+          <p className="text-xs font-medium text-slate-600">{t("Total keahlian")}</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totalSkills}</p>
         </div>
         <div className="ams-panel p-4">
@@ -119,7 +121,7 @@ export default function CapabilityPage() {
           <p className="mt-1 text-2xl font-bold text-[#0B2C6B]">{stats.avgProficiency}%</p>
         </div>
         <div className="ams-panel p-4">
-          <p className="text-xs font-medium text-slate-600">Pembaruan keahlian</p>
+          <p className="text-xs font-medium text-slate-600">{t("Pembaruan keahlian")}</p>
           <p className="mt-1 text-2xl font-bold text-emerald-600">{stats.totalUpdates}</p>
         </div>
         <div className="ams-panel p-4">
@@ -167,7 +169,7 @@ export default function CapabilityPage() {
                               <div className="h-full rounded-full bg-[#0B2C6B]" style={{ width: profConfig.width }} />
                             </div>
                             <div className="mt-1 text-[11px] text-slate-400">
-                              <span>{skill.years_experience ? `${skill.years_experience} tahun pengalaman` : 'Pengalaman belum diisi'}</span>
+                              <span>{skill.years_experience ? t("{0} tahun pengalaman", [skill.years_experience]) : t("Pengalaman belum diisi")}</span>
                             </div>
                           </div>
                         </div>
@@ -182,8 +184,8 @@ export default function CapabilityPage() {
               <svg className="h-12 w-12 text-slate-200 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              <h3 className="mt-3 text-sm font-semibold text-slate-900">Keahlian belum diisi</h3>
-              <p className="mt-1 text-sm leading-6 text-slate-600">Tambahkan keahlian pada profil untuk melihat ringkasan kapabilitas Anda.</p>
+              <h3 className="mt-3 text-sm font-semibold text-slate-900">{t("Keahlian belum diisi")}</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{t("Tambahkan keahlian pada profil untuk melihat ringkasan kapabilitas Anda.")}</p>
             </div>
           )}
         </div>
@@ -193,7 +195,7 @@ export default function CapabilityPage() {
           {/* Score List */}
           {capabilityData.length > 0 && (
             <div className="ams-panel p-5">
-              <h3 className="text-sm font-semibold text-slate-900 mb-4">Rincian penguasaan</h3>
+              <h3 className="text-sm font-semibold text-slate-900 mb-4">{t("Rincian penguasaan")}</h3>
               <div className="space-y-3">
                 {capabilityData.map((item, i) => (
                   <div key={i} className="flex items-center gap-3">

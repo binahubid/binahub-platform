@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { notificationRequest } from "@/lib/notification-client";
+import { useAmsLocale } from "@/components/ams-language";
 
 function OpenNotice() {
+  const { t } = useAmsLocale();
   const { user, accessToken, loading } = useAuth();
   const router = useRouter();
   const id = useSearchParams().get("id");
@@ -61,23 +63,19 @@ function OpenNotice() {
   return (
     <main className="mx-auto mt-24 max-w-lg px-5">
       <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <h1 className="text-lg font-semibold text-[#0B2C6B]">
-          Pemberitahuan AMS
-        </h1>
+        <h1 className="text-lg font-semibold text-[#0B2C6B]">{t("Pemberitahuan AMS")}</h1>
         <p
           role={error ? "alert" : "status"}
           className="mt-2 text-sm leading-6 text-slate-700"
         >
-          {error || "Membuka pemberitahuan…"}
+          {error || t("Membuka pemberitahuan…")}
         </p>
         {error && (
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href={back}
               className="inline-flex min-h-11 items-center rounded-lg bg-[#0B2C6B] px-4 text-sm font-semibold text-white"
-            >
-              Lihat notifikasi
-            </Link>
+            >{t("Lihat notifikasi")}</Link>
             <button
               type="button"
               className="min-h-11 px-3 text-sm font-semibold text-[#0B2C6B]"
@@ -85,9 +83,7 @@ function OpenNotice() {
                 setError("");
                 setAttempt(attempt + 1);
               }}
-            >
-              Coba lagi
-            </button>
+            >{t("Coba lagi")}</button>
           </div>
         )}
       </div>

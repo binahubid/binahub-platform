@@ -9,6 +9,7 @@ import {
   useMaterialCatalog,
 } from "@/lib/materials";
 import s from "./materials.module.css";
+import { useAmsLocale } from "@/components/ams-language";
 
 const videoVersions = [
   { id: "id", label: "Bahasa Indonesia" },
@@ -17,6 +18,7 @@ const videoVersions = [
 ] as const;
 
 export default function AdminMaterialsPage() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const { data, error, reload } = useMaterialCatalog();
   const [version, setVersion] = useState<MaterialVideoVersion>("id");
@@ -54,33 +56,26 @@ export default function AdminMaterialsPage() {
   return (
     <div className={s.page}>
       <header className={s.heading}>
-        <h1>Materi</h1>
-        <p>
-          Profil perusahaan, panduan produk, dan tutorial untuk mendukung
-          pekerjaan tim.
-        </p>
+        <h1>{t("Materi")}</h1>
+        <p>{t("Profil perusahaan, panduan produk, dan tutorial untuk mendukung pekerjaan tim.")}</p>
       </header>
       {error && (
         <div className="ams-panel p-5">
-          <p role="alert">{error}</p>
-          <button className={s.button} type="button" onClick={reload}>
-            Coba lagi
-          </button>
+          <p role="alert">{t(error)}</p>
+          <button className={s.button} type="button" onClick={reload}>{t("Coba lagi")}</button>
         </div>
       )}
-      {!data && !error && <p role="status">Memuat materi…</p>}
+      {!data && !error && <p role="status">{t("Memuat materi…")}</p>}
       {data && (
         <>
           <section aria-labelledby="documents-title">
             <div className={s.sectionHeading}>
-              <h2 id="documents-title">Dokumen</h2>
-              <p>
-                Baca langsung di web atau unduh PDF untuk persiapan konsultasi.
-              </p>
+              <h2 id="documents-title">{t("Dokumen")}</h2>
+              <p>{t("Baca langsung di web atau unduh PDF untuk persiapan konsultasi.")}</p>
             </div>
             {downloadError && (
               <p role="alert" className={s.error}>
-                {downloadError}
+                {t(downloadError)}
               </p>
             )}
             <div className={s.documents}>
@@ -91,17 +86,16 @@ export default function AdminMaterialsPage() {
                 >
                   <span className={s.documentLabel}>
                     {document.slug.startsWith("company")
-                      ? "PROFIL PERUSAHAAN"
-                      : "PANDUAN PRODUK"}
+                      ? t("PROFIL PERUSAHAAN")
+                      : t("PANDUAN PRODUK")}
                   </span>
                   <h3>{document.title}</h3>
-                  <p>{document.description}</p>
+                  <p>{t(document.description)}</p>
                   <div className={s.actions}>
                     <Link
                       className={s.primary}
                       href={`/admin/materials/${document.slug}`}
-                    >
-                      Baca di web <span aria-hidden="true">→</span>
+                    >{t("Baca di web")} <span aria-hidden="true">→</span>
                     </Link>
                     <button
                       className={s.button}
@@ -111,7 +105,7 @@ export default function AdminMaterialsPage() {
                         void download(document.slug, document.filename)
                       }
                     >
-                      {busy === document.slug ? "Memuat…" : "Unduh PDF"}
+                      {busy === document.slug ? t("Memuat…") : t("Unduh PDF")}
                     </button>
                   </div>
                 </article>
@@ -123,13 +117,13 @@ export default function AdminMaterialsPage() {
             aria-labelledby="videos-title"
           >
             <div className={s.sectionHeading}>
-              <h2 id="videos-title">Video tutorial konsultan</h2>
-              <p>Pilih topik yang dibutuhkan. Video dibuka di tab baru.</p>
+              <h2 id="videos-title">{t("Video tutorial konsultan")}</h2>
+              <p>{t("Pilih topik yang dibutuhkan. Video dibuka di tab baru.")}</p>
             </div>
             <div className={s.filters}>
               {versions.length > 1 && (
                 <label className={s.version}>
-                  <span className="sr-only">Versi video</span>
+                  <span className="sr-only">{t("Versi video")}</span>
                   <select
                     value={version}
                     onChange={(event) => {
@@ -139,12 +133,12 @@ export default function AdminMaterialsPage() {
                       setQuery("");
                     }}
                   >
-                    {versions.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+                    {versions.map(({ id, label }) => <option key={id} value={id}>{t(label)}</option>)}
                   </select>
                 </label>
               )}
               {version !== "mobile" && (
-                <div className={s.series} role="group" aria-label="Seri video">
+                <div className={s.series} role="group" aria-label={t("Seri video")}>
                   <button
                     type="button"
                     aria-pressed={series === "fitur"}
@@ -153,7 +147,7 @@ export default function AdminMaterialsPage() {
                       setQuery("");
                     }}
                   >
-                    Fitur portal
+                    {t("Fitur portal")}
                   </button>
                   <button
                     type="button"
@@ -163,15 +157,15 @@ export default function AdminMaterialsPage() {
                       setQuery("");
                     }}
                   >
-                    Alur kerja
+                    {t("Alur kerja")}
                   </button>
                 </div>
               )}
               <label className={s.search}>
-                <span className="sr-only">Cari video</span>
+                <span className="sr-only">{t("Cari video")}</span>
                 <input
                   type="search"
-                  placeholder="Cari video…"
+                  placeholder={t("Cari video…")}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
@@ -194,7 +188,7 @@ export default function AdminMaterialsPage() {
                         {video.id} · {video.duration}
                       </span>
                       <strong>{video.title}</strong>
-                      <span>{video.description}</span>
+                      <span>{t(video.description)}</span>
                     </span>
                     <span className={s.openVideo} aria-hidden="true">
                       ↗
@@ -204,9 +198,7 @@ export default function AdminMaterialsPage() {
               ))}
             </ul>
             {!videos.length && (
-              <p role="status" className="py-6 text-sm text-slate-600">
-                Tidak ada video yang cocok. Coba judul atau kode lain.
-              </p>
+              <p role="status" className="py-6 text-sm text-slate-600">{t("Tidak ada video yang cocok. Coba judul atau kode lain.")}</p>
             )}
           </section>
         </>

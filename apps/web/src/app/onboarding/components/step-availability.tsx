@@ -1,4 +1,5 @@
 'use client';
+import { useAmsLocale } from "@/components/ams-language";
 
 type AvailabilityForm = {
   status: string;
@@ -19,13 +20,14 @@ const STATUS_OPTIONS = [
 ];
 
 export function StepAvailability({ form, onChange }: StepAvailabilityProps) {
+  const { t } = useAmsLocale();
   return (
     <div className="space-y-6">
       {/* Status */}
       <div>
         <div className="mb-3">
-          <h3 className="text-sm font-bold text-slate-900">Status Ketersediaan</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Tentukan status kolaborasi Anda saat ini</p>
+          <h3 className="text-sm font-bold text-slate-900">{t("Status Ketersediaan")}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{t("Tentukan status kolaborasi Anda saat ini")}</p>
         </div>
         <div className="space-y-2">
           {STATUS_OPTIONS.map((opt) => {
@@ -69,16 +71,16 @@ export function StepAvailability({ form, onChange }: StepAvailabilityProps) {
               className="mt-0.5 rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B] h-4 w-4"
             />
             <div>
-              <p className="text-xs font-semibold text-slate-800">Bersedia Melakukan Perjalanan Dinas / Luar Kota</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Centang jika Anda siap ditugaskan untuk proyek di luar daerah domisili Anda.</p>
+              <p className="text-xs font-semibold text-slate-800">{t("Bersedia Melakukan Perjalanan Dinas / Luar Kota")}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{t("Centang jika Anda siap ditugaskan untuk proyek di luar daerah domisili Anda.")}</p>
             </div>
           </label>
         </div>
 
         <div>
           <div className="mb-1.5">
-            <label className="text-[13px] font-semibold text-slate-700">Estimasi Kapasitas Waktu (Jam per Minggu)</label>
-            <p className="text-[10px] text-slate-400 mt-0.5">Biarkan kosong jika fleksibel / tidak dibatasi</p>
+            <label className="text-[13px] font-semibold text-slate-700">{t("Estimasi Kapasitas Waktu (Jam per Minggu)")}</label>
+            <p className="text-[10px] text-slate-400 mt-0.5">{t("Biarkan kosong jika fleksibel / tidak dibatasi")}</p>
           </div>
           <input
             type="number"
@@ -91,13 +93,13 @@ export function StepAvailability({ form, onChange }: StepAvailabilityProps) {
 
         <div>
           <div className="mb-1.5">
-            <label className="text-[13px] font-semibold text-slate-700">Catatan Ketersediaan Tambahan</label>
+            <label className="text-[13px] font-semibold text-slate-700">{t("Catatan Ketersediaan Tambahan")}</label>
           </div>
           <textarea
             value={form.notes}
             onChange={(e) => onChange({ notes: e.target.value })}
             rows={2}
-            placeholder="Tulis informasi khusus terkait jadwal kerja Anda..."
+            placeholder={t("Tulis informasi khusus terkait jadwal kerja Anda...")}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0B2C6B] focus:outline-none focus:ring-2 focus:ring-[#0B2C6B]/10 transition-all resize-none"
           />
         </div>

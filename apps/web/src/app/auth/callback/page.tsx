@@ -4,8 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase-client';
 import { notificationLoginReturn } from '@/lib/notification-client';
+import { useAmsLocale } from "@/components/ams-language";
 
 export default function AuthCallbackPage() {
+  const { t } = useAmsLocale();
   const router = useRouter();
   const handled = useRef(false);
   const [error, setError] = useState('');
@@ -78,18 +80,16 @@ export default function AuthCallbackPage() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
-        <p className="text-sm font-medium text-white">{error ? 'Proses masuk belum berhasil' : 'Menyiapkan akun Anda...'}</p>
+        <p className="text-sm font-medium text-white">{error ? t("Proses masuk belum berhasil") : t("Menyiapkan akun Anda...")}</p>
         <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-white/60">
-          {error || 'Mohon tunggu sebentar. Jangan tutup halaman ini.'}
+          {error || t("Mohon tunggu sebentar. Jangan tutup halaman ini.")}
         </p>
         {error && (
           <button
             type="button"
             onClick={() => router.replace('/auth/login')}
             className="mt-5 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#0B2C6B] transition hover:bg-slate-100"
-          >
-            Kembali ke halaman masuk
-          </button>
+          >{t("Kembali ke halaman masuk")}</button>
         )}
       </div>
     </div>

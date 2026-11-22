@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useAmsLocale } from "@/components/ams-language";
 
 function Hero3DDashboard() {
+  const { t } = useAmsLocale();
   const stageRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ rotateX: 8, rotateY: -12, translateX: 0, translateY: 0, translateZ: 0 });
 
@@ -112,7 +114,7 @@ function Hero3DDashboard() {
           <div className="p-5">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <div className="text-sm font-semibold text-slate-900">Selamat datang, Budi</div>
+                <div className="text-sm font-semibold text-slate-900">{t("Selamat datang, Budi")}</div>
                 <div className="mt-0.5 text-xs text-slate-500">Senior Trainer, PT Bina Bangsa</div>
               </div>
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0B2C6B]/8 text-xs font-bold text-[#0B2C6B]">
@@ -149,9 +151,7 @@ function Hero3DDashboard() {
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                   Upcoming Assignment
                 </div>
-                <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                  3 hari lagi
-                </span>
+                <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{t("3 hari lagi")}</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-500">
@@ -159,7 +159,7 @@ function Hero3DDashboard() {
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-semibold text-slate-900">Leadership Training</div>
-                  <div className="text-xs text-slate-500">PT Bina Bangsa, 12 peserta</div>
+                  <div className="text-xs text-slate-500">{t("PT Bina Bangsa, 12 peserta")}</div>
                 </div>
               </div>
             </div>
@@ -178,6 +178,7 @@ function Hero3DDashboard() {
 }
 
 export function Hero() {
+  const { t } = useAmsLocale();
   const { user } = useAuth();
   const isLoggedIn = !!user;
 
@@ -193,22 +194,16 @@ export function Hero() {
               Associate Management System
             </span>
 
-            <h1 className="mt-6 text-[2.5rem] font-light leading-[1.08] tracking-[-0.025em] text-slate-900 sm:text-5xl lg:text-[3.5rem]">
-              Sistem Kelola profil profesional Associate BinaHub.
-            </h1>
+            <h1 className="mt-6 text-[2.5rem] font-light leading-[1.08] tracking-[-0.025em] text-slate-900 sm:text-5xl lg:text-[3.5rem]">{t("Sistem Kelola profil profesional Associate BinaHub.")}</h1>
 
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
-              Platform yang mendukung associate mulai dari pendaftaran, penugasan, dan evaluasi diri.
-            </p>
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">{t("Platform yang mendukung associate mulai dari pendaftaran, penugasan, dan evaluasi diri.")}</p>
 
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               {isLoggedIn ? (
                 <Link
                   href={user?.app_metadata?.role === 'admin' ? '/admin' : '/dashboard'}
                   className="group inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/20 transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-xl hover:shadow-[#0B2C6B]/30"
-                >
-                  Buka Dashboard
-                  <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                >{t("Buka Dashboard")}<svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </Link>
@@ -217,18 +212,14 @@ export function Hero() {
                   <Link
                     href="/auth/register"
                     className="group inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/20 transition-all hover:from-[#0A255A] hover:to-[#071A33] hover:shadow-xl hover:shadow-[#0B2C6B]/30"
-                  >
-                    Daftar Sebagai Associate
-                    <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  >{t("Daftar Sebagai Associate")}<svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </Link>
                   <Link
                     href="/auth/login"
                     className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-7 py-3.5 text-sm font-semibold text-slate-900 transition hover:border-slate-400 hover:bg-slate-50"
-                  >
-                    Masuk
-                  </Link>
+                  >{t("Masuk")}</Link>
                 </>
               )}
             </div>
@@ -238,7 +229,7 @@ export function Hero() {
                 <svg className="h-3.5 w-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Gratis</span>
+                <span>{t("Gratis")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <svg className="h-3.5 w-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -250,7 +241,7 @@ export function Hero() {
                 <svg className="h-3.5 w-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Cepat</span>
+                <span>{t("Cepat")}</span>
               </div>
             </div>
           </div>

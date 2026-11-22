@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../components/ui';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Task = {
   id: string;
@@ -12,6 +13,7 @@ type Task = {
 };
 
 export default function TasksPage() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -127,7 +129,7 @@ export default function TasksPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Tasks</h1>
-        <p className="mt-1 text-sm text-slate-500">Kelola tugas harian Anda</p>
+        <p className="mt-1 text-sm text-slate-500">{t("Kelola tugas harian Anda")}</p>
       </div>
 
       {/* Stats */}
@@ -158,7 +160,7 @@ export default function TasksPage() {
           type="text"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Tambah tugas baru..."
+          placeholder={t("Tambah tugas baru...")}
           className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-[#0B2C6B] focus:ring-1 focus:ring-[#0B2C6B]/20"
         />
         <button
@@ -166,7 +168,7 @@ export default function TasksPage() {
           disabled={!newTitle.trim() || adding}
           className="rounded-lg bg-[#0B2C6B] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0A255A] disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {adding ? 'Menambah...' : 'Tambah'}
+          {adding ? 'Menambah...' : t("Tambah")}
         </button>
       </form>
 
@@ -182,7 +184,7 @@ export default function TasksPage() {
                 : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
-            {f === 'all' ? 'Semua' : f === 'pending' ? 'Pending' : 'Selesai'}
+            {f === 'all' ? t("Semua") : f === 'pending' ? 'Pending' : t("Selesai")}
           </button>
         ))}
       </div>
@@ -194,10 +196,10 @@ export default function TasksPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
           <p className="mt-4 text-sm font-medium text-slate-900">
-            {filter === 'all' ? 'Belum ada tugas' : filter === 'pending' ? 'Tidak ada tugas pending' : 'Belum ada tugas selesai'}
+            {filter === 'all' ? t("Belum ada tugas") : filter === 'pending' ? t("Tidak ada tugas pending") : t("Belum ada tugas selesai")}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            {filter === 'all' ? 'Tambah tugas baru di atas' : 'Ubah filter atau tambah tugas baru'}
+            {filter === 'all' ? t("Tambah tugas baru di atas") : t("Ubah filter atau tambah tugas baru")}
           </p>
         </div>
       ) : (

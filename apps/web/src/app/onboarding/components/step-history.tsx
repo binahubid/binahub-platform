@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAmsLocale } from "@/components/ams-language";
 
 type Experience = {
   organization: string;
@@ -56,6 +57,7 @@ export function StepHistory({
   onChangeLanguages,
   onChangeCertifications,
 }: StepHistoryProps) {
+  const { t } = useAmsLocale();
   const [activeTab, setActiveTab] = useState<'experience' | 'education' | 'language' | 'certification'>('experience');
 
   // Form states
@@ -206,8 +208,7 @@ export function StepHistory({
           className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${
             activeTab === 'experience' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}
-        >
-          Pengalaman Kerja ({experiences.length})
+        >{t("Pengalaman Kerja (")}{experiences.length})
         </button>
         <button
           type="button"
@@ -215,8 +216,7 @@ export function StepHistory({
           className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${
             activeTab === 'education' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}
-        >
-          Pendidikan ({educations.length})
+        >{t("Pendidikan (")}{educations.length})
         </button>
         <button
           type="button"
@@ -224,8 +224,7 @@ export function StepHistory({
           className={`rounded-lg py-2 text-xs font-semibold transition-all ${
             activeTab === 'language' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}
-        >
-          Bahasa ({languages.length})
+        >{t("Bahasa (")}{languages.length})
         </button>
         <button
           type="button"
@@ -233,8 +232,7 @@ export function StepHistory({
           className={`rounded-lg py-2 text-xs font-semibold transition-all ${
             activeTab === 'certification' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}
-        >
-          Sertifikasi ({certifications.length})
+        >{t("Sertifikasi (")}{certifications.length})
         </button>
       </div>
 
@@ -242,22 +240,20 @@ export function StepHistory({
         <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-800">
-              {editIndex !== null ? 'Edit Data' : 'Tambah Data'} {activeTab === 'experience' ? 'Pengalaman' : 'Pendidikan'}
+              {editIndex !== null ? 'Edit Data' : t("Tambah Data")} {activeTab === 'experience' ? t("Pengalaman") : t("Pendidikan")}
             </h3>
             <button
               type="button"
               onClick={() => setShowForm(false)}
               className="text-slate-400 hover:text-slate-600 text-xs font-medium"
-            >
-              Batal
-            </button>
+            >{t("Batal")}</button>
           </div>
 
           {activeTab === 'experience' ? (
             <form onSubmit={saveExperience} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Perusahaan / Organisasi *</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t("Perusahaan / Organisasi *")}</label>
                   <input
                     type="text"
                     required
@@ -292,7 +288,7 @@ export function StepHistory({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Mulai (YYYY-MM) *</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t("Tanggal Mulai (YYYY-MM) *")}</label>
                   <input
                     type="text"
                     required
@@ -312,14 +308,12 @@ export function StepHistory({
                   onChange={(e) => setExpIsCurrent(e.target.checked)}
                   className="rounded border-slate-300 text-[#0B2C6B] focus:ring-[#0B2C6B]"
                 />
-                <label htmlFor="expIsCurrent" className="text-xs text-slate-600 font-medium select-none">
-                  Saya masih bekerja di sini saat ini
-                </label>
+                <label htmlFor="expIsCurrent" className="text-xs text-slate-600 font-medium select-none">{t("Saya masih bekerja di sini saat ini")}</label>
               </div>
 
               {!expIsCurrent && (
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Berakhir (YYYY-MM)</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t("Tanggal Berakhir (YYYY-MM)")}</label>
                   <input
                     type="text"
                     value={expEndDate}
@@ -335,18 +329,18 @@ export function StepHistory({
                 <textarea
                   value={expDescription}
                   onChange={(e) => setExpDescription(e.target.value)}
-                  placeholder="Jelaskan peran Anda, program yang difasilitasi, atau pencapaian..."
+                  placeholder={t("Jelaskan peran Anda, program yang difasilitasi, atau pencapaian...")}
                   rows={3}
                   className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">Pencapaian Utama</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">{t("Pencapaian Utama")}</label>
                 <textarea
                   value={expAchievement}
                   onChange={(e) => setExpAchievement(e.target.value)}
-                  placeholder="Tuliskan hasil terukur atau pencapaian utama jika tercantum di CV..."
+                  placeholder={t("Tuliskan hasil terukur atau pencapaian utama jika tercantum di CV...")}
                   rows={2}
                   className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 outline-none resize-none"
                 />
@@ -355,14 +349,12 @@ export function StepHistory({
               <button
                 type="submit"
                 className="w-full rounded-xl bg-[#0B2C6B] hover:bg-[#08204F] py-2.5 text-xs font-bold text-white transition-colors"
-              >
-                Simpan Pengalaman
-              </button>
+              >{t("Simpan Pengalaman")}</button>
             </form>
           ) : (
             <form onSubmit={saveEducation} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">Institusi Pendidikan / Kampus *</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">{t("Institusi Pendidikan / Kampus *")}</label>
                 <input
                   type="text"
                   required
@@ -386,7 +378,7 @@ export function StepHistory({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Jurusan / Bidang Studi</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t("Jurusan / Bidang Studi")}</label>
                   <input
                     type="text"
                     value={eduField}
@@ -399,7 +391,7 @@ export function StepHistory({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Tahun Mulai (YYYY)</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t("Tahun Mulai (YYYY)")}</label>
                   <input
                     type="number"
                     value={eduStartYear}
@@ -409,7 +401,7 @@ export function StepHistory({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Tahun Lulus (YYYY)</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t("Tahun Lulus (YYYY)")}</label>
                   <input
                     type="number"
                     value={eduEndYear}
@@ -423,9 +415,7 @@ export function StepHistory({
               <button
                 type="submit"
                 className="w-full rounded-xl bg-[#0B2C6B] hover:bg-[#08204F] py-2.5 text-xs font-bold text-white transition-colors"
-              >
-                Simpan Pendidikan
-              </button>
+              >{t("Simpan Pendidikan")}</button>
             </form>
           )}
         </div>
@@ -439,15 +429,14 @@ export function StepHistory({
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
-              Tambah {activeTab === 'experience' ? 'Pengalaman Kerja' : 'Riwayat Pendidikan'}
+              </svg>{t("Tambah")} {activeTab === 'experience' ? t("Pengalaman Kerja") : t("Riwayat Pendidikan")}
             </button>
           )}
 
           {activeTab === 'experience' ? (
             <div className="space-y-3">
               {experiences.length === 0 ? (
-                <p className="text-center text-xs text-slate-400 py-6">Belum ada data pengalaman kerja</p>
+                <p className="text-center text-xs text-slate-400 py-6">{t("Belum ada data pengalaman kerja")}</p>
               ) : (
                 experiences.map((exp, idx) => (
                   <div
@@ -487,7 +476,7 @@ export function StepHistory({
           ) : activeTab === 'education' ? (
             <div className="space-y-3">
               {educations.length === 0 ? (
-                <p className="text-center text-xs text-slate-400 py-6">Belum ada data pendidikan</p>
+                <p className="text-center text-xs text-slate-400 py-6">{t("Belum ada data pendidikan")}</p>
               ) : (
                 educations.map((edu, idx) => (
                   <div
@@ -524,16 +513,16 @@ export function StepHistory({
             </div>
           ) : activeTab === 'language' ? (
             <div className="space-y-3">
-              <p className="text-xs leading-relaxed text-slate-500">Periksa bahasa hasil pembacaan CV. Hapus item yang tidak benar; bahasa dapat ditambah lagi dari halaman profil.</p>
+              <p className="text-xs leading-relaxed text-slate-500">{t("Periksa bahasa hasil pembacaan CV. Hapus item yang tidak benar; bahasa dapat ditambah lagi dari halaman profil.")}</p>
               {languages.length === 0 ? (
-                <p className="text-center text-xs text-slate-400 py-6">Tidak ada bahasa yang terdeteksi</p>
+                <p className="text-center text-xs text-slate-400 py-6">{t("Tidak ada bahasa yang terdeteksi")}</p>
               ) : languages.map((language, idx) => (
                 <div key={`${language.language}-${idx}`} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-4">
                   <div>
                     <p className="text-sm font-semibold text-slate-800">{language.language}</p>
                     <p className="mt-0.5 text-xs capitalize text-slate-500">{language.proficiency}</p>
                   </div>
-                  <button type="button" onClick={() => removeLanguage(idx)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500" aria-label={`Hapus bahasa ${language.language}`}>
+                  <button type="button" onClick={() => removeLanguage(idx)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500" aria-label={t("Hapus bahasa {0}", [language.language])}>
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 </div>
@@ -541,19 +530,19 @@ export function StepHistory({
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs leading-relaxed text-slate-500">Periksa sertifikasi hasil pembacaan CV. Hapus item yang tidak benar; detail dapat dilengkapi lagi dari halaman profil.</p>
+              <p className="text-xs leading-relaxed text-slate-500">{t("Periksa sertifikasi hasil pembacaan CV. Hapus item yang tidak benar; detail dapat dilengkapi lagi dari halaman profil.")}</p>
               {certifications.length === 0 ? (
-                <p className="text-center text-xs text-slate-400 py-6">Tidak ada sertifikasi yang terdeteksi</p>
+                <p className="text-center text-xs text-slate-400 py-6">{t("Tidak ada sertifikasi yang terdeteksi")}</p>
               ) : certifications.map((certification, idx) => (
                 <div key={`${certification.name}-${idx}`} className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4">
                   <div>
                     <p className="text-sm font-semibold text-slate-800">{certification.name}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{certification.issuer || 'Penerbit tidak tercantum'}</p>
-                    {(certification.issueDate || certification.expiryDate) && <p className="mt-1 text-[10px] text-slate-400">{certification.issueDate || '-'} — {certification.expiryDate || 'Tanpa kedaluwarsa'}</p>}
+                    <p className="mt-0.5 text-xs text-slate-500">{certification.issuer || t("Penerbit tidak tercantum")}</p>
+                    {(certification.issueDate || certification.expiryDate) && <p className="mt-1 text-[10px] text-slate-400">{certification.issueDate || '-'} — {certification.expiryDate || t("Tanpa kedaluwarsa")}</p>}
                     {certification.credentialId && <p className="mt-1 text-[10px] text-slate-500">ID: {certification.credentialId}</p>}
                     {certification.credentialUrl && <p className="mt-1 max-w-md truncate text-[10px] text-[#0B2C6B]">{certification.credentialUrl}</p>}
                   </div>
-                  <button type="button" onClick={() => removeCertification(idx)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500" aria-label={`Hapus sertifikasi ${certification.name}`}>
+                  <button type="button" onClick={() => removeCertification(idx)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500" aria-label={t("Hapus sertifikasi {0}", [certification.name])}>
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 </div>

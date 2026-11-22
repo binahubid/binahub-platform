@@ -91,12 +91,19 @@ teamAssociateRoutes.post('/respond', async (c) => {
 teamAssociateRoutes.post('/open', async (c) => {
   const target = consultantPortalTargetSchema.safeParse(await c.req.json().catch(() => ({})));
   if (!target.success) return c.json({ success: false, error: 'Tujuan portal tidak valid.' }, 400);
-  const id = c.get('user').id, membership = await getTeamMembership(id);
-  const { data: associate } = await getDb().from('associates').select('status').eq('id', id).maybeSingle();
-  if (!activeConsultantMembership(membership, associate?.status || ''))
-    return c.json({ success: false, error: 'Keanggotaan konsultan Anda belum aktif. Hubungi admin BinaHub.' }, 403);
+  const id = c.get('user').id;
   try {
-    await syncConsultantMembership(id);
+    const [membership, { data: associate, error }] = await Promise.all([
+      getTeamMembership(id),
+      getDb().from('associates').select('status').eq('id', id).maybeSingle(),
+    ]);
+    if (error) throw error;
+    if (!membership || !activeConsultantMembership(membership, associate?.status || ''))
+      return c.json({ success: false, error: 'Keanggotaan konsultan Anda belum aktif. Hubungi admin BinaHub.' }, 403);
+
+    if (membership.sync_status !== 'synced' || membership.synced_revision !== membership.revision) {
+      await syncConsultantMembership(id);
+    }
     const access = await requestAppAccessLink(id, target.data.leadId ? `/konsultan/clients/${target.data.leadId}` : '/konsultan');
     return c.json({ success: true, data: { url: access.url } });
   } catch {

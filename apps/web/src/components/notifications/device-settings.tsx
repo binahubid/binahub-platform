@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { deviceKey, notificationRequest } from "@/lib/notification-client";
 import { useAmsNotifications } from "./provider";
+import { useAmsLocale } from "@/components/ams-language";
 
 const primaryButton =
   "min-h-11 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#123e84] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B2C6B] disabled:opacity-50";
@@ -12,6 +13,7 @@ const secondaryButton =
   "min-h-11 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-[#0B2C6B] hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B2C6B] disabled:opacity-50";
 
 export function InstallAmsCard() {
+  const { t } = useAmsLocale();
   const { installed, ios, supported, subscribed } = useAmsNotifications();
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {
@@ -22,18 +24,16 @@ export function InstallAmsCard() {
     <section className="ams-panel flex flex-wrap items-center justify-between gap-3 p-4">
       <div>
         <h2 className="font-semibold text-[#0B2C6B]">
-          {installed ? "Terima undangan di HP" : "Akses AMS dari layar utama"}
+          {installed ? t("Terima undangan di HP") : t("Akses AMS dari layar utama")}
         </h2>
-        <p className="mt-1 text-sm leading-6 text-slate-600">
-          Buka AMS dengan satu ketukan dan terima pemberitahuan pekerjaan.
-        </p>
+        <p className="mt-1 text-sm leading-6 text-slate-600">{t("Buka AMS dengan satu ketukan dan terima pemberitahuan pekerjaan.")}</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <Link
           href="/dashboard/settings#notifikasi-hp"
           className={primaryButton}
         >
-          {ios && !installed ? "Pasang AMS" : "Atur notifikasi HP"}
+          {ios && !installed ? "Pasang AMS" : t("Atur notifikasi HP")}
         </Link>
         <button
           type="button"
@@ -51,6 +51,7 @@ export function InstallAmsCard() {
 }
 
 export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
+  const { t } = useAmsLocale();
   const state = useAmsNotifications();
   const { user } = useAuth();
   const [installError, setInstallError] = useState("");
@@ -121,9 +122,7 @@ export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
         <h2
           id="notification-settings-heading"
           className="text-base font-semibold text-slate-900"
-        >
-          Notifikasi HP
-        </h2>
+        >{t("Notifikasi HP")}</h2>
         <span
           role="status"
           className={
@@ -144,14 +143,11 @@ export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
 
       {installFirst && (
         <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-700">
-          <li>
-            Buka AMS di Safari dan ketuk <strong>Bagikan</strong>.
+          <li>{t("Buka AMS di Safari dan ketuk")} <strong>{t("Bagikan")}</strong>.
           </li>
-          <li>
-            Pilih <strong>Tambah ke Layar Utama</strong>.
+          <li>{t("Pilih")} <strong>{t("Tambah ke Layar Utama")}</strong>.
           </li>
-          <li>
-            Buka ikon AMS dan pilih <strong>Aktifkan notifikasi HP</strong>.
+          <li>{t("Buka ikon AMS dan pilih")} <strong>{t("Aktifkan notifikasi HP")}</strong>.
           </li>
         </ol>
       )}
@@ -168,7 +164,7 @@ export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
               disabled={isBusy}
               onClick={() => void state.enable()}
             >
-              {state.busy ? "Mengaktifkan…" : "Aktifkan notifikasi HP"}
+              {state.busy ? "Mengaktifkan…" : t("Aktifkan notifikasi HP")}
             </button>
           )}
           {(blocked ||
@@ -178,9 +174,7 @@ export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
               className={secondaryButton}
               disabled={isBusy}
               onClick={() => void state.refresh()}
-            >
-              Periksa lagi
-            </button>
+            >{t("Periksa lagi")}</button>
           )}
           {active && canTest && (
             <button
@@ -188,9 +182,7 @@ export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
               className={primaryButton}
               disabled={isBusy}
               onClick={() => void state.test()}
-            >
-              Kirim notifikasi uji
-            </button>
+            >{t("Kirim notifikasi uji")}</button>
           )}
           {state.subscribed && (
             <button
@@ -218,12 +210,8 @@ export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
 
       {!state.installed && !installFirst && state.supported && (
         <details className="mt-4 border-t border-slate-200 pt-3">
-          <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-[#0B2C6B]">
-            Pasang AMS di layar utama
-          </summary>
-          <p className="text-sm leading-6 text-slate-600">
-            Buka AMS langsung dari ikon di layar utama perangkat Anda.
-          </p>
+          <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-[#0B2C6B]">{t("Pasang AMS di layar utama")}</summary>
+          <p className="text-sm leading-6 text-slate-600">{t("Buka AMS langsung dari ikon di layar utama perangkat Anda.")}</p>
           {state.canInstall ? (
             <button
               type="button"
@@ -233,17 +221,15 @@ export function DeviceSettings({ allowTest = false }: { allowTest?: boolean }) {
               Pasang AMS
             </button>
           ) : (
-            <p className="text-sm leading-6 text-slate-700">
-              Di menu browser, pilih <strong>Instal aplikasi</strong> atau{" "}
-              <strong>Tambahkan ke layar utama</strong>.
+            <p className="text-sm leading-6 text-slate-700">{t("Di menu browser, pilih")} <strong>Instal aplikasi</strong> atau{" "}
+              <strong>{t("Tambahkan ke layar utama")}</strong>.
             </p>
           )}
         </details>
       )}
       {otherDevices.length > 0 && (
         <details className="mt-4 border-t border-slate-200 pt-3">
-          <summary className="cursor-pointer py-2 text-sm font-medium text-[#0B2C6B]">
-            Perangkat lain ({otherDevices.length})
+          <summary className="cursor-pointer py-2 text-sm font-medium text-[#0B2C6B]">{t("Perangkat lain (")}{otherDevices.length})
           </summary>
           <ul className="mt-2 divide-y divide-slate-200">
             {otherDevices.map((device) => (
@@ -292,6 +278,7 @@ const zones = [
 ] as const;
 
 export function NoticePreferences() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const [values, setValues] = useState<Preferences | null>(null);
   const [quietEnabled, setQuietEnabled] = useState(false);
@@ -357,19 +344,15 @@ export function NoticePreferences() {
 
   return (
     <details className="rounded-xl border border-slate-200 bg-white px-5 py-2 sm:px-6">
-      <summary className="min-h-11 cursor-pointer py-3 font-semibold text-slate-900">
-        Jenis notifikasi dan jam tenang
-      </summary>
-      <p className="text-sm leading-6 text-slate-600">
-        Pilih pemberitahuan yang dikirim ke HP dan email Anda.
-      </p>
+      <summary className="min-h-11 cursor-pointer py-3 font-semibold text-slate-900">{t("Jenis notifikasi dan jam tenang")}</summary>
+      <p className="text-sm leading-6 text-slate-600">{t("Pilih pemberitahuan yang dikirim ke HP dan email Anda.")}</p>
       {values && (
         <form
           className="mt-4 space-y-4 pb-4"
           onSubmit={(event) => void save(event)}
         >
           <fieldset className="grid gap-1 sm:grid-cols-2">
-            <legend className="sr-only">Jenis pemberitahuan</legend>
+            <legend className="sr-only">{t("Jenis pemberitahuan")}</legend>
             {preferences.map(([key, label]) => (
               <label
                 key={key}
@@ -410,9 +393,7 @@ export function NoticePreferences() {
             </label>
             {quietEnabled && (
               <>
-                <p className="mb-3 text-sm leading-6 text-slate-600">
-                  Notifikasi rutin menunggu sampai jam tenang berakhir.
-                </p>
+                <p className="mb-3 text-sm leading-6 text-slate-600">{t("Notifikasi rutin menunggu sampai jam tenang berakhir.")}</p>
                 <div className="grid gap-3 sm:grid-cols-3">
                   {(
                     [
@@ -444,9 +425,7 @@ export function NoticePreferences() {
                       </select>
                     </label>
                   ))}
-                  <label className="grid gap-1.5 text-sm font-medium text-slate-800">
-                    Zona waktu
-                    <select
+                  <label className="grid gap-1.5 text-sm font-medium text-slate-800">{t("Zona waktu")}<select
                       className="min-h-11 rounded-lg border border-slate-300 px-3 font-normal"
                       value={values.timezone}
                       onChange={(event) => {
@@ -471,14 +450,12 @@ export function NoticePreferences() {
             )}
           </fieldset>
           <button className={primaryButton} type="submit" disabled={saving}>
-            {saving ? "Menyimpan…" : "Simpan pilihan"}
+            {saving ? t("Menyimpan…") : t("Simpan pilihan")}
           </button>
         </form>
       )}
       {!values && !result && (
-        <p role="status" className="py-3 text-sm text-slate-600">
-          Memuat pilihan…
-        </p>
+        <p role="status" className="py-3 text-sm text-slate-600">{t("Memuat pilihan…")}</p>
       )}
       {result && (
         <p
@@ -499,9 +476,7 @@ export function NoticePreferences() {
             setResult(null);
             setRetry(retry + 1);
           }}
-        >
-          Coba lagi
-        </button>
+        >{t("Coba lagi")}</button>
       )}
     </details>
   );

@@ -1,5 +1,8 @@
+"use client";
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { useAmsLocale } from "@/components/ams-language";
 
 type WorkspaceOverviewProps = {
   heading: string;
@@ -47,9 +50,10 @@ export type WorkspaceShortcut = { label: string; tone: ShortcutTone } & (
 );
 
 export function WorkspaceShortcuts({ items }: { items: WorkspaceShortcut[] }) {
+  const { t } = useAmsLocale();
   return (
     <section className="ams-shortcuts" aria-labelledby="workspace-shortcuts-heading">
-      <h2 id="workspace-shortcuts-heading">Akses cepat</h2>
+      <h2 id="workspace-shortcuts-heading">{t("Akses cepat")}</h2>
       <div className="ams-shortcut-grid">
         {items.map((item) => {
           const content = (
@@ -65,8 +69,8 @@ export function WorkspaceShortcuts({ items }: { items: WorkspaceShortcut[] }) {
                 )}
               </span>
               <span>
-                <span className="block">{item.label}</span>
-                {!item.href && <span className="ams-shortcut-soon">Segera hadir</span>}
+                <span className="block">{t(item.label)}</span>
+                {!item.href && <span className="ams-shortcut-soon">{t("Segera hadir")}</span>}
               </span>
             </>
           );

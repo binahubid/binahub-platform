@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Availability } from '../types';
+import { useAmsLocale } from "@/components/ams-language";
 
 type StepAvailabilityProps = {
   availability: Availability | null;
@@ -19,6 +20,7 @@ const statusOptions = [
 const engagementOptions = ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Consulting'];
 
 export function StepAvailability({ availability, apiUrl, accessToken, onRefresh }: StepAvailabilityProps) {
+  const { t } = useAmsLocale();
   const [form, setForm] = useState({
     status: availability?.status || 'open',
     work_locations: availability?.work_locations || [],
@@ -68,9 +70,7 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
         <label className="block text-sm font-semibold text-slate-700 mb-3">
           <svg className="inline h-4 w-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Status Ketersediaan
-        </label>
+          </svg>{t("Status Ketersediaan")}</label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {statusOptions.map((opt) => (
             <button
@@ -118,9 +118,7 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
           <svg className="inline h-4 w-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          Lokasi Kerja
-        </label>
+          </svg>{t("Lokasi Kerja")}</label>
         <div className="flex flex-wrap gap-2">
           {['Remote', 'Hybrid', 'On-site', 'Jakarta', 'Surabaya', 'Bandung', 'Other'].map((loc) => (
             <button
@@ -144,9 +142,7 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
         <label className="block text-sm font-semibold text-slate-700 mb-3">
           <svg className="inline h-4 w-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          Tipe Pekerjaan yang Disukai
-        </label>
+          </svg>{t("Tipe Pekerjaan yang Disukai")}</label>
         <div className="flex flex-wrap gap-2">
           {engagementOptions.map((eng) => (
             <button
@@ -171,9 +167,7 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
           <label className="block text-sm font-semibold text-slate-700 mb-2">
             <svg className="inline h-4 w-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Siap Travel?
-          </label>
+            </svg>{t("Siap Travel?")}</label>
           <label className="flex items-center gap-3 cursor-pointer">
             <div className="relative">
               <input
@@ -190,7 +184,7 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
                 <div className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform mt-0.5 ${form.travel_ready ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
             </div>
-            <span className="text-sm text-slate-600">{form.travel_ready ? 'Ya, bersedia travel' : 'Tidak'}</span>
+            <span className="text-sm text-slate-600">{form.travel_ready ? 'Ya, bersedia travel' : t("Tidak")}</span>
           </label>
         </div>
 
@@ -219,15 +213,13 @@ export function StepAvailability({ availability, apiUrl, accessToken, onRefresh 
         <label className="block text-sm font-semibold text-slate-700 mb-2">
           <svg className="inline h-4 w-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          Catatan Tambahan
-        </label>
+          </svg>{t("Catatan Tambahan")}</label>
         <textarea
           value={form.notes}
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
           onBlur={() => handleSave()}
           rows={3}
-          placeholder="Informasi tambahan tentang ketersediaan Anda..."
+          placeholder={t("Informasi tambahan tentang ketersediaan Anda...")}
           className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0B2C6B] focus:ring-2 focus:ring-[#0B2C6B]/10 transition-all resize-none"
         />
       </div>

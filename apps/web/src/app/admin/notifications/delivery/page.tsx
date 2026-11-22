@@ -8,6 +8,7 @@ import {
   DeviceSettings,
   NoticePreferences,
 } from "@/components/notifications/device-settings";
+import { useAmsLocale } from "@/components/ams-language";
 
 type Delivery = {
   id: string;
@@ -52,6 +53,7 @@ const button =
   "min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-[#0B2C6B] hover:bg-slate-50 disabled:opacity-50";
 
 export default function NotificationDeliveryPage() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const [page, setPage] = useState(0);
   const [data, setData] = useState<Operations | null>(null);
@@ -120,16 +122,9 @@ export default function NotificationDeliveryPage() {
           <Link
             href="/admin/notifications"
             className="text-sm font-medium text-[#0B2C6B] hover:underline"
-          >
-            Kembali ke notifikasi
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-900">
-            Pengiriman notifikasi
-          </h1>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            Pantau pengiriman email dan notifikasi HP serta ulangi pengiriman
-            yang gagal.
-          </p>
+          >{t("Kembali ke notifikasi")}</Link>
+          <h1 className="mt-2 text-2xl font-semibold text-slate-900">{t("Pengiriman notifikasi")}</h1>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{t("Pantau pengiriman email dan notifikasi HP serta ulangi pengiriman yang gagal.")}</p>
         </div>
         <button
           type="button"
@@ -137,7 +132,7 @@ export default function NotificationDeliveryPage() {
           disabled={loading}
           onClick={() => void refresh()}
         >
-          {loading ? "Memuat…" : "Perbarui data"}
+          {loading ? t("Memuat…") : t("Perbarui data")}
         </button>
       </div>
       {error && (
@@ -145,12 +140,12 @@ export default function NotificationDeliveryPage() {
           role="alert"
           className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
         >
-          {error}
+          {t(error)}
         </p>
       )}
       {success && (
         <p role="status" className="text-sm text-emerald-800">
-          {success}
+          {t(success)}
         </p>
       )}
       {data && (
@@ -176,24 +171,21 @@ export default function NotificationDeliveryPage() {
             ))}
           </dl>
           <p className="text-sm leading-6 text-slate-600">
-            {data.pushEnabled ? "Push HP aktif." : "Push HP menunggu aktivasi."}{" "}
+            {data.pushEnabled ? t("Push HP aktif.") : t("Push HP menunggu aktivasi.")}{" "}
             {data.lastRun
               ? "Terakhir diproses " +
                 date(data.lastRun.started_at) +
                 " · " +
                 (statuses[data.lastRun.state] || "Diperiksa")
-              : "Belum ada proses pengiriman push yang tercatat."}
+              : t("Belum ada proses pengiriman push yang tercatat.")}
           </p>
           {data.waiting > 0 && (
             <p className="text-sm text-slate-700">
-              <strong>{data.waiting}</strong> undangan menunggu respons.
-            </p>
+              <strong>{data.waiting}</strong> {t("undangan menunggu respons.")}</p>
           )}
           <section className="ams-panel">
             {!data.items.length && (
-              <p className="p-5 text-sm text-slate-600">
-                Belum ada riwayat pengiriman.
-              </p>
+              <p className="p-5 text-sm text-slate-600">{t("Belum ada riwayat pengiriman.")}</p>
             )}
             <ul className="divide-y divide-slate-200">
               {data.items.map((item) => (
@@ -208,7 +200,7 @@ export default function NotificationDeliveryPage() {
                     <p className="mt-1 text-xs leading-5 text-slate-600">
                       {item.channel === "email"
                         ? "Email"
-                        : item.device_label || "Notifikasi HP"}{" "}
+                        : item.device_label || t("Notifikasi HP")}{" "}
                       · {date(item.created_at)}
                     </p>
                   </div>
@@ -224,9 +216,7 @@ export default function NotificationDeliveryPage() {
                       {statuses[item.status] || item.status}
                     </span>
                     {item.read_at && (
-                      <span className="text-xs font-medium text-slate-600">
-                        Dibaca di AMS
-                      </span>
+                      <span className="text-xs font-medium text-slate-600">{t("Dibaca di AMS")}</span>
                     )}
                     {item.status === "failed" && (
                       <button
@@ -237,7 +227,7 @@ export default function NotificationDeliveryPage() {
                       >
                         {busy === item.id
                           ? "Menjadwalkan…"
-                          : "Ulangi pengiriman"}
+                          : t("Ulangi pengiriman")}
                       </button>
                     )}
                   </div>
@@ -251,17 +241,13 @@ export default function NotificationDeliveryPage() {
                   className={button}
                   disabled={page === 0 || loading}
                   onClick={() => setPage(page - 1)}
-                >
-                  Sebelumnya
-                </button>
+                >{t("Sebelumnya")}</button>
                 <button
                   type="button"
                   className={button}
                   disabled={(page + 1) * 30 >= data.total || loading}
                   onClick={() => setPage(page + 1)}
-                >
-                  Berikutnya
-                </button>
+                >{t("Berikutnya")}</button>
               </div>
             )}
           </section>

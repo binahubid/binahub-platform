@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '../../../../../components/ui';
+import { useAmsLocale } from "@/components/ams-language";
 
 type ParsedExperience = {
   company?: string | null;
@@ -136,6 +137,7 @@ export function AdminCVEnrichment({
   initialParsedData,
   onChanged,
 }: Props) {
+  const { t } = useAmsLocale();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<'uploading' | 'parsing' | 'applying' | null>(null);
@@ -288,10 +290,8 @@ export function AdminCVEnrichment({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-600">AI Profile Enrichment</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-950">Lengkapi profil dari CV</h3>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            Hasil AI disimpan pada dokumen CV dan akan tetap tersedia setelah pindah halaman atau refresh. Pilih hanya data yang memang ingin diterapkan.
-          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-950">{t("Lengkapi profil dari CV")}</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{t("Hasil AI disimpan pada dokumen CV dan akan tetap tersedia setelah pindah halaman atau refresh. Pilih hanya data yang memang ingin diterapkan.")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {currentDocumentId && (
@@ -299,18 +299,18 @@ export function AdminCVEnrichment({
               type="button"
               onClick={() => parseDocument(currentDocumentId, Boolean(initialParsedData))}
               disabled={busy !== null}
-              title={initialParsedData ? 'Memanggil AI kembali dan mengganti draft analisis tersimpan' : 'Menganalisis CV karena belum ada draft tersimpan'}
+              title={initialParsedData ? t("Memanggil AI kembali dan mengganti draft analisis tersimpan") : t("Menganalisis CV karena belum ada draft tersimpan")}
               className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy === 'parsing'
                 ? 'Menganalisis...'
                 : initialParsedData
-                  ? 'Analisis ulang dengan AI'
-                  : 'Analisis CV tersimpan'}
+                  ? t("Analisis ulang dengan AI")
+                  : t("Analisis CV tersimpan")}
             </button>
           )}
           <label className="cursor-pointer rounded-lg bg-[#0B2C6B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#09245A] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-            {busy === 'uploading' ? 'Mengunggah...' : 'Unggah CV baru'}
+            {busy === 'uploading' ? 'Mengunggah...' : t("Unggah CV baru")}
             <input
               ref={fileInputRef}
               type="file"
@@ -328,9 +328,7 @@ export function AdminCVEnrichment({
 
       {busy === 'parsing' && (
         <div className="mt-4 flex items-center gap-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700" />
-          AI sedang membaca seluruh isi CV. CV panjang dapat memerlukan hingga satu menit.
-        </div>
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700" />{t("AI sedang membaca seluruh isi CV. CV panjang dapat memerlukan hingga satu menit.")}</div>
       )}
 
       {parsed && (
@@ -338,11 +336,11 @@ export function AdminCVEnrichment({
           <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-semibold text-emerald-700">Draft analisis tersimpan</p>
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Tidak memakai token saat dimuat ulang</span>
+                <p className="text-xs font-semibold text-emerald-700">{t("Draft analisis tersimpan")}</p>
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">{t("Tidak memakai token saat dimuat ulang")}</span>
               </div>
-              <h4 className="mt-1 text-base font-semibold text-slate-950">{parsed.fullName || 'Nama tidak terbaca'}</h4>
-              <p className="mt-0.5 text-sm text-slate-500">{parsed.headline || parsed.email || 'Periksa setiap data sebelum menerapkan.'}</p>
+              <h4 className="mt-1 text-base font-semibold text-slate-950">{parsed.fullName || t("Nama tidak terbaca")}</h4>
+              <p className="mt-0.5 text-sm text-slate-500">{parsed.headline || parsed.email || t("Periksa setiap data sebelum menerapkan.")}</p>
             </div>
             <button
               type="button"
@@ -354,23 +352,21 @@ export function AdminCVEnrichment({
                 ? 'Menerapkan...'
                 : applied
                   ? 'Sudah diterapkan'
-                  : `Terapkan ${selectedFields.length} pilihan`}
+                  : t("Terapkan {0} pilihan", [selectedFields.length])}
             </button>
           </div>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h5 className="text-sm font-semibold text-slate-900">Pilih data yang ingin diterapkan</h5>
-              <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                Data profil terpilih dapat memperbarui nilai lama. Daftar terpilih ditambahkan tanpa duplikasi sederhana. Pilihan ini tersimpan di browser.
-              </p>
+              <h5 className="text-sm font-semibold text-slate-900">{t("Pilih data yang ingin diterapkan")}</h5>
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">{t("Data profil terpilih dapat memperbarui nilai lama. Daftar terpilih ditambahkan tanpa duplikasi sederhana. Pilihan ini tersimpan di browser.")}</p>
             </div>
             <button
               type="button"
               onClick={() => saveSelection(allAvailableSelected ? [] : availableFields)}
               className="self-start rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-[#0B2C6B] hover:bg-slate-50"
             >
-              {allAvailableSelected ? 'Batalkan semua' : 'Pilih semua tersedia'}
+              {allAvailableSelected ? t("Batalkan semua") : t("Pilih semua tersedia")}
             </button>
           </div>
 
@@ -415,15 +411,12 @@ export function AdminCVEnrichment({
           </div>
 
           {selectedFields.length === 0 && (
-            <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-              Belum ada data yang dipilih. Profil tidak akan berubah sampai Anda mencentang minimal satu pilihan.
-            </p>
+            <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">{t("Belum ada data yang dipilih. Profil tidak akan berubah sampai Anda mencentang minimal satu pilihan.")}</p>
           )}
 
           {missingExperienceDates > 0 && selectedFields.includes('experience') && (
             <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-              {missingExperienceDates} pengalaman tidak mempunyai tanggal mulai dan akan dilewati agar sistem tidak membuat tanggal palsu.
-            </p>
+              {missingExperienceDates} {t("pengalaman tidak mempunyai tanggal mulai dan akan dilewati agar sistem tidak membuat tanggal palsu.")}</p>
           )}
         </div>
       )}

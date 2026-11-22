@@ -1,4 +1,5 @@
 'use client';
+import { useAmsLocale } from "@/components/ams-language";
 
 type EvidenceItem = {
   id: string;
@@ -22,6 +23,7 @@ const statusConfig = {
 };
 
 export function EvidenceUpload({ items }: { items: EvidenceItem[] }) {
+  const { t } = useAmsLocale();
   const grouped = items.reduce((acc, item) => {
     if (!acc[item.type]) acc[item.type] = [];
     acc[item.type].push(item);
@@ -42,7 +44,7 @@ export function EvidenceUpload({ items }: { items: EvidenceItem[] }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={config.icon} />
                   </svg>
                 </div>
-                <span className="text-xs font-medium text-slate-700">{config.label}</span>
+                <span className="text-xs font-medium text-slate-700">{t(config.label)}</span>
                 <span className="text-[11px] text-slate-400">({typeItems.length})</span>
               </div>
               {typeItems.length === 0 ? (

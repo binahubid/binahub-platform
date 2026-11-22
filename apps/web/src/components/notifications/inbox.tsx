@@ -8,6 +8,7 @@ import {
   notificationRequest,
 } from "@/lib/notification-client";
 import { useAmsNotifications } from "./provider";
+import { useAmsLocale } from "@/components/ams-language";
 
 type Notice = {
   id: string;
@@ -34,6 +35,7 @@ const filters = [
 type Filter = (typeof filters)[number][0];
 
 export function NotificationInbox() {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const { refreshUnread, unread } = useAmsNotifications();
   const [filter, setFilter] = useState<Filter>("all");
@@ -142,21 +144,19 @@ export function NotificationInbox() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">Notifikasi</h1>
+          <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">{t("Notifikasi")}</h1>
         </div>
         <Link
           href="/dashboard/settings#notifikasi-hp"
           className="hidden min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-[#0B2C6B] hover:bg-slate-50 lg:inline-flex"
-        >
-          Atur notifikasi HP
-        </Link>
+        >{t("Atur notifikasi HP")}</Link>
       </div>
       <section className="ams-panel overflow-hidden">
         <div className="border-b border-slate-200 px-3 pt-1 sm:flex sm:flex-wrap sm:justify-between sm:gap-2 sm:px-5">
           <div
             className="flex flex-wrap gap-x-3 sm:gap-x-4"
             role="group"
-            aria-label="Filter notifikasi"
+            aria-label={t("Filter notifikasi")}
           >
             {filters
               .filter(([key]) => !legacy || key !== "action")
@@ -191,9 +191,7 @@ export function NotificationInbox() {
               disabled={saving || loading}
               onClick={() => void markRead(unreadIds)}
               className="min-h-11 px-1 text-left text-sm font-semibold text-[#0B2C6B] hover:underline disabled:opacity-60"
-            >
-              Tandai halaman ini sudah dibaca
-            </button>
+            >{t("Tandai halaman ini sudah dibaca")}</button>
           )}
         </div>
         {error && (
@@ -201,29 +199,25 @@ export function NotificationInbox() {
             role="alert"
             className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
           >
-            {error}{" "}
+            {t(error)}{" "}
             <button
               type="button"
               className="ml-2 min-h-10 font-semibold underline"
               onClick={() => void refresh()}
-            >
-              Coba lagi
-            </button>
+            >{t("Coba lagi")}</button>
           </div>
         )}
         {loading && (
-          <p role="status" className="px-5 py-7 text-sm text-slate-600">
-            Memuat notifikasi…
-          </p>
+          <p role="status" className="px-5 py-7 text-sm text-slate-600">{t("Memuat notifikasi…")}</p>
         )}
         {!loading && !error && !feed?.items.length && (
           <div className="px-5 py-9 text-center">
             <p className="font-semibold text-slate-900">
               {filter === "action"
-                ? "Tidak ada undangan atau tugas yang perlu ditindaklanjuti."
+                ? t("Tidak ada undangan atau tugas yang perlu ditindaklanjuti.")
                 : filter === "unread"
-                  ? "Semua notifikasi sudah dibaca."
-                  : "Belum ada notifikasi."}
+                  ? t("Semua notifikasi sudah dibaca.")
+                  : t("Belum ada notifikasi.")}
             </p>
           </div>
         )}
@@ -243,14 +237,10 @@ export function NotificationInbox() {
                       {item.title}
                     </h2>
                     {!item.read && (
-                      <span className="text-xs font-medium text-[#0B2C6B]">
-                        Baru
-                      </span>
+                      <span className="text-xs font-medium text-[#0B2C6B]">{t("Baru")}</span>
                     )}
                     {item.actionRequired && (
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-900">
-                        Perlu tindakan
-                      </span>
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-900">{t("Perlu tindakan")}</span>
                     )}
                   </div>
                   <p className="mt-1 whitespace-pre-line break-words text-sm leading-6 text-slate-700">
@@ -274,9 +264,7 @@ export function NotificationInbox() {
                         if (legacy && !item.read) void markRead([item.id]);
                       }}
                       className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-[#0B2C6B] hover:bg-slate-50"
-                    >
-                      Lihat pemberitahuan
-                    </Link>
+                    >{t("Lihat pemberitahuan")}</Link>
                   )}
                   {!item.read && !item.link && (
                     <button
@@ -284,9 +272,7 @@ export function NotificationInbox() {
                       className="min-h-11 text-sm font-semibold text-[#0B2C6B] hover:underline"
                       onClick={() => void markRead([item.id])}
                       disabled={saving}
-                    >
-                      Tandai dibaca
-                    </button>
+                    >{t("Tandai dibaca")}</button>
                   )}
                 </div>
               </li>
@@ -297,7 +283,7 @@ export function NotificationInbox() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-4 py-3 text-sm">
             <span className="text-slate-600">
               {feed.total ? Math.min(first + 1, feed.total) : 0}–
-              {Math.min(first + feed.pageSize, feed.total)} dari {feed.total}
+              {Math.min(first + feed.pageSize, feed.total)} {t("dari")} {feed.total}
             </span>
             <div className="flex gap-2">
               <button
@@ -305,17 +291,13 @@ export function NotificationInbox() {
                 className="min-h-11 rounded-lg border border-slate-300 px-3 text-[#0B2C6B] disabled:opacity-40"
                 disabled={page === 0 || loading}
                 onClick={() => setPage(page - 1)}
-              >
-                Sebelumnya
-              </button>
+              >{t("Sebelumnya")}</button>
               <button
                 type="button"
                 className="min-h-11 rounded-lg border border-slate-300 px-3 text-[#0B2C6B] disabled:opacity-40"
                 disabled={first + feed.pageSize >= feed.total || loading}
                 onClick={() => setPage(page + 1)}
-              >
-                Berikutnya
-              </button>
+              >{t("Berikutnya")}</button>
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePageVisibility } from '../../hooks/use-page-visibility';
 import { classifyAPIHealth } from '../../lib/status-health';
+import { useAmsLocale } from "@/components/ams-language";
 
 interface HealthCheck {
   name: string;
@@ -34,6 +35,7 @@ const checks: HealthCheckDefinition[] = [
 ];
 
 export default function StatusPage() {
+  const { t } = useAmsLocale();
   const [results, setResults] = useState<HealthCheck[]>(
     checks.map(({ name, url }) => ({ name, url, status: 'loading', latency: null }))
   );
@@ -106,7 +108,7 @@ export default function StatusPage() {
       <div className="mx-auto max-w-2xl px-4 py-16">
         <div className="text-center mb-10">
           <h1 className="text-2xl font-bold text-slate-900">System Status</h1>
-          <p className="mt-2 text-sm text-slate-500">BinaApps AMS — Status Layanan</p>
+          <p className="mt-2 text-sm text-slate-500">{t("BinaApps AMS — Status Layanan")}</p>
         </div>
 
         <div className={`rounded-xl border p-6 mb-8 text-center ${
@@ -123,8 +125,8 @@ export default function StatusPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
               </div>
-              <p className="font-semibold text-emerald-800">Pemeriksaan dasar berhasil</p>
-              <p className="mt-2 text-sm text-emerald-800">API dan autentikasi dapat dijangkau. Koneksi database, antrean laporan, AI dan pengiriman email belum diperiksa di halaman ini.</p>
+              <p className="font-semibold text-emerald-800">{t("Pemeriksaan dasar berhasil")}</p>
+              <p className="mt-2 text-sm text-emerald-800">{t("API dan autentikasi dapat dijangkau. Koneksi database, antrean laporan, AI dan pengiriman email belum diperiksa di halaman ini.")}</p>
             </>
           ) : results.some((r) => r.status === 'error') ? (
             <>
@@ -133,7 +135,7 @@ export default function StatusPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                 </svg>
               </div>
-              <p className="font-semibold text-red-800">Ada Gangguan pada Sistem</p>
+              <p className="font-semibold text-red-800">{t("Ada Gangguan pada Sistem")}</p>
             </>
           ) : (
             <p className="text-slate-500">Memeriksa status...</p>
@@ -161,7 +163,7 @@ export default function StatusPage() {
                 <span className={`text-xs font-medium ${
                   check.status === 'ok' ? 'text-emerald-600' : check.status === 'error' ? 'text-red-600' : 'text-slate-400'
                 }`}>
-                  {check.status === 'ok' ? 'Operasional' : check.status === 'error' ? 'Gagal' : 'Memeriksa...'}
+                  {check.status === 'ok' ? 'Operasional' : check.status === 'error' ? t("Gagal") : 'Memeriksa...'}
                 </span>
                 {check.latency !== null && (
                   <p className="text-xs text-slate-400 mt-0.5">{check.latency}ms</p>
@@ -173,8 +175,7 @@ export default function StatusPage() {
 
         <div className="mt-8 text-center">
           {lastChecked && (
-            <p className="text-xs text-slate-400">
-              Terakhir diperiksa: {lastChecked.toLocaleTimeString('id-ID')} WIB
+            <p className="text-xs text-slate-400">{t("Terakhir diperiksa:")} {lastChecked.toLocaleTimeString('id-ID')} WIB
             </p>
           )}
           <button

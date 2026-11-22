@@ -22,7 +22,10 @@ export async function teamRequest<T>(token: string, path: string, body?: unknown
   if(!response.ok || !result?.success) throw new Error(result?.error || 'Layanan belum dapat diakses. Coba lagi sebentar.');
   return result.data as T;
 }
-export function teamDate(value: string | null | undefined) {
+export function teamDate(value: string | null | undefined, locale: "id" | "en" = "id") {
   if(!value) return '—';
-  return new Date(value).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'})+' WIB';
+  const localTime = new Date(value).toLocaleString(locale === "en" ? "en-GB" : "id-ID", {
+    timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short",
+  });
+  return localTime + (locale === "en" ? " (WIB)" : " WIB");
 }

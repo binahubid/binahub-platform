@@ -7,6 +7,7 @@ import {
   NoticePreferences,
 } from "@/components/notifications/device-settings";
 import { notificationApi } from "@/lib/notification-client";
+import { AmsLanguageSelect, useAmsLocale } from "@/components/ams-language";
 
 type Preferences = {
   email_notifications: boolean;
@@ -16,6 +17,7 @@ type Setting = keyof Preferences;
 type Feedback = { setting: Setting; ok: boolean };
 
 export default function SettingsPage() {
+  const { t } = useAmsLocale();
   const { user, accessToken, signOut } = useAuth();
   const [preferences, setPreferences] = useState<Preferences | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -95,23 +97,24 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <header className="pb-1">
-        <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">Pengaturan</h1>
-        <p className="mt-1 text-sm leading-6 text-slate-600">
-          Kelola notifikasi dan privasi akun Anda.
-        </p>
+        <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">{t("Pengaturan")}</h1>
+        <p className="mt-1 text-sm leading-6 text-slate-600">{t("Kelola notifikasi dan privasi akun Anda.")}</p>
       </header>
 
+      <section className="ams-panel px-5 py-4 sm:px-6">
+        <AmsLanguageSelect />
+      </section>
       <DeviceSettings />
       <section
         className="ams-panel px-5 sm:px-6"
-        aria-label="Notifikasi email dan WhatsApp"
+        aria-label={t("Notifikasi email dan WhatsApp")}
       >
         <div className="border-b border-slate-200 py-4">
           <h2 className="text-base font-semibold text-slate-900">Email</h2>
           {preferences ? (
             <ToggleRow
-              label="Notifikasi email"
-              description="Terima undangan dan pembaruan pekerjaan di email Anda."
+              label={t("Notifikasi email")}
+              description={t("Terima undangan dan pembaruan pekerjaan di email Anda.")}
               enabled={preferences.email_notifications}
               disabled={saving !== null}
               saving={saving === "email_notifications"}
@@ -122,28 +125,20 @@ export default function SettingsPage() {
             />
           ) : loadError ? (
             <div className="mt-2">
-              <p role="alert" className="text-sm text-red-700">
-                Pilihan email belum dapat dimuat.
-              </p>
+              <p role="alert" className="text-sm text-red-700">{t("Pilihan email belum dapat dimuat.")}</p>
               <button
                 type="button"
                 className="min-h-11 text-sm font-semibold text-[#0B2C6B] hover:underline"
                 onClick={() => setRetry(retry + 1)}
-              >
-                Coba lagi
-              </button>
+              >{t("Coba lagi")}</button>
             </div>
           ) : (
-            <p role="status" className="mt-2 text-sm text-slate-600">
-              Memuat pilihan email…
-            </p>
+            <p role="status" className="mt-2 text-sm text-slate-600">{t("Memuat pilihan email…")}</p>
           )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 py-4">
           <h2 className="text-base font-semibold text-slate-900">WhatsApp</h2>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-            Segera hadir
-          </span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{t("Segera hadir")}</span>
         </div>
       </section>
 
@@ -155,19 +150,17 @@ export default function SettingsPage() {
         <h2
           id="account-settings-heading"
           className="text-base font-semibold text-slate-900"
-        >
-          Akun dan privasi
-        </h2>
+        >{t("Akun dan privasi")}</h2>
         <dl className="mt-3 border-b border-slate-200 pb-3 text-sm">
-          <dt className="text-slate-600">Email akun</dt>
+          <dt className="text-slate-600">{t("Email akun")}</dt>
           <dd className="mt-1 break-words font-medium text-slate-900">
             {user?.email || "—"}
           </dd>
         </dl>
         {preferences && (
           <ToggleRow
-            label="Profil publik"
-            description="Izinkan orang lain melihat profil Anda."
+            label={t("Profil publik")}
+            description={t("Izinkan orang lain melihat profil Anda.")}
             enabled={preferences.profile_visibility === "public"}
             disabled={saving !== null}
             saving={saving === "profile_visibility"}
@@ -181,9 +174,7 @@ export default function SettingsPage() {
           type="button"
           onClick={() => void signOut()}
           className="mt-3 min-h-11 text-sm font-semibold text-red-700 hover:underline lg:hidden"
-        >
-          Keluar dari akun
-        </button>
+        >{t("Keluar dari akun")}</button>
       </section>
     </div>
   );
@@ -206,6 +197,7 @@ function ToggleRow({
   feedback: Feedback | null;
   onToggle: () => void;
 }) {
+  const { t } = useAmsLocale();
   const descriptionId = useId();
   return (
     <div className="mt-2">
@@ -224,7 +216,7 @@ function ToggleRow({
           onClick={onToggle}
           className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md text-sm font-medium text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B2C6B] disabled:opacity-60"
         >
-          <span aria-hidden="true">{enabled ? "Aktif" : "Nonaktif"}</span>
+          <span aria-hidden="true">{enabled ? t("Aktif") : "Nonaktif"}</span>
           <span
             aria-hidden="true"
             className={
@@ -242,9 +234,7 @@ function ToggleRow({
         </button>
       </div>
       {saving && (
-        <p role="status" className="text-sm text-slate-600">
-          Menyimpan…
-        </p>
+        <p role="status" className="text-sm text-slate-600">{t("Menyimpan…")}</p>
       )}
       {feedback && (
         <p
@@ -254,8 +244,8 @@ function ToggleRow({
           }
         >
           {feedback.ok
-            ? "Pilihan tersimpan."
-            : "Pilihan belum tersimpan. Coba lagi."}
+            ? t("Pilihan tersimpan.")
+            : t("Pilihan belum tersimpan. Coba lagi.")}
         </p>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Document } from '../types';
+import { useAmsLocale } from "@/components/ams-language";
 
 type StepDocumentsProps = {
   associateId: string;
@@ -56,6 +57,7 @@ function ProcessingIllustration() {
 }
 
 export function StepDocuments({ associateId, documents, apiUrl, accessToken, onRefresh, onParseCV, parsingCV }: StepDocumentsProps) {
+  const { t } = useAmsLocale();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -195,25 +197,21 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </div>
-            <h3 className="text-sm font-bold text-center text-slate-900 mb-1.5">Hapus Dokumen CV?</h3>
-            <p className="text-xs text-center text-slate-500 mb-5 leading-relaxed">
-              Dokumen CV saat ini <span className="font-semibold text-slate-700">({cvDoc?.file_name})</span> akan dihapus permanen dari sistem untuk mengunggah CV yang baru.
-            </p>
+            <h3 className="text-sm font-bold text-center text-slate-900 mb-1.5">{t("Hapus Dokumen CV?")}</h3>
+            <p className="text-xs text-center text-slate-500 mb-5 leading-relaxed">{t("Dokumen CV saat ini")} <span className="font-semibold text-slate-700">({cvDoc?.file_name})</span> {t("akan dihapus permanen dari sistem untuk mengunggah CV yang baru.")}</p>
             <div className="flex gap-2.5">
               <button
                 onClick={handleDelete}
                 disabled={deleting}
                 className="flex-1 rounded-xl bg-red-600 text-white py-2.5 text-xs font-semibold hover:bg-red-700 transition-all shadow-md shadow-red-600/10 disabled:opacity-50"
               >
-                {deleting ? 'Menghapus...' : 'Ya, Hapus'}
+                {deleting ? 'Menghapus...' : t("Ya, Hapus")}
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
                 disabled={deleting}
                 className="flex-1 rounded-xl border border-slate-200 bg-white text-slate-650 py-2.5 text-xs font-semibold hover:bg-slate-50 transition-all"
-              >
-                Batal
-              </button>
+              >{t("Batal")}</button>
             </div>
           </div>
         </div>
@@ -250,9 +248,7 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Unduh
-                </a>
+                >{t("Unduh")}</a>
                 <button
                   onClick={() => onParseCV(cvDoc.id)}
                   disabled={parsingCV}
@@ -276,14 +272,14 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
             <svg className="mx-auto h-10 w-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <p className="mt-3 text-sm font-medium text-slate-900">Upload CV Anda</p>
+            <p className="mt-3 text-sm font-medium text-slate-900">{t("Upload CV Anda")}</p>
             <p className="mt-1 text-xs text-slate-500">PDF atau DOCX hingga 10MB</p>
-            <p className="mt-1 text-xs text-[#0B2C6B] font-medium">AI akan menganalisis CV Anda secara otomatis</p>
+            <p className="mt-1 text-xs text-[#0B2C6B] font-medium">{t("AI akan menganalisis CV Anda secara otomatis")}</p>
             <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/25 hover:from-[#0A255A] hover:to-[#071A33] transition-all">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              {uploading ? 'Mengupload...' : 'Pilih File'}
+              {uploading ? 'Mengupload...' : t("Pilih File")}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -304,13 +300,13 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
             <div className="text-center">
               <h5 className="text-sm font-bold text-slate-800 transition-all duration-300">
                 {uploading 
-                  ? (uploadProgress < 40 ? 'Menyiapkan berkas...' : 'Mengunggah CV Anda...') 
-                  : 'Sistem sedang membaca & menganalisis CV Anda...'}
+                  ? (uploadProgress < 40 ? t("Menyiapkan berkas...") : t("Mengunggah CV Anda..."))
+                  : t("Sistem sedang membaca & menganalisis CV Anda...")}
               </h5>
               <p className="mt-1.5 text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
                 {uploading 
-                  ? 'Mohon jangan tutup halaman ini selama pengunggahan.' 
-                  : 'Sistem sedang memetakan pengalaman kerja, pendidikan, dan keahlian secara otomatis.'}
+                  ? t("Mohon jangan tutup halaman ini selama pengunggahan.")
+                  : t("Sistem sedang memetakan pengalaman kerja, pendidikan, dan keahlian secara otomatis.")}
               </p>
             </div>
 
@@ -337,9 +333,7 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
           <h4 className="text-sm font-bold text-slate-900 mb-4">
             <svg className="inline h-4 w-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-            </svg>
-            Dokumen Lainnya
-          </h4>
+            </svg>{t("Dokumen Lainnya")}</h4>
           <div className="space-y-2">
             {otherDocs.map((doc) => (
               <div key={doc.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
@@ -355,9 +349,7 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a href={doc.storage_path?.startsWith('http') ? doc.storage_path : `${apiUrl}/api/files/${doc.id}/download`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0B2C6B] hover:underline">
-                    Unduh
-                  </a>
+                  <a href={doc.storage_path?.startsWith('http') ? doc.storage_path : `${apiUrl}/api/files/${doc.id}/download`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0B2C6B] hover:underline">{t("Unduh")}</a>
                   <button onClick={() => handleOtherDelete(doc.id, doc.file_name)} className="rounded-lg p-1 text-red-400 hover:text-red-500">
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -377,21 +369,15 @@ export function StepDocuments({ associateId, documents, apiUrl, accessToken, onR
           <li className="flex items-start gap-2">
             <svg className="h-3.5 w-3.5 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Gunakan format PDF untuk hasil terbaik
-          </li>
+            </svg>{t("Gunakan format PDF untuk hasil terbaik")}</li>
           <li className="flex items-start gap-2">
             <svg className="h-3.5 w-3.5 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Pastikan teks dalam CV terbaca jelas
-          </li>
+            </svg>{t("Pastikan teks dalam CV terbaca jelas")}</li>
           <li className="flex items-start gap-2">
             <svg className="h-3.5 w-3.5 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            AI akan otomatis mengisi profil Anda
-          </li>
+            </svg>{t("AI akan otomatis mengisi profil Anda")}</li>
         </ul>
       </div>
     </div>

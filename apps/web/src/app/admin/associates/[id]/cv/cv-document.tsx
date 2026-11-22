@@ -1,6 +1,9 @@
+"use client";
+
 import Image from 'next/image';
 import { ProtectedFileImage } from '../../../../../components/ui/protected-file';
 import styles from './cv-document.module.css';
+import { useAmsLocale } from "@/components/ams-language";
 
 export type CvData = {
   associate: { id: string; email: string; status: string; created_at: string };
@@ -47,6 +50,7 @@ function ProficiencyBadge({ value }: { value: string | null | undefined }) {
 
 
 export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:string|null;apiUrl:string}) {
+  const { t } = useAmsLocale();
   const p = data.profile as Record<string, string | null | string[]>;
   const fullName = (p.full_name as string) || data.associate.email;
   const preferredName = p.preferred_name as string | null;
@@ -68,7 +72,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
   return (
       <div className={styles.document}>
         <table className={styles.printTable} role="presentation">
-          <thead><tr><td><div className={styles.brand}><Image src="/full-logo.png" alt="BinaHub" width={116} height={33} unoptimized /><span>Profil Associate</span></div></td></tr></thead>
+          <thead><tr><td><div className={styles.brand}><Image src="/full-logo.png" alt="BinaHub" width={116} height={33} unoptimized /><span>{t("Profil Associate")}</span></div></td></tr></thead>
           <tbody><tr><td className={styles.content}>
           {/* Header */}
           <div className="flex items-start gap-6 border-b-2 border-[#0B2C6B] pb-6">
@@ -104,7 +108,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
                 {timezone && <span>{timezone}</span>}
                 {phone && <span>{phone}</span>}
                 <span>{data.associate.email}</span>
-                {dateOfBirth && <span>Lahir: {formatDate(dateOfBirth)}</span>}
+                {dateOfBirth && <span>{t("Lahir:")} {formatDate(dateOfBirth)}</span>}
                 {gender && <span>{(gender === 'male' ? 'Laki-laki' : gender === 'female' ? 'Perempuan' : gender)}</span>}
                 {(data.social_links as Array<Record<string, string>>).map((s, i) => (
                   s.url && <span key={i}>{s.platform}: {s.url}</span>
@@ -116,7 +120,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
           {/* Bio */}
           {bio && (
             <div className="mt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-2 print:text-xs">Profil</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-2 print:text-xs">{t("Profil")}</h2>
               <p className="text-sm text-slate-600 print:text-xs whitespace-pre-wrap">{bio}</p>
             </div>
           )}
@@ -124,7 +128,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
           {/* Experiences */}
           {(data.experiences as Array<Record<string, unknown>>).length > 0 && (
             <div className="mt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">Pengalaman Kerja</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">{t("Pengalaman Kerja")}</h2>
               {(data.experiences as Array<Record<string, unknown>>).map((exp, i) => {
                 const org = (exp.organization || exp.company) as string;
                 const pos = (exp.position || exp.role) as string;
@@ -142,7 +146,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
                         <p className="text-sm text-slate-600 print:text-xs">{org}</p>
                       </div>
                       <p className="text-xs text-slate-500 print:text-[10px] flex-shrink-0 ml-2">
-                        {start ? formatDate(start as string) : ''}{end ? ` – ${formatDate(end as string)}` : isCurrent ? ' – Saat ini' : ''}
+                        {start ? formatDate(start as string) : ''}{end ? ` – ${formatDate(end as string)}` : isCurrent ? t("– Saat ini") : ''}
                       </p>
                     </div>
                     {industry && <p className="mt-1 text-xs text-slate-400 print:text-[10px]">Industri: {industry}</p>}
@@ -157,7 +161,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
           {/* Education */}
           {(data.educations as Array<Record<string, unknown>>).length > 0 && (
             <div className="mt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">Pendidikan</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">{t("Pendidikan")}</h2>
               {(data.educations as Array<Record<string, unknown>>).map((edu, i) => {
                 const field = (edu.field_of_study || edu.field) as string | null;
                 return (
@@ -180,7 +184,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
           {/* Skills */}
           {(data.skills as Array<Record<string, unknown>>).length > 0 && (
             <div className="mt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">Keahlian</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">{t("Keahlian")}</h2>
               <div className="flex flex-wrap gap-2">
                 {(data.skills as Array<Record<string, unknown>>).map((s, i) => {
                   const years = (s.years_experience || s.yearsExperience) as number | null;
@@ -199,7 +203,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
           {/* Certifications */}
           {(data.certifications as Array<Record<string, unknown>>).length > 0 && (
             <div className="mt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">Sertifikasi</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">{t("Sertifikasi")}</h2>
               {(data.certifications as Array<Record<string, unknown>>).map((cert, i) => {
                 const credentialUrl = (cert.credential_url || cert.credentialUrl) as string | null;
                 const credentialId = (cert.credential_id || cert.credentialId) as string | null;
@@ -211,13 +215,11 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
                     <p className="text-xs text-slate-500 print:text-[10px]">
                       {cert.issuer as string || cert.issuing_organization as string}
                       {issueDate ? ` — ${formatDate(issueDate as string)}` : ''}
-                      {expiryDate ? ` (berlaku s.d. ${formatDate(expiryDate as string)})` : ''}
+                      {expiryDate ? t("(berlaku s.d. {0})", [formatDate(expiryDate as string)]) : ''}
                     </p>
                     {credentialId && <p className="text-[10px] text-slate-400 print:text-[9px]">ID Kredensial: {credentialId}</p>}
                     {credentialUrl && (
-                      <a href={credentialUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#0B2C6B] hover:underline print:text-[9px]">
-                        Lihat Kredensial ↗
-                      </a>
+                      <a href={credentialUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#0B2C6B] hover:underline print:text-[9px]">{t("Lihat Kredensial ↗")}</a>
                     )}
                   </div>
                 );
@@ -228,7 +230,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
           {/* Languages */}
           {(data.languages as Array<Record<string, unknown>>).length > 0 && (
             <div className="mt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">Bahasa</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">{t("Bahasa")}</h2>
               <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                 {(data.languages as Array<Record<string, unknown>>).map((l, i) => (
                   <span key={i} className="text-sm text-slate-700 print:text-xs">
@@ -243,7 +245,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
           {/* Availability */}
           {avails.length > 0 && avails[0] && (
             <div className="mt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">Ketersediaan</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B2C6B] border-b border-slate-200 pb-1 mb-3 print:text-xs">{t("Ketersediaan")}</h2>
               {(() => {
                 const a = avails[0];
                 const status = a.status as string;
@@ -265,7 +267,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
                     )}
                     {workLocations.length > 0 && (
                       <p className="text-sm text-slate-700 print:text-xs">
-                        <span className="font-medium">Lokasi Kerja:</span> {workLocations.join(', ')}
+                        <span className="font-medium">{t("Lokasi Kerja:")}</span> {workLocations.join(', ')}
                       </p>
                     )}
                     {preferredEngagements.length > 0 && (
@@ -275,12 +277,12 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
                     )}
                     {travelReady != null && (
                       <p className="text-sm text-slate-700 print:text-xs">
-                        <span className="font-medium">Kesiapan Perjalanan:</span> {travelReady ? 'Siap' : 'Tidak siap'}
+                        <span className="font-medium">Kesiapan Perjalanan:</span> {travelReady ? t("Siap") : t("Tidak siap")}
                       </p>
                     )}
                     {availableFrom != null && (
                       <p className="text-sm text-slate-700 print:text-xs">
-                        <span className="font-medium">Tersedia Sejak:</span> {formatDate(String(availableFrom))}
+                        <span className="font-medium">{t("Tersedia Sejak:")}</span> {formatDate(String(availableFrom))}
                       </p>
                     )}
                     {notes && (
@@ -306,7 +308,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
                     <p className="text-sm font-semibold text-slate-900 print:text-xs">{port.title as string}</p>
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 print:text-[10px]">
                       {category && <span>Kategori: {category}</span>}
-                      {clientName && <span>Klien: {clientName}</span>}
+                      {clientName && <span>{t("Klien:")} {clientName}</span>}
                     </div>
                     {desc && <p className="text-xs text-slate-500 print:text-[10px] mt-0.5">{desc}</p>}
                     {portUrl && (
@@ -322,7 +324,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
 
           {/* Footer */}
           <div className="mt-8 pt-4 border-t border-slate-200 text-center text-xs text-slate-400 print:text-[9px]">
-            <p>CV Standar BinaHub — Dicetak pada {new Date().toLocaleDateString('id-ID')}</p>
+            <p>{t("CV Standar BinaHub — Dicetak pada")} {new Date().toLocaleDateString('id-ID')}</p>
           </div>
           </td></tr></tbody>
         </table>

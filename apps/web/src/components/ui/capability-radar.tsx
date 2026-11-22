@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useAmsLocale } from "@/components/ams-language";
 
 type CapabilityData = {
   label: string;
@@ -10,6 +11,7 @@ type CapabilityData = {
 };
 
 export function CapabilityRadar({ data, size = 280 }: { data: CapabilityData[]; size?: number }) {
+  const { t } = useAmsLocale();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -121,7 +123,7 @@ export function CapabilityRadar({ data, size = 280 }: { data: CapabilityData[]; 
 
   return (
     <div className="flex w-full min-w-0 justify-center">
-      <canvas ref={canvasRef} role="img" aria-label="Grafik ringkasan kapabilitas" style={{ width: '100%', maxWidth: size, height: 'auto', aspectRatio: '1' }} />
+      <canvas ref={canvasRef} role="img" aria-label={t("Grafik ringkasan kapabilitas")} style={{ width: '100%', maxWidth: size, height: 'auto', aspectRatio: '1' }} />
     </div>
   );
 }

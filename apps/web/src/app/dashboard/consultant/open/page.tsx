@@ -4,23 +4,21 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useConsultantTeam } from "@/components/consultant-team-context";
+import { useAmsLocale } from "@/components/ams-language";
 
 function OpenConsultantWork() {
+  const { t } = useAmsLocale();
   const { open, opening, error } = useConsultantTeam();
   const leadId = useSearchParams().get("lead");
   const valid = !!leadId && /^[a-f0-9-]{36}$/i.test(leadId);
   const [started, setStarted] = useState(false);
   return (
     <section className="ams-panel max-w-xl p-6">
-      <h1 className="text-xl font-semibold text-[#0B2C6B]">
-        Penugasan konsultasi
-      </h1>
-      <p className="mt-2 text-sm leading-6 text-slate-700">
-        Buka ruang kerja terkait dengan akun AMS Anda.
-      </p>
+      <h1 className="text-xl font-semibold text-[#0B2C6B]">{t("Penugasan konsultasi")}</h1>
+      <p className="mt-2 text-sm leading-6 text-slate-700">{t("Buka ruang kerja terkait dengan akun AMS Anda.")}</p>
       {started && error && (
         <p role="alert" className="mt-3 text-sm text-red-700">
-          {error}
+          {t(error)}
         </p>
       )}
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -33,14 +31,12 @@ function OpenConsultantWork() {
           }}
           className="min-h-11 rounded-lg bg-[#0B2C6B] px-4 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {opening ? "Membuka portal…" : "Buka pekerjaan"}
+          {opening ? t("Membuka portal…") : t("Buka pekerjaan")}
         </button>
         <Link
           href="/dashboard/notifications"
           className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-[#0B2C6B]"
-        >
-          Kembali ke notifikasi
-        </Link>
+        >{t("Kembali ke notifikasi")}</Link>
       </div>
     </section>
   );

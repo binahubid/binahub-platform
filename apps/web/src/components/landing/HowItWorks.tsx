@@ -1,4 +1,5 @@
 'use client';
+import { useAmsLocale } from "@/components/ams-language";
 
 const steps = [
   { number: '01', title: 'Buat Akun', description: 'Daftar dengan email atau Google, langsung masuk dashboard.' },
@@ -9,22 +10,18 @@ const steps = [
 ];
 
 export function HowItWorks() {
+  const { t } = useAmsLocale();
   return (
     <section id="alur" className="scroll-mt-20 border-t border-slate-200/70 bg-[#F5F7FA] py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         {/* Header: left-right split */}
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-xl">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D9A441]">
-              Cara Kerja
-            </span>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D9A441]">{t("Cara Kerja")}</span>
             <h2 className="mt-4 text-3xl font-light tracking-[-0.025em] text-slate-900 sm:text-4xl md:text-5xl">
-              Lima langkah sederhana<br />untuk memulai.
-            </h2>
+              Lima langkah sederhana<br />{t("untuk memulai.")}</h2>
           </div>
-          <p className="max-w-sm text-sm leading-relaxed text-slate-600 md:text-base">
-            Dari pendaftaran hingga mendapat assignment pertama, semua berjalan dalam satu alur yang ringkas.
-          </p>
+          <p className="max-w-sm text-sm leading-relaxed text-slate-600 md:text-base">{t("Dari pendaftaran hingga mendapat assignment pertama, semua berjalan dalam satu alur yang ringkas.")}</p>
         </div>
 
         {/* Steps: horizontal */}
@@ -41,10 +38,10 @@ export function HowItWorks() {
                 </div>
 
                 <h3 className="mb-2 text-base font-semibold text-slate-900">
-                  {step.title}
+                  {t(step.title)}
                 </h3>
                 <p className="max-w-xs text-sm leading-relaxed text-slate-600">
-                  {step.description}
+                  {t(step.description)}
                 </p>
 
                 {/* Arrow connector (between steps, not last) */}

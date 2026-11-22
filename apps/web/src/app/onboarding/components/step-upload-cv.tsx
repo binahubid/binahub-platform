@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import { useAmsLocale } from "@/components/ams-language";
 
 type StepUploadCVProps = {
   associateId: string;
@@ -97,6 +98,7 @@ function DoneIllustration() {
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip, onDeleteOldCV, existingCV }: StepUploadCVProps) {
+  const { t } = useAmsLocale();
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState('');
@@ -222,13 +224,13 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
         <div className="text-center">
           <h5 className="text-sm font-bold text-slate-800 transition-all duration-300">
             {state === 'uploading' 
-              ? (progress < 40 ? 'Menyiapkan berkas...' : 'Mengunggah CV Anda...') 
-              : 'Sistem sedang membaca & menganalisis CV Anda...'}
+              ? (progress < 40 ? t("Menyiapkan berkas...") : t("Mengunggah CV Anda..."))
+              : t("Sistem sedang membaca & menganalisis CV Anda...")}
           </h5>
           <p className="mt-1.5 text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
             {state === 'uploading' 
-              ? 'Mohon jangan tutup halaman ini selama pengunggahan.' 
-              : 'Sistem sedang memetakan pengalaman kerja, pendidikan, dan keahlian secara otomatis.'}
+              ? t("Mohon jangan tutup halaman ini selama pengunggahan.")
+              : t("Sistem sedang memetakan pengalaman kerja, pendidikan, dan keahlian secara otomatis.")}
           </p>
         </div>
 
@@ -255,7 +257,7 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
         <DoneIllustration />
         <div className="text-center">
           <p className="text-base font-bold text-slate-900">{statusText}</p>
-          <p className="text-xs text-slate-500 mt-1">Melanjutkan ke langkah berikutnya...</p>
+          <p className="text-xs text-slate-500 mt-1">{t("Melanjutkan ke langkah berikutnya...")}</p>
         </div>
       </div>
     );
@@ -295,10 +297,9 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
             </svg>
           </div>
           <div className="space-y-1.5">
-            <h3 className="text-sm font-bold text-slate-900">Ganti CV Lama?</h3>
+            <h3 className="text-sm font-bold text-slate-900">{t("Ganti CV Lama?")}</h3>
             <p className="text-xs text-slate-500 max-w-xs mx-auto">
-              File <span className="font-semibold text-slate-700">{existingCV.name}</span> akan dihapus permanen dari sistem database.
-            </p>
+              File <span className="font-semibold text-slate-700">{existingCV.name}</span> {t("akan dihapus permanen dari sistem database.")}</p>
           </div>
           <div className="flex gap-2.5 justify-center max-w-xs mx-auto pt-1">
             <button
@@ -306,15 +307,13 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
               disabled={deletingOldCV}
               className="flex-1 rounded-xl bg-red-600 text-white py-2.5 text-xs font-semibold hover:bg-red-700 transition-all disabled:opacity-50"
             >
-              {deletingOldCV ? 'Menghapus...' : 'Ya, Hapus'}
+              {deletingOldCV ? 'Menghapus...' : t("Ya, Hapus")}
             </button>
             <button
               onClick={() => setConfirmDelete(false)}
               disabled={deletingOldCV}
               className="flex-1 rounded-xl border border-slate-200 bg-white text-slate-600 py-2.5 text-xs font-semibold hover:bg-slate-50 transition-all"
-            >
-              Batal
-            </button>
+            >{t("Batal")}</button>
           </div>
         </div>
       );
@@ -329,23 +328,17 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
         </div>
         <div className="space-y-1.5">
           <h3 className="text-base font-bold text-slate-900">CV Terdeteksi</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Anda telah mengunggah CV sebelumnya: <strong className="text-slate-700 font-semibold">{existingCV.name}</strong>. Anda dapat menggunakannya atau mengunggah file baru.
-          </p>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">{t("Anda telah mengunggah CV sebelumnya:")} <strong className="text-slate-700 font-semibold">{existingCV.name}</strong>{t(". Anda dapat menggunakannya atau mengunggah file baru.")}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-xs mx-auto pt-2">
           <button
             onClick={() => onDone(existingCV.id, null)}
             className="w-full rounded-xl bg-[#0B2C6B] text-white px-5 py-3 text-xs font-semibold hover:bg-[#0A255A] transition-all shadow-md shadow-[#0B2C6B]/15"
-          >
-            Gunakan CV Ini & Lanjutkan
-          </button>
+          >{t("Gunakan CV Ini & Lanjutkan")}</button>
           <button
             onClick={() => setConfirmDelete(true)}
             className="w-full rounded-xl border border-slate-200 bg-white text-slate-600 px-5 py-3 text-xs font-semibold hover:bg-slate-50 transition-all"
-          >
-            Unggah File Baru
-          </button>
+          >{t("Unggah File Baru")}</button>
         </div>
       </div>
     );
@@ -378,16 +371,14 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
         <UploadIllustration isDragging={isDragging} />
         <div className="text-center">
           <p className="text-sm font-semibold text-slate-800">
-            {isDragging ? 'Lepaskan file di sini' : 'Unggah CV Anda'}
+            {isDragging ? 'Lepaskan file di sini' : t("Unggah CV Anda")}
           </p>
           <p className="mt-1 text-xs text-slate-500">
             Seret file ke sini, atau{' '}
             <span
               className="text-[#0B2C6B] font-semibold cursor-pointer"
               onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-            >
-              pilih dari komputer
-            </span>
+            >{t("pilih dari komputer")}</span>
           </p>
           <p className="mt-1 text-[11px] text-slate-400">PDF atau DOCX · Maks. 10MB</p>
         </div>
@@ -399,14 +390,12 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div className="flex-1">
-            <p className="text-xs text-red-700">{error}</p>
+            <p className="text-xs text-red-700">{t(error)}</p>
             {state === 'error' && (
               <button
                 onClick={() => { setState('idle'); setError(''); }}
                 className="mt-1.5 text-xs font-semibold text-red-600 underline"
-              >
-                Coba lagi
-              </button>
+              >{t("Coba lagi")}</button>
             )}
           </div>
         </div>
@@ -417,9 +406,7 @@ export function StepUploadCV({ associateId, apiUrl, accessToken, onDone, onSkip,
         <button
           onClick={onSkip}
           className="text-sm text-slate-400 hover:text-slate-600 transition-colors hover:underline underline-offset-2"
-        >
-          Lewati, isi manual
-        </button>
+        >{t("Lewati, isi manual")}</button>
       </div>
     </div>
   );

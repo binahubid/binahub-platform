@@ -7,6 +7,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { resolveProtectedFileUrl } from '../../../../components/ui/protected-file';
 import type { AssociateData, Availability } from '../types';
 import { ProfileBio, ProfileItems } from './profile-disclosure';
+import { useAmsLocale } from "@/components/ams-language";
 
 type ProfileViewProps = {
   data: AssociateData;
@@ -17,6 +18,7 @@ type ProfileViewProps = {
 };
 
 export function ProfileView({ data, completionPercentage, onEdit, onSubmit, submitting }: ProfileViewProps) {
+  const { t } = useAmsLocale();
   const { accessToken } = useAuth();
   const { toast } = useToast();
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
         <div className="flex items-start gap-4">
           <Avatar name={p?.full_name || data.id} src={p?.photo_url} accessToken={accessToken} size="xl" className="sm:!h-20 sm:!w-20" />
           <div className="min-w-0 flex-1">
-            <h1 className="break-words text-xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-2xl">{p?.full_name || 'Profil saya'}</h1>
+            <h1 className="break-words text-xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-2xl">{p?.full_name || t("Profil saya")}</h1>
             {(p?.headline || p?.roles?.length) && <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-slate-600">{p.headline || p.roles?.[0]}</p>}
             <p className="mt-1 text-xs text-slate-600">{profileStatus}</p>
           </div>
@@ -87,25 +89,23 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
         )}
         <div className="mt-3 border-t border-slate-200 pt-3">
           <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-            <span className="font-medium text-slate-900">Kelengkapan profil</span>
+            <span className="font-medium text-slate-900">{t("Kelengkapan profil")}</span>
             <span className="font-medium tabular-nums text-[#0B2C6B]">{completionPercentage}%</span>
           </div>
-          <progress aria-label="Kelengkapan profil" value={completionPercentage} max={100} className="block h-1.5 w-full" />
+          <progress aria-label={t("Kelengkapan profil")} value={completionPercentage} max={100} className="block h-1.5 w-full" />
         </div>
-        <button type="button" onClick={onEdit} className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#123575]">
-          Ubah profil
-        </button>
+        <button type="button" onClick={onEdit} className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[#0B2C6B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#123575]">{t("Ubah profil")}</button>
       </section>
 
       {/* Review is an explicit final step; a CV upload alone does not submit a profile. */}
       {data.status === 'draft' && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <h2 className="text-sm font-bold text-amber-950">Langkah terakhir: kirim profil untuk ditinjau</h2>
-          <p className="mt-1 text-xs leading-5 text-amber-900">Menyimpan data atau mengunggah CV belum otomatis mengirim profil. Setelah dikirim, admin akan menyetujui atau memberi catatan perbaikan.</p>
-          {rejectedReview && <p className="mt-3 rounded-lg border border-rose-200 bg-white p-3 text-xs text-rose-800"><strong>Perlu perbaikan dari admin:</strong> {rejectedReview.notes || 'Periksa kembali informasi profil Anda.'}</p>}
-          {missingForReview.length > 0 && <p className="mt-3 text-xs font-medium text-amber-950">Sebelum mengirim, lengkapi: {missingForReview.join(', ')}.</p>}
+          <h2 className="text-sm font-bold text-amber-950">{t("Langkah terakhir: kirim profil untuk ditinjau")}</h2>
+          <p className="mt-1 text-xs leading-5 text-amber-900">{t("Menyimpan data atau mengunggah CV belum otomatis mengirim profil. Setelah dikirim, admin akan menyetujui atau memberi catatan perbaikan.")}</p>
+          {rejectedReview && <p className="mt-3 rounded-lg border border-rose-200 bg-white p-3 text-xs text-rose-800"><strong>{t("Perlu perbaikan dari admin:")}</strong> {rejectedReview.notes || t("Periksa kembali informasi profil Anda.")}</p>}
+          {missingForReview.length > 0 && <p className="mt-3 text-xs font-medium text-amber-950">{t("Sebelum mengirim, lengkapi:")} {missingForReview.join(', ')}.</p>}
           <button onClick={missingForReview.length ? onEdit : onSubmit} disabled={submitting} className="mt-3 rounded-lg bg-[#0B2C6B] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#123b80] disabled:opacity-50">
-            {submitting ? 'Mengirim profil...' : missingForReview.length ? 'Lengkapi data wajib' : 'Kirim profil untuk ditinjau'}
+            {submitting ? t("Mengirim profil...") : missingForReview.length ? t("Lengkapi data wajib") : t("Kirim profil untuk ditinjau")}
           </button>
         </div>
       )}
@@ -118,18 +118,18 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Availability Status */}
           {av && (
             <div className="p-4 sm:p-5 space-y-4">
-              <h3 className="text-sm font-semibold text-slate-900">Ketersediaan kerja</h3>
+              <h3 className="text-sm font-semibold text-slate-900">{t("Ketersediaan kerja")}</h3>
               <div className="flex items-center gap-3">
                 <div className={`h-2 w-2 shrink-0 rounded-full ${
                   av.status === 'open' || av.status === 'available' ? 'bg-emerald-500' :
                   av.status === 'busy' || av.status === 'limited' ? 'bg-amber-500' : 'bg-rose-500'
                 }`} />
                 <span className="text-sm font-bold text-slate-800">
-                  {availabilityLabels[av.status || ''] || 'Belum diatur'}
+                  {availabilityLabels[av.status || ''] || t("Belum diatur")}
                 </span>
               </div>
               {av.work_locations && av.work_locations.length > 0 && (
-                <ProfileItems label="Lokasi kerja" items={av.work_locations} limit={3} compact>
+                <ProfileItems label={t("Lokasi kerja")} items={av.work_locations} limit={3} compact>
                   {(visible) => (
                     <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-50">
                       {visible.map((loc: string) => (
@@ -147,7 +147,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Curriculum Vitae Widget */}
           {cvDoc && (
             <div className="p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Dokumen CV Terlampir</h3>
+              <h3 className="text-sm font-semibold text-slate-900">{t("Dokumen CV Terlampir")}</h3>
               <button
                 type="button"
                 onClick={() => void openPreview(`/api/files/${cvDoc.id}/view`, cvDoc.file_name || 'Curriculum Vitae')}
@@ -169,8 +169,8 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Roles List */}
           {p?.roles && p.roles.length > 0 && (
             <div className="p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Peran utama</h3>
-              <ProfileItems label="Peran utama" items={p.roles} limit={3} compact>
+              <h3 className="text-sm font-semibold text-slate-900">{t("Peran utama")}</h3>
+              <ProfileItems label={t("Peran utama")} items={p.roles} limit={3} compact>
                 {(visible) => (
                   <div className="flex flex-wrap gap-1.5">
                     {visible.map((role) => (
@@ -187,8 +187,8 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Expertises List */}
           {p?.expertises && p.expertises.length > 0 && (
             <div className="p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Bidang keahlian</h3>
-              <ProfileItems label="Bidang keahlian" items={p.expertises} limit={2} compact>
+              <h3 className="text-sm font-semibold text-slate-900">{t("Bidang keahlian")}</h3>
+              <ProfileItems label={t("Bidang keahlian")} items={p.expertises} limit={2} compact>
                 {(visible) => (
                   <div className="flex flex-wrap gap-1.5">
                     {visible.map((exp) => (
@@ -205,8 +205,8 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Skills List */}
           {data.skills.length > 0 && (
             <div className="p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Kompetensi dan keahlian</h3>
-              <ProfileItems label="Kompetensi dan keahlian" items={data.skills} limit={3} compact>
+              <h3 className="text-sm font-semibold text-slate-900">{t("Kompetensi dan keahlian")}</h3>
+              <ProfileItems label={t("Kompetensi dan keahlian")} items={data.skills} limit={3} compact>
                 {(visible) => (
                   <div className="flex flex-wrap gap-1.5">
                     {visible.map((skill) => (
@@ -228,8 +228,8 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Languages List */}
           {data.languages.length > 0 && (
             <div className="p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Penguasaan bahasa</h3>
-              <ProfileItems label="Penguasaan bahasa" items={data.languages} limit={3} compact>
+              <h3 className="text-sm font-semibold text-slate-900">{t("Penguasaan bahasa")}</h3>
+              <ProfileItems label={t("Penguasaan bahasa")} items={data.languages} limit={3} compact>
                 {(visible) => (
                   <div className="flex flex-wrap gap-1.5">
                     {visible.map((lang) => (
@@ -251,7 +251,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
         <div className="min-w-0 space-y-4 lg:col-span-2">
           {p?.bio && (
             <section className="ams-panel p-4 sm:p-5">
-              <h2 className="mb-2 text-sm font-semibold text-slate-900">Tentang saya</h2>
+              <h2 className="mb-2 text-sm font-semibold text-slate-900">{t("Tentang saya")}</h2>
               <ProfileBio text={p.bio} />
             </section>
           )}
@@ -259,10 +259,8 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Experiences Section */}
           {data.experiences.length > 0 && (
             <div className="ams-panel min-w-0 p-4 sm:p-5">
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">
-                Pengalaman kerja
-              </h3>
-              <ProfileItems label="Pengalaman kerja" items={data.experiences} limit={2} details={data.experiences.some((item) => Boolean(item.description?.trim() || item.achievement?.trim()))}>
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">{t("Pengalaman kerja")}</h3>
+              <ProfileItems label={t("Pengalaman kerja")} items={data.experiences} limit={2} details={data.experiences.some((item) => Boolean(item.description?.trim() || item.achievement?.trim()))}>
                 {(visible, expanded) => (
                   <div className="relative space-y-5 border-l border-slate-200 pl-4">
                     {visible.map((exp) => (
@@ -305,10 +303,8 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Education Section */}
           {data.educations.length > 0 && (
             <div className="ams-panel min-w-0 p-4 sm:p-5">
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">
-                Riwayat pendidikan
-              </h3>
-              <ProfileItems label="Riwayat pendidikan" items={data.educations} limit={2}>
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">{t("Riwayat pendidikan")}</h3>
+              <ProfileItems label={t("Riwayat pendidikan")} items={data.educations} limit={2}>
                 {(visible) => (
                   <div className="relative space-y-5 border-l border-slate-200 pl-4">
                     {visible.map((edu) => (
@@ -327,8 +323,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                           </div>
                           <p className="break-words text-xs font-semibold text-slate-600">{edu.institution}</p>
                           {edu.field_of_study && (
-                            <p className="text-xs text-slate-500 italic mt-0.5">
-                              Bidang Studi: {edu.field_of_study}
+                            <p className="text-xs text-slate-500 italic mt-0.5">{t("Bidang Studi:")} {edu.field_of_study}
                             </p>
                           )}
                         </div>
@@ -343,10 +338,8 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Certifications Section */}
           {data.certifications && data.certifications.length > 0 && (
             <div className="ams-panel min-w-0 p-4 sm:p-5">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">
-                Sertifikasi profesional
-              </h3>
-              <ProfileItems label="Sertifikasi profesional" items={data.certifications} limit={2}>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{t("Sertifikasi profesional")}</h3>
+              <ProfileItems label={t("Sertifikasi profesional")} items={data.certifications} limit={2}>
                 {(visible) => (
                   <div className="space-y-4 pt-2">
                     {visible.map((cert) => (
@@ -367,7 +360,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                                 <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                <span className="truncate max-w-[150px] text-[10px]">Lihat Dokumen Sertifikat</span>
+                                <span className="truncate max-w-[150px] text-[10px]">{t("Lihat Dokumen Sertifikat")}</span>
                               </button>
                             </div>
                           )}
@@ -383,9 +376,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           {/* Portfolios Section */}
           {data.portfolios && data.portfolios.length > 0 && (
             <div className="ams-panel min-w-0 p-4 sm:p-5">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">
-                Portofolio dan hasil karya
-              </h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{t("Portofolio dan hasil karya")}</h3>
               <ProfileItems label="Portofolio" items={data.portfolios} limit={2} details={data.portfolios.some((item) => Boolean(item.description?.trim() || item.link_url))}>
                 {(visible, expanded) => (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
@@ -402,7 +393,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                             {/* Visual File Attachments Box */}
                             {expanded && files.length > 0 && (
                               <div className="mt-3 space-y-2">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Berkas Lampiran</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("Berkas Lampiran")}</span>
                                 <div className="grid grid-cols-2 gap-2">
                                   {files.map((file, fIdx) => (
                                     <button
@@ -428,9 +419,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0B2C6B] hover:underline truncate max-w-full"
-                              >
-                                Buka Tautan Portofolio
-                                <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              >{t("Buka Tautan Portofolio")}<svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                 </svg>
                               </a>
@@ -453,16 +442,12 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
           <svg className="mx-auto h-16 w-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
-          <h3 className="mt-4 text-lg font-bold text-slate-900">Profil Anda Masih Kosong</h3>
-          <p className="mt-2 text-sm text-slate-500 max-w-sm mx-auto">
-            Mulai isi profil Anda untuk mempermudah pendaftaran tugas dan proses penempatan.
-          </p>
+          <h3 className="mt-4 text-lg font-bold text-slate-900">{t("Profil Anda Masih Kosong")}</h3>
+          <p className="mt-2 text-sm text-slate-500 max-w-sm mx-auto">{t("Mulai isi profil Anda untuk mempermudah pendaftaran tugas dan proses penempatan.")}</p>
           <Link
             href="/dashboard/profile?edit=true"
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0B2C6B] to-[#0A255A] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0B2C6B]/25"
-          >
-            Mulai Isi Profil
-          </Link>
+          >{t("Mulai Isi Profil")}</Link>
         </div>
       )}
 
@@ -473,8 +458,8 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-slate-50">
               <div>
-                <h3 className="break-words text-sm font-semibold text-slate-900">{activePreviewTitle || 'Pratinjau Dokumen'}</h3>
-                <p className="text-[10px] text-slate-500 mt-0.5">Dokumen terverifikasi BinaHub</p>
+                <h3 className="break-words text-sm font-semibold text-slate-900">{activePreviewTitle || t("Pratinjau Dokumen")}</h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">{t("Dokumen terverifikasi BinaHub")}</p>
               </div>
               <div className="flex items-center gap-3">
                 <a
@@ -484,15 +469,11 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Unduh
-                </a>
+                  </svg>{t("Unduh")}</a>
                 <button
                   onClick={() => { setActivePreviewUrl(null); setActivePreviewTitle(''); }}
                   className="rounded-lg bg-[#0B2C6B] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#0A255A] transition-colors"
-                >
-                  Tutup
-                </button>
+                >{t("Tutup")}</button>
               </div>
             </div>
 

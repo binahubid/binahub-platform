@@ -4,8 +4,10 @@ import { useParams } from "next/navigation";
 import { useMaterialCatalog } from "@/lib/materials";
 import { AdminMaterialReader } from "@/components/admin-material-reader";
 import s from "../materials.module.css";
+import { useAmsLocale } from "@/components/ams-language";
 
 export default function AdminMaterialDocumentPage() {
+  const { t } = useAmsLocale();
   const { slug } = useParams<{ slug: string }>();
   const { data, error, reload } = useMaterialCatalog();
   const material = data?.documents.find((document) => document.slug === slug);
@@ -14,20 +16,16 @@ export default function AdminMaterialDocumentPage() {
     <section className="ams-panel p-6">
       {error ? (
         <>
-          <p role="alert">{error}</p>
-          <button type="button" className={s.button} onClick={reload}>
-            Coba lagi
-          </button>
+          <p role="alert">{t(error)}</p>
+          <button type="button" className={s.button} onClick={reload}>{t("Coba lagi")}</button>
         </>
       ) : data ? (
         <>
-          <h1 className="text-xl font-semibold">Materi tidak ditemukan</h1>
-          <Link href="/admin/materials" className={s.button}>
-            Kembali ke Materi
-          </Link>
+          <h1 className="text-xl font-semibold">{t("Materi tidak ditemukan")}</h1>
+          <Link href="/admin/materials" className={s.button}>{t("Kembali ke Materi")}</Link>
         </>
       ) : (
-        <p role="status">Memuat dokumen…</p>
+        <p role="status">{t("Memuat dokumen…")}</p>
       )}
     </section>
   );
