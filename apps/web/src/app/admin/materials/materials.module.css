@@ -116,8 +116,10 @@
   font-weight: 600;
 }
 .search {
-  flex: 0 1 280px;
+  flex: 1 1 180px;
+  max-width: 280px;
 }
+.version select,
 .search input {
   width: 100%;
   min-height: 48px;

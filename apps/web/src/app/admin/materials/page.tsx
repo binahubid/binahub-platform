@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import type { MaterialVideoVersion } from "@ams/shared/types/materials";
 import { useAuth } from "@/context/AuthContext";
 import {
   downloadMaterialFile,
@@ -9,10 +10,17 @@ import {
 } from "@/lib/materials";
 import s from "./materials.module.css";
 
+const videoVersions = [
+  { id: "id", label: "Bahasa Indonesia" },
+  { id: "en", label: "English" },
+  { id: "mobile", label: "Mobile (Bahasa Indonesia)" },
+] as const;
+
 export default function AdminMaterialsPage() {
   const { accessToken } = useAuth();
   const { data, error, reload } = useMaterialCatalog();
-  const [series, setSeries] = useState("fitur"),
+  const [version, setVersion] = useState<MaterialVideoVersion>("id");
+  const [desktopSeries, setSeries] = useState("fitur"),
     [query, setQuery] = useState("");
   const [busy, setBusy] = useState(""),
     [downloadError, setDownloadError] = useState("");
@@ -28,14 +36,21 @@ export default function AdminMaterialsPage() {
       setBusy("");
     }
   }
-  const videos =
-    data?.videos.filter(
-      (video) =>
-        video.series === series &&
-        `${video.id} ${video.title}`
-          .toLocaleLowerCase("id")
-          .includes(query.trim().toLocaleLowerCase("id")),
-    ) || [];
+  const series = version === "mobile" ? "sop" : desktopSeries;
+  const locale = version === "en" ? "en" : "id";
+  const search = query.trim().toLocaleLowerCase(locale);
+  const versions = videoVersions.filter(({ id }) =>
+    id === "id" || data?.videos.some((video) => video.versions?.[id]),
+  );
+  const videos = data?.videos.flatMap((video) => {
+    if (video.series !== series) return [];
+    const variant = version === "id" ? video : video.versions?.[version];
+    if (!variant) return [];
+    const selected = { ...video, ...variant };
+    return `${selected.id} ${selected.title}`.toLocaleLowerCase(locale).includes(search)
+      ? [selected]
+      : [];
+  }) ?? [];
   return (
     <div className={s.page}>
       <header className={s.heading}>
@@ -112,28 +127,46 @@ export default function AdminMaterialsPage() {
               <p>Pilih topik yang dibutuhkan. Video dibuka di tab baru.</p>
             </div>
             <div className={s.filters}>
-              <div className={s.series} role="group" aria-label="Seri video">
-                <button
-                  type="button"
-                  aria-pressed={series === "fitur"}
-                  onClick={() => {
-                    setSeries("fitur");
-                    setQuery("");
-                  }}
-                >
-                  Fitur portal
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={series === "sop"}
-                  onClick={() => {
-                    setSeries("sop");
-                    setQuery("");
-                  }}
-                >
-                  Alur kerja
-                </button>
-              </div>
+              {versions.length > 1 && (
+                <label className={s.version}>
+                  <span className="sr-only">Versi video</span>
+                  <select
+                    value={version}
+                    onChange={(event) => {
+                      const selected = versions.find(({ id }) => id === event.target.value);
+                      if (!selected) return;
+                      setVersion(selected.id);
+                      setQuery("");
+                    }}
+                  >
+                    {versions.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+                  </select>
+                </label>
+              )}
+              {version !== "mobile" && (
+                <div className={s.series} role="group" aria-label="Seri video">
+                  <button
+                    type="button"
+                    aria-pressed={series === "fitur"}
+                    onClick={() => {
+                      setSeries("fitur");
+                      setQuery("");
+                    }}
+                  >
+                    Fitur portal
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={series === "sop"}
+                    onClick={() => {
+                      setSeries("sop");
+                      setQuery("");
+                    }}
+                  >
+                    Alur kerja
+                  </button>
+                </div>
+              )}
               <label className={s.search}>
                 <span className="sr-only">Cari video</span>
                 <input

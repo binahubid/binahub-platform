@@ -4,13 +4,20 @@ export type MaterialDocument = {
   description: string;
   filename: string;
 };
-export type MaterialVideo = {
+type MaterialVideoFile = {
+  duration: string;
+  drive: { fileId: string; resourceKey?: string };
+};
+
+export type MaterialVideoVersion = "id" | "en" | "mobile";
+
+export type MaterialVideo = MaterialVideoFile & {
   id: string;
   series: "fitur" | "sop";
   title: string;
   description: string;
-  duration: string;
-  drive: { fileId: string; resourceKey?: string };
+  versions?: Partial<Record<Exclude<MaterialVideoVersion, "id">,
+    MaterialVideoFile & { title?: string; description?: string }>>;
 };
 export type MaterialCatalog = {
   documents: MaterialDocument[];
