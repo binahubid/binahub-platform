@@ -13,7 +13,12 @@ const id = '11111111-1111-4111-8111-111111111111';
 test('consultant-team compensation is optional while agreement review remains required', () => {
   const invite = {
     action: 'invite', associateId: id, revision: 0,
-    agreementText: 'Synthetic consultant cooperation agreement for the validation fixture.',
+    profile: {
+      address: 'Alamat simulasi', identityNumber: 'ID-FIXTURE-1',
+      bankName: 'Bank simulasi', bankHolder: 'Associate Simulasi', bankAccount: '00012345',
+      signerName: 'Perwakilan simulasi', signerTitle: 'Peran simulasi',
+    },
+    previewHash: 'a'.repeat(64),
     reviewed: true,
   };
   for (const compensationTerms of [undefined, '', '   ']) {
@@ -22,7 +27,7 @@ test('consultant-team compensation is optional while agreement review remains re
   assert.equal(teamAdminSchema.parse({ ...invite, compensationTerms: ' - ' }).compensationTerms, '-');
   assert.equal(teamAdminSchema.safeParse({ ...invite, compensationTerms: 'a'.repeat(2001) }).success, false);
   assert.equal(teamAdminSchema.safeParse({ ...invite, reviewed: false }).success, false);
-  assert.equal(teamAdminSchema.safeParse({ ...invite, agreementText: '' }).success, false);
+  assert.equal(teamAdminSchema.safeParse({ ...invite, profile: { ...invite.profile, identityNumber: '' } }).success, false);
 });
 
 test('registration/login preserve accepted fields, reject malformed input and strip extras', () => {
