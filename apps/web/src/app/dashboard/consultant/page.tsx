@@ -3,12 +3,13 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ConsultantPortalIcon, useConsultantTeam } from '@/components/consultant-team-context';
-import { teamDate,teamLabels,teamRequest } from '@/lib/consultant-team';
+import { readableTeamDocuments,teamDate,teamLabels,teamRequest } from '@/lib/consultant-team';
 import { useAmsLocale } from "@/components/ams-language";
 
 export default function ConsultantMembershipPage(){
   const { locale, t } = useAmsLocale();
   const {accessToken}=useAuth(),{membership:m,error,opening,loading,reload,open}=useConsultantTeam();
+  const documents = m ? readableTeamDocuments(m.signed_agreement_text ?? m.agreement_text) : [];
   const [consent,setConsent]=useState(false),[declining,setDeclining]=useState(false),[busy,setBusy]=useState(false),[feedback,setFeedback]=useState(''),[problem,setProblem]=useState('');
   async function respond(action:'accept'|'decline'){
     if(!m||!accessToken)return;
@@ -34,11 +35,18 @@ export default function ConsultantMembershipPage(){
           <h2 className="text-lg font-semibold text-slate-900">{t("Perjanjian kerja sama konsultan")}</h2>
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-[#0B2C6B]">{t(teamLabels[m.status])}</span>
         </div>
-        <div className="max-w-prose whitespace-pre-line text-sm leading-7 text-slate-700">{m.agreement_text}</div>
+        {documents.length === 2 ? <div className="space-y-3">
+          {documents.map((document,index) => <details key={index} className="rounded-lg border border-slate-200 px-4">
+            <summary className="cursor-pointer py-3 text-sm font-semibold text-[#0B2C6B]">
+              {index === 0 ? t("Perjanjian Kerahasiaan (NDA)") : t("Perjanjian Kerja Sama (ACA)")}
+            </summary>
+            <div className="max-w-prose whitespace-pre-line break-words pb-4 text-sm leading-7 text-slate-700">{document}</div>
+          </details>)}
+        </div> : <div className="max-w-prose whitespace-pre-line text-sm leading-7 text-slate-700">{documents[0]}</div>}
         {m.compensation_terms?.trim()&&<section className="mt-6 border-t border-slate-200 pt-5"><h3 className="font-semibold text-slate-900">{t("Ketentuan kompensasi")}</h3><p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-700">{m.compensation_terms}</p></section>}
         {m.accepted_at&&<p className="mt-5 text-xs leading-5 text-slate-500">{t("Disetujui pada")} {teamDate(m.accepted_at, locale)}.</p>}
         {m.status==='invited'?<div className="mt-6 space-y-5 border-t border-slate-200 pt-5">
-          <label className="flex items-start gap-3 text-sm leading-6 text-slate-700"><input type="checkbox" checked={consent} onChange={(e)=>setConsent(e.target.checked)} className="mt-1 h-5 w-5 shrink-0"/>{t("Saya telah membaca dan menyetujui perjanjian kerja sama ini.")}</label>
+          <label className="flex items-start gap-3 text-sm leading-6 text-slate-700"><input type="checkbox" checked={consent} onChange={(e)=>setConsent(e.target.checked)} className="mt-1 h-5 w-5 shrink-0"/>{t(documents.length === 2 ? "Saya telah membaca dan menyetujui NDA dan ACA." : "Saya telah membaca dan menyetujui perjanjian kerja sama ini.")}</label>
           <div className="flex flex-col gap-3 sm:flex-row"><button type="button" disabled={busy||!consent} onClick={()=>void respond('accept')} className="min-h-11 rounded-lg bg-[#0B2C6B] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{t(busy ? "Menyimpan…" : "Setujui & Bergabung")}</button>
             <button type="button" disabled={busy} onClick={()=>setDeclining(true)} className="min-h-11 rounded-lg border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700">{t("Tolak undangan")}</button></div>
           {declining&&<div className="rounded-lg border border-slate-200 p-4"><p className="text-sm leading-6 text-slate-700">{t("Apakah Anda ingin menolak undangan ini? Admin dapat mengirim undangan baru jika Anda ingin membahasnya kembali.")}</p><div className="mt-3 flex flex-wrap gap-3"><button type="button" disabled={busy} onClick={()=>setDeclining(false)} className="min-h-11 px-3 text-sm underline">{t("Batal")}</button><button type="button" disabled={busy} onClick={()=>void respond('decline')} className="min-h-11 rounded-lg border border-red-200 px-4 text-sm font-medium text-red-700">{t("Ya, tolak undangan")}</button></div></div>}

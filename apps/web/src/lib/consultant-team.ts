@@ -1,6 +1,7 @@
 export type TeamMembership = {
   associate_id: string; membership_id: string; invitation_id: string; status: string;
   revision: number; agreement_text: string; compensation_terms: string; agreement_hash: string;
+  agreement_version?: string | null; signed_agreement_text?: string | null;
   accepted_at: string | null; invited_at: string; updated_at: string; sync_status: string;
   email?: string; full_name?: string; associate_status?: string;
 };
@@ -28,4 +29,10 @@ export function teamDate(value: string | null | undefined, locale: "id" | "en" =
     timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short",
   });
   return localTime + (locale === "en" ? " (WIB)" : " WIB");
+}
+
+export function readableTeamDocuments(text: string) {
+  return text.replaceAll('[[AMS_ACCEPTANCE_DATE]]', 'Tanggal persetujuan associate di AMS')
+    .replaceAll('[[AMS_CONSULTANT_SIGNATURE]]', 'Diisi saat associate menyetujui melalui AMS')
+    .split('\n\n====================\n\n');
 }

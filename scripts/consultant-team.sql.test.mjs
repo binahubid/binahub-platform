@@ -6,6 +6,7 @@ import { PGlite } from '@electric-sql/pglite';
 const db=new PGlite(),admin=randomUUID(),alice=randomUUID(),bob=randomUUID(),outsider=randomUUID();
 const migration=readFileSync('packages/database/migrations/014_consultant_team.sql','utf8');
 const optionalCompensation=readFileSync('packages/database/migrations/018_consultant_team_optional_compensation.sql','utf8');
+const ndaAca=readFileSync('packages/database/migrations/019_consultant_team_nda_aca.sql','utf8');
 const rpc=async(actor,associate,action,revision,data={})=>(await db.query(
   'select consultant_team_change($1,$2,$3,$4,$5) value',[actor,associate,action,revision,data],
 )).rows[0].value;
@@ -26,6 +27,7 @@ before(async()=>{
     $$;`);
   await db.exec(migration);
   await db.exec(optionalCompensation);
+  await db.exec(ndaAca);
 });
 after(()=>db.close());
 beforeEach(async()=>{
@@ -131,4 +133,23 @@ test('migration preserves existing invitations, consent hashes, and history',asy
   assert.equal(rows.find(row=>row.associate_id===bob).agreement_hash,active.agreement_hash);
   assert.deepEqual((await db.query('select * from consultant_team_history order by associate_id,revision')).rows,before);
   assert.equal((await accept(pending)).status,'active');
+});
+
+
+test('NDA and ACA retain their reviewed terms and publish a dated signed copy only after consent', async () => {
+  await db.exec(ndaAca);
+  const text = 'NDA and ACA terms. '.repeat(1200)
+    + 'Date [[AMS_ACCEPTANCE_DATE]]. Signature [[AMS_CONSULTANT_SIGNATURE]].';
+  const draft = { agreementText: text, agreementVersion: 'nda-aca-20261125', reviewed: true };
+  await assert.rejects(rpc(admin, alice, 'invite', 0, { ...draft, agreementText: text.replace('[[AMS_ACCEPTANCE_DATE]]', '') }), /TEAM_AGREEMENT_REQUIRED/);
+  const invited = await rpc(admin, alice, 'invite', 0, draft);
+  assert.equal(invited.signed_agreement_text, null);
+  const signed = await accept(invited);
+  assert.equal(signed.agreement_hash, invited.agreement_hash);
+  assert.equal(signed.agreement_text, text);
+  assert.doesNotMatch(signed.signed_agreement_text, /\[\[AMS_/);
+  assert.match(signed.signed_agreement_text, /Date \d{2}\/\d{2}\/\d{4}/);
+  await db.exec(ndaAca);
+  const snapshot = (await db.query("select snapshot from consultant_team_history where action='accept'")).rows[0].snapshot;
+  assert.equal(snapshot.signed_agreement_text, signed.signed_agreement_text);
 });
