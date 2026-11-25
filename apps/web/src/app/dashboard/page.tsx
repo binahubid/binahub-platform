@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { CapabilityRadar, ProfileStrength, Avatar, ServiceError } from '../../components/ui';
 import { ProtectedFileLink } from '../../components/ui/protected-file';
 import { WorkspaceOverview, WorkspaceShortcuts } from '@/components/ui/workspace-overview';
-import { ConsultantPortalEntry, consultantPortalIcon, useConsultantTeam } from '@/components/consultant-team-context';
+import { ConsultantPortalEntry, useConsultantTeam } from '@/components/consultant-team-context';
 import { InstallAmsCard } from '@/components/notifications/device-settings';
 import { assignmentStatusLabel, assignmentStatusTone, formatAssignmentDate, nextAssignmentTransition, type AssignmentWork } from '@/lib/assignment-display';
 import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
@@ -476,7 +476,7 @@ export default function DashboardPage() {
           completionHref="/dashboard/profile"
         />
         <WorkspaceShortcuts items={[
-          ...(consultantActive ? [{ label: 'Portal Konsultan', tone: 'blue' as const, icon: consultantPortalIcon, onClick: () => void open(), busy: opening }] : []),
+          ...(consultantActive ? [{ label: 'Portal Konsultan', tone: 'blue' as const, artwork: 'consultant' as const, onClick: () => void open(), busy: opening }] : []),
           { label: 'Dokumen', href: '/dashboard/profile?tab=documents', tone: 'blue', artwork: 'document' },
           { label: 'Ketersediaan', href: '/dashboard/profile?tab=availability', tone: 'teal', artwork: 'availability' },
           { label: 'Asesmen', tone: 'gold', artwork: 'assessment' },

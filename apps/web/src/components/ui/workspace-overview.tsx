@@ -43,7 +43,7 @@ export function WorkspaceOverview({ heading, value, label, detail, href, action,
 }
 
 type ShortcutTone = 'blue' | 'teal' | 'gold' | 'violet';
-type ShortcutArtwork = 'document' | 'availability' | 'assessment' | 'development';
+type ShortcutArtwork = 'consultant' | 'document' | 'availability' | 'assessment' | 'development';
 export type WorkspaceShortcut = { label: string; tone: ShortcutTone } & (
   { icon: string; artwork?: never } | { artwork: ShortcutArtwork; icon?: never }
 ) & (
@@ -57,12 +57,13 @@ export function WorkspaceShortcuts({ items }: { items: WorkspaceShortcut[] }) {
       <h2 id="workspace-shortcuts-heading">{t("Akses cepat")}</h2>
       <div className="ams-shortcut-grid">
         {items.map((item) => {
+          const tile = item.artwork === 'consultant' ? 'document' : item.artwork;
           const content = (
             <>
               <span className={`ams-shortcut-icon ams-shortcut-${item.tone}`}>
                 {item.artwork ? (
                   <>
-                    <Image className="ams-shortcut-tile" src={`/workspace-icons/tile-${item.artwork}.webp`} alt="" width={54} height={54} unoptimized />
+                    <Image className="ams-shortcut-tile" src={`/workspace-icons/tile-${tile}.webp`} alt="" width={54} height={54} unoptimized />
                     <Image className="ams-shortcut-art" src={`/workspace-icons/${item.artwork}.webp`} alt="" width={44} height={44} unoptimized />
                   </>
                 ) : (

@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import Link from 'next/link';
 import { createContext,useCallback,useContext,useEffect,useRef,useState,type ReactNode } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -91,8 +92,7 @@ export function ConsultantTeamProvider({children}:{children:ReactNode}) {
 export function useConsultantTeam(){
   const state=useContext(Team);if(!state)throw new Error('Team provider is required');return state;
 }
-export const consultantPortalIcon = "M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 11l7 3h4l7-3M10 13h4v3h-4zM5 7h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z";
-export function ConsultantPortalIcon(){return <svg aria-hidden="true" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" d={consultantPortalIcon}/></svg>}
+export function ConsultantPortalIcon(){return <Image src="/workspace-icons/consultant.webp" className="size-5 shrink-0" alt="" width={20} height={20} unoptimized />}
 export function ConsultantPortalEntry({navigation=false}:{navigation?:boolean}){
   const { t } = useAmsLocale();
   const {membership,error,opening,open}=useConsultantTeam();
