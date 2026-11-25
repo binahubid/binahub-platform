@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { CapabilityRadar, ProfileStrength, Avatar, ServiceError } from '../../components/ui';
 import { ProtectedFileLink } from '../../components/ui/protected-file';
 import { WorkspaceOverview, WorkspaceShortcuts } from '@/components/ui/workspace-overview';
-import { ConsultantPortalEntry } from '@/components/consultant-team-context';
+import { ConsultantPortalEntry, consultantPortalIcon, useConsultantTeam } from '@/components/consultant-team-context';
 import { InstallAmsCard } from '@/components/notifications/device-settings';
 import { assignmentStatusLabel, assignmentStatusTone, formatAssignmentDate, nextAssignmentTransition, type AssignmentWork } from '@/lib/assignment-display';
 import { useAssignmentRefresh } from '@/lib/use-assignment-refresh';
@@ -89,6 +89,8 @@ function getGreeting() {
 export default function DashboardPage() {
   const { t } = useAmsLocale();
   const { user, accessToken } = useAuth();
+  const { membership, opening, open, error: portalError } = useConsultantTeam();
+  const consultantActive = membership?.status === 'active';
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -474,13 +476,15 @@ export default function DashboardPage() {
           completionHref="/dashboard/profile"
         />
         <WorkspaceShortcuts items={[
+          ...(consultantActive ? [{ label: 'Portal Konsultan', tone: 'blue' as const, icon: consultantPortalIcon, onClick: () => void open(), busy: opening }] : []),
           { label: 'Dokumen', href: '/dashboard/profile?tab=documents', tone: 'blue', artwork: 'document' },
           { label: 'Ketersediaan', href: '/dashboard/profile?tab=availability', tone: 'teal', artwork: 'availability' },
           { label: 'Asesmen', tone: 'gold', artwork: 'assessment' },
           { label: 'Pengembangan', tone: 'violet', artwork: 'development' },
         ]} />
       </div>
-      <ConsultantPortalEntry />
+      {!consultantActive && <ConsultantPortalEntry />}
+      {consultantActive && portalError && <p role="alert" className="text-sm text-red-700">{t(portalError)}</p>}
 
       <div className="ams-dashboard-grid">
       <section aria-labelledby="my-assignments-heading" className="ams-panel overflow-hidden">

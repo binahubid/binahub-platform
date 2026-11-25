@@ -219,8 +219,8 @@ export async function enableAppProjectModule(input: { requesterEmail: string; pr
   });
 }
 
-export async function requestAppAccessLink(associateId: string, nextPath?: string) {
-  const associate = await getAssociateIdentity(associateId);
+export async function requestAppAccessLink(source: string | AssociateIdentity, nextPath?: string) {
+  const associate = typeof source === 'string' ? await getAssociateIdentity(source) : source;
   return postSigned<{ success: true; url: string; expiresAt: string }>('/api/integrations/ams/access-link', {
     associate,
     nextPath,

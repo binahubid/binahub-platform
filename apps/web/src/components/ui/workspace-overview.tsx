@@ -45,8 +45,9 @@ export function WorkspaceOverview({ heading, value, label, detail, href, action,
 type ShortcutTone = 'blue' | 'teal' | 'gold' | 'violet';
 type ShortcutArtwork = 'document' | 'availability' | 'assessment' | 'development';
 export type WorkspaceShortcut = { label: string; tone: ShortcutTone } & (
-  { href: string; icon: string; artwork?: never } |
-  { href?: string; artwork: ShortcutArtwork; icon?: never }
+  { icon: string; artwork?: never } | { artwork: ShortcutArtwork; icon?: never }
+) & (
+  { href?: string; onClick?: never; busy?: never } | { href?: never; onClick: () => void; busy?: boolean }
 );
 
 export function WorkspaceShortcuts({ items }: { items: WorkspaceShortcut[] }) {
@@ -69,13 +70,15 @@ export function WorkspaceShortcuts({ items }: { items: WorkspaceShortcut[] }) {
                 )}
               </span>
               <span>
-                <span className="block">{t(item.label)}</span>
-                {!item.href && <span className="ams-shortcut-soon">{t("Segera hadir")}</span>}
+                <span className="block">{t(item.busy ? "Membuka portal…" : item.label)}</span>
+                {!item.href && !item.onClick && <span className="ams-shortcut-soon">{t("Segera hadir")}</span>}
               </span>
             </>
           );
           return item.href ? (
             <Link key={item.label} href={item.href} className="ams-shortcut">{content}</Link>
+          ) : item.onClick ? (
+            <button key={item.label} type="button" className="ams-shortcut" disabled={item.busy} aria-busy={item.busy || undefined} onClick={item.onClick}>{content}</button>
           ) : (
             <div key={item.label} className="ams-shortcut ams-shortcut-disabled">{content}</div>
           );

@@ -151,6 +151,9 @@ body {
 .ams-shortcuts h2 { font-size: 15px; font-weight: 600; color: #152a4d; }
 .ams-shortcut-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
 .ams-shortcut { display: flex; min-height: 92px; min-width: 0; flex-direction: column; align-items: center; gap: 9px; border-radius: 16px; padding: 4px 0; text-align: center; font-size: 11px; font-weight: 500; letter-spacing: -.02em; color: #33445f; }
+button.ams-shortcut:not(:disabled) { cursor: pointer; }
+button.ams-shortcut:disabled { opacity: .65; }
+button.ams-shortcut:focus-visible { outline: 2px solid #2455a7; outline-offset: 3px; }
 .ams-shortcut-icon { display: grid; width: 52px; height: 52px; flex: none; place-items: center; border-radius: 17px; border: 1px solid rgb(255 255 255 / 90%); box-shadow: 0 3px 10px -6px rgb(11 44 107 / 25%); transition: transform .16s ease; }
 .ams-shortcut-icon svg { width: 24px; height: 24px; }
 .ams-shortcut-icon { position: relative; isolation: isolate; }
@@ -172,7 +175,7 @@ body {
 .ams-tab-art { width: 33px; height: 33px; object-fit: contain; opacity: .72; }
 .ams-bottom-nav a[aria-current=page] .ams-tab-art { opacity: 1; }
 @media (hover: hover) and (pointer: fine) {
-  a.ams-shortcut:hover .ams-shortcut-icon { transform: translateY(-2px); }
+  :is(a, button:not(:disabled)).ams-shortcut:hover .ams-shortcut-icon { transform: translateY(-2px); }
 }
 @media (min-width: 768px) {
   .ams-overview-grid { grid-template-columns: 1.4fr 1fr; align-items: stretch; }

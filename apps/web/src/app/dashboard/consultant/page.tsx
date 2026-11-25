@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useConsultantTeam } from '@/components/consultant-team-context';
+import { ConsultantPortalIcon, useConsultantTeam } from '@/components/consultant-team-context';
 import { teamDate,teamLabels,teamRequest } from '@/lib/consultant-team';
 import { useAmsLocale } from "@/components/ams-language";
 
@@ -42,7 +42,7 @@ export default function ConsultantMembershipPage(){
           <div className="flex flex-col gap-3 sm:flex-row"><button type="button" disabled={busy||!consent} onClick={()=>void respond('accept')} className="min-h-11 rounded-lg bg-[#0B2C6B] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{t(busy ? "Menyimpan…" : "Setujui & Bergabung")}</button>
             <button type="button" disabled={busy} onClick={()=>setDeclining(true)} className="min-h-11 rounded-lg border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700">{t("Tolak undangan")}</button></div>
           {declining&&<div className="rounded-lg border border-slate-200 p-4"><p className="text-sm leading-6 text-slate-700">{t("Apakah Anda ingin menolak undangan ini? Admin dapat mengirim undangan baru jika Anda ingin membahasnya kembali.")}</p><div className="mt-3 flex flex-wrap gap-3"><button type="button" disabled={busy} onClick={()=>setDeclining(false)} className="min-h-11 px-3 text-sm underline">{t("Batal")}</button><button type="button" disabled={busy} onClick={()=>void respond('decline')} className="min-h-11 rounded-lg border border-red-200 px-4 text-sm font-medium text-red-700">{t("Ya, tolak undangan")}</button></div></div>}
-        </div>:m.status==='active'?<div className="mt-6 border-t border-slate-200 pt-5"><p className="mb-4 text-sm leading-6 text-slate-600">{t("Akses berlaku selama keanggotaan Anda aktif, termasuk ketika belum ada penugasan klien.")}</p><button type="button" onClick={()=>void open()} disabled={opening} className="min-h-11 rounded-lg bg-[#0B2C6B] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{opening?t("Membuka portal…"):t("Buka Portal Konsultan")}</button></div>
+        </div>:m.status==='active'?<div className="mt-6 border-t border-slate-200 pt-5"><p className="mb-4 text-sm leading-6 text-slate-600">{t("Akses berlaku selama keanggotaan Anda aktif, termasuk ketika belum ada penugasan klien.")}</p><button type="button" onClick={()=>void open()} disabled={opening} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#0B2C6B] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"><ConsultantPortalIcon/>{opening?t("Membuka portal…"):t("Buka Portal Konsultan")}</button></div>
           :<p className="mt-6 border-t border-slate-200 pt-5 text-sm leading-6 text-slate-600">{m.status==='paused'?t("Keanggotaan Anda sedang dijeda. Hubungi admin untuk membahas kelanjutan akses."):m.status==='ended'?t("Keanggotaan konsultan Anda sudah berakhir. Riwayat persetujuan tetap tercatat."):t("Anda telah menolak undangan ini. Hubungi admin jika ingin membahas undangan baru.")}</p>}
       </section>}
   </div>;

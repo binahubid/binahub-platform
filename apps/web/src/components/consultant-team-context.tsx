@@ -74,7 +74,10 @@ export function ConsultantTeamProvider({children}:{children:ReactNode}) {
   }
   return (
     <Team.Provider value={{membership,error,opening,loading,reload,open}}>
-      {membership?.status==='active' && <link rel="preconnect" href="https://app.binahub.id" />}
+      {membership?.status==='active' && <>
+        <link rel="preconnect" href="https://app.binahub.id" />
+        <link rel="preconnect" href="https://api.binahub.id" crossOrigin="anonymous" />
+      </>}
       {opening && (
         <div className="ams-portal-transfer" role="status">
           <span className="ams-portal-transfer-track" aria-hidden="true" />
@@ -88,7 +91,8 @@ export function ConsultantTeamProvider({children}:{children:ReactNode}) {
 export function useConsultantTeam(){
   const state=useContext(Team);if(!state)throw new Error('Team provider is required');return state;
 }
-function PortalIcon(){return <svg aria-hidden="true" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" d="M14 3h7v7m0-7L10 14M10 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-5"/></svg>}
+export const consultantPortalIcon = "M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 11l7 3h4l7-3M10 13h4v3h-4zM5 7h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z";
+export function ConsultantPortalIcon(){return <svg aria-hidden="true" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" d={consultantPortalIcon}/></svg>}
 export function ConsultantPortalEntry({navigation=false}:{navigation?:boolean}){
   const { t } = useAmsLocale();
   const {membership,error,opening,open}=useConsultantTeam();
@@ -97,7 +101,7 @@ export function ConsultantPortalEntry({navigation=false}:{navigation?:boolean}){
   if(navigation)return active?<div className="mt-2">
     <button type="button" disabled={opening} onClick={()=>void open()}
       className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-[#0B2C6B] hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60">
-      <PortalIcon/>{opening?t("Membuka portal…"):t("Portal Konsultan")}
+      <ConsultantPortalIcon/>{opening?t("Membuka portal…"):t("Portal Konsultan")}
     </button>
     {error&&<p role="alert" className="px-3 pb-2 text-xs leading-5 text-red-700">{t(error)}</p>}
   </div>:null;
@@ -105,7 +109,7 @@ export function ConsultantPortalEntry({navigation=false}:{navigation?:boolean}){
   const rowClass = "flex min-h-16 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-[#0B2C6B] transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:opacity-60";
   const content = (
     <>
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#0B2C6B]/10"><PortalIcon /></span>
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#0B2C6B]/10"><ConsultantPortalIcon /></span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">
           {active ? (opening ? t("Membuka portal…") : t("Buka Portal Konsultan")) : t("Tinjau undangan Tim Konsultan")}

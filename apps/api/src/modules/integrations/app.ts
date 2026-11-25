@@ -43,9 +43,10 @@ integration.post('/consultant-team/check', async (c) => {
   if ('error' in body) return body.error;
   const parsed = teamCheckSchema.safeParse(body.value);
   if (!parsed.success) return c.json({ success: false, error: 'Akun tidak valid.' }, 400);
-  const membership = await getTeamMembership(parsed.data.associateId);
-  const { data: associate, error } = await getDb().from('associates').select('status,email')
-    .eq('id', parsed.data.associateId).maybeSingle();
+  const [membership, { data: associate, error }] = await Promise.all([
+    getTeamMembership(parsed.data.associateId),
+    getDb().from('associates').select('status,email').eq('id', parsed.data.associateId).maybeSingle(),
+  ]);
   if (error) return c.json({ success: false, error: 'Keanggotaan belum dapat diperiksa.' }, 503);
   return c.json({ success: true, active: activeConsultantMembership(membership, associate?.status || '')
     && (!parsed.data.membershipId || membership?.membership_id === parsed.data.membershipId)

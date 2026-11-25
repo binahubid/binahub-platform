@@ -4,7 +4,7 @@ import { teamAdminSchema, teamQuerySchema, teamResponseSchema } from '@ams/share
 import { authMiddleware, requireRole } from '../auth/middleware/auth.js';
 import { getDb } from '../../lib/database.js';
 import { getTeamMembership, syncConsultantMembership, teamErrorMessages } from '../../lib/consultant-team.js';
-import { requestAppAccessLink } from '../../lib/app-integration.js';
+import { getAssociateIdentity, requestAppAccessLink } from '../../lib/app-integration.js';
 import { queueNotificationEmail } from '../../lib/notification-email.js';
 import { consultantPortalTargetSchema } from '@ams/shared/validators/notifications';
 import type { AppEnv } from '../../types/env.js';
@@ -93,18 +93,17 @@ teamAssociateRoutes.post('/open', async (c) => {
   if (!target.success) return c.json({ success: false, error: 'Tujuan portal tidak valid.' }, 400);
   const id = c.get('user').id;
   try {
-    const [membership, { data: associate, error }] = await Promise.all([
+    const [membership, identity] = await Promise.all([
       getTeamMembership(id),
-      getDb().from('associates').select('status').eq('id', id).maybeSingle(),
+      getAssociateIdentity(id),
     ]);
-    if (error) throw error;
-    if (!membership || !activeConsultantMembership(membership, associate?.status || ''))
+    if (!membership || !activeConsultantMembership(membership, identity.status))
       return c.json({ success: false, error: 'Keanggotaan konsultan Anda belum aktif. Hubungi admin BinaHub.' }, 403);
 
     if (membership.sync_status !== 'synced' || membership.synced_revision !== membership.revision) {
       await syncConsultantMembership(id);
     }
-    const access = await requestAppAccessLink(id, target.data.leadId ? `/konsultan/clients/${target.data.leadId}` : '/konsultan');
+    const access = await requestAppAccessLink(identity, target.data.leadId ? `/konsultan/clients/${target.data.leadId}` : '/konsultan');
     return c.json({ success: true, data: { url: access.url } });
   } catch {
     return c.json({ success: false, error: 'Portal belum dapat dibuka. Keanggotaan Anda tetap tersimpan; coba lagi sebentar.' }, 503);
