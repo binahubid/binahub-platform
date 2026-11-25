@@ -149,8 +149,11 @@ body {
 .ams-overview a:focus-visible { outline-color: #f3c56f; outline-offset: 4px; }
 .ams-shortcuts { min-width: 0; padding: 2px 0; }
 .ams-shortcuts h2 { font-size: 15px; font-weight: 600; color: #152a4d; }
-.ams-shortcut-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
-.ams-shortcut { display: flex; min-height: 92px; min-width: 0; flex-direction: column; align-items: center; gap: 9px; border-radius: 16px; padding: 4px 0; text-align: center; font-size: 11px; font-weight: 500; letter-spacing: -.02em; color: #33445f; }
+.ams-shortcut-row { display: flex; align-items: flex-start; margin-top: 10px; }
+.ams-shortcut-arrow { display: grid; place-items: center; flex: 0 0 32px; height: 44px; margin-top: 12px; color: #0b2c6b; opacity: .55; cursor: pointer; }
+.ams-shortcut-arrow:hover, .ams-shortcut-arrow:focus-visible { opacity: 1; }
+.ams-shortcut-strip { display: flex; flex: 1; min-width: 0; gap: 6px; overflow-x: auto; padding: 4px 4px 6px; scrollbar-width: thin; scrollbar-color: #bdcce0 transparent; scroll-snap-type: x proximity; scroll-padding-inline: 4px; }
+.ams-shortcut { display: flex; flex: 1 0 80px; min-height: 92px; flex-direction: column; align-items: center; gap: 9px; border-radius: 16px; padding: 4px 0; text-align: center; font-size: 11px; font-weight: 500; letter-spacing: -.02em; color: #33445f; scroll-snap-align: start; }
 button.ams-shortcut:not(:disabled) { cursor: pointer; }
 button.ams-shortcut:disabled { opacity: .65; }
 button.ams-shortcut:focus-visible { outline: 2px solid #2455a7; outline-offset: 3px; }
@@ -180,8 +183,6 @@ button.ams-shortcut:focus-visible { outline: 2px solid #2455a7; outline-offset: 
 @media (min-width: 768px) {
   .ams-overview-grid { grid-template-columns: 1.4fr 1fr; align-items: stretch; }
   .ams-shortcuts { display: flex; flex-direction: column; justify-content: center; padding: 22px; border: 1px solid #e4e9f1; border-radius: 24px; background: #fff; }
-  .ams-shortcut-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 8px; }
-  .ams-shortcut { flex-direction: row; min-height: 62px; gap: 9px; text-align: left; font-size: 12px; }
   .ams-shortcut-icon { width: 44px; height: 44px; border-radius: 14px; }
   .ams-dashboard-grid { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
 }
@@ -192,10 +193,8 @@ button.ams-shortcut:focus-visible { outline: 2px solid #2455a7; outline-offset: 
   .ams-overview-number { gap: 9px; }
   .ams-overview-number > span { font-size: 13px; }
   .ams-overview-number strong { font-size: 40px; }
-  .ams-shortcut { flex-direction: row; gap: 8px; min-height: 56px; text-align: left; font-size: 11px; }
   .ams-shortcut-icon { width: 40px; height: 40px; border-radius: 13px; }
   .ams-shortcut-icon svg { width: 21px; height: 21px; }
-  .ams-shortcut-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 }
 .ams-workspace :where(main, main > div) { min-width: 0; }
 .ams-workspace :where(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=color]), select, textarea) {
