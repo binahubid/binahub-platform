@@ -8,11 +8,12 @@ export function AppBootLogo() {
   return (
     <div role="status" className="grid min-h-[100svh] place-content-center justify-items-center">
       <Image
-        src="/intro2.png"
+        src="/intro-tagline-640.webp"
         alt=""
-        width={1280}
-        height={640}
-        priority
+        width={640}
+        height={320}
+        unoptimized
+        loading="eager"
         className="h-auto w-[min(76vw,300px)]"
       />
       <p className="text-sm text-slate-600">{t("Membuka BinaHub AMS…")}</p>

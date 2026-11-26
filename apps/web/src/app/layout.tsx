@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import { AuthProvider } from "../context/AuthContext";
 import { AmsNotificationProvider } from "@/components/notifications/provider";
@@ -11,13 +11,6 @@ const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-jakarta-sans",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-inter",
   display: "swap",
 });
 
@@ -68,7 +61,7 @@ export default async function RootLayout({
 }>) {
   const locale = amsLocale((await cookies()).get(amsLanguageCookie)?.value);
   return (
-    <html lang={locale} className={`${jakartaSans.variable} ${inter.variable} h-full scroll-smooth antialiased`}>
+    <html lang={locale} className={`${jakartaSans.variable} h-full scroll-smooth antialiased`}>
       <body className="flex min-h-full flex-col font-[family-name:var(--font-jakarta-sans)] selection:bg-[#0B2C6B] selection:text-white">
         <AmsLocaleProvider initialLocale={locale}>
           <AuthProvider><AmsNotificationProvider>{children}</AmsNotificationProvider></AuthProvider>

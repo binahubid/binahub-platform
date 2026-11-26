@@ -1,9 +1,17 @@
 "use client";
 
 import Image from 'next/image';
+import { Inter } from 'next/font/google';
 import { ProtectedFileImage } from '../../../../../components/ui/protected-file';
 import styles from './cv-document.module.css';
 import { useAmsLocale } from "@/components/ams-language";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export type CvData = {
   associate: { id: string; email: string; status: string; created_at: string };
@@ -70,7 +78,7 @@ export function CVDocument({data,accessToken,apiUrl}:{data:CvData;accessToken:st
 
 
   return (
-      <div className={styles.document}>
+      <div className={`${styles.document} ${inter.variable}`}>
         <table className={styles.printTable} role="presentation">
           <thead><tr><td><div className={styles.brand}><Image src="/full-logo.png" alt="BinaHub" width={116} height={33} unoptimized /><span>{t("Profil Associate")}</span></div></td></tr></thead>
           <tbody><tr><td className={styles.content}>
