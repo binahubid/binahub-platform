@@ -2,25 +2,24 @@
 
 import { useState } from 'react';
 import { useAmsLocale } from "@/components/ams-language";
+import { associateRoleOptions, associateExpertiseOptions } from '@/lib/associate-profile-options';
 
-const ROLE_OPTIONS = [
-  { value: 'Trainer', icon: <TrainerIcon /> },
-  { value: 'Facilitator', icon: <FacilitatorIcon /> },
-  { value: 'Coach', icon: <CoachIcon /> },
-  { value: 'Mentor', icon: <MentorIcon /> },
-  { value: 'Consultant', icon: <ConsultantIcon /> },
-  { value: 'Assessor', icon: <AssessorIcon /> },
-  { value: 'Speaker', icon: <SpeakerIcon /> },
-  { value: 'Game Master', icon: <GameMasterIcon /> },
-  { value: 'Tour Leader', icon: <TrainerIcon /> },
-  { value: 'Project Manager', icon: <FacilitatorIcon /> },
-  { value: 'EO', icon: <CoachIcon /> },
-  { value: 'MC', icon: <SpeakerIcon /> },
-  { value: 'Photographer', icon: <TrainerIcon /> },
-  { value: 'Videographer', icon: <FacilitatorIcon /> },
-  { value: 'Affiliate Marketer', icon: <CoachIcon /> },
-  { value: 'AI Consultant', icon: <ConsultantIcon /> },
-];
+const roleIcons: Partial<Record<(typeof associateRoleOptions)[number], () => React.JSX.Element>> = {
+  Trainer: TrainerIcon,
+  Facilitator: FacilitatorIcon,
+  Coach: CoachIcon,
+  Mentor: MentorIcon,
+  Assessor: AssessorIcon,
+  Speaker: SpeakerIcon,
+  'Game Master': GameMasterIcon,
+  'Tour Leader': TrainerIcon,
+  'Event Organizer': FacilitatorIcon,
+  'Training Organizer': TrainerIcon,
+  MC: SpeakerIcon,
+  Photographer: TrainerIcon,
+  Videographer: FacilitatorIcon,
+  'Affiliate Marketer': CoachIcon,
+};
 
 function GameMasterIcon() {
   return (
@@ -30,21 +29,6 @@ function GameMasterIcon() {
     </svg>
   );
 }
-
-const EXPERTISE_OPTIONS = [
-  { value: 'Leadership Development' },
-  { value: 'Team Development' },
-  { value: 'Learning & Facilitation' },
-  { value: 'Coaching & Mentoring' },
-  { value: 'Assessment & Talent' },
-  { value: 'Organization Development' },
-  { value: 'Performance & Execution' },
-  { value: 'Business Consulting' },
-  { value: 'Learning Design' },
-  { value: 'Measurement & Analytics' },
-  { value: 'AI & Digital Transformation' },
-  { value: 'Spiritual & Character Development' },
-];
 
 // ─── Inline SVG Icons ─────────────────────────────────────────────────────────
 
@@ -147,20 +131,22 @@ export function StepSelectRoles({
           <p className="text-xs text-slate-500 mt-0.5">{t("Pilih maksimal 7 peran utama yang ingin Anda kontribusikan di BinaHub")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {ROLE_OPTIONS.map(({ value, icon }) => {
+          {associateRoleOptions.map(value => {
+            const Icon = roleIcons[value] ?? ConsultantIcon;
             const active = selectedRoles.includes(value);
             return (
               <button
                 key={value}
                 type="button"
                 onClick={() => onRoleToggle(value)}
+                aria-pressed={active}
                 className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all border ${
                   active
                     ? 'bg-[#0B2C6B] text-white border-[#0B2C6B] shadow-sm shadow-[#0B2C6B]/20'
                     : 'bg-white text-slate-600 border-slate-200 hover:border-[#0B2C6B]/40 hover:text-[#0B2C6B] hover:bg-[#0B2C6B]/3'
                 }`}
               >
-                <span className={active ? 'text-white' : 'text-slate-400'}>{icon}</span>
+                <span aria-hidden="true" className={active ? 'text-white' : 'text-slate-400'}><Icon /></span>
                 <span>{value}</span>
                 {active && (
                   <svg className="h-3 w-3 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,13 +168,14 @@ export function StepSelectRoles({
           <p className="text-xs text-slate-500 mt-0.5">{t("Bidang Keahlian Utama (maksimal pilih 5)")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {EXPERTISE_OPTIONS.map(({ value }) => {
+          {associateExpertiseOptions.map(value => {
             const active = selectedExpertises.includes(value);
             return (
               <button
                 key={value}
                 type="button"
                 onClick={() => onExpertiseToggle(value)}
+                aria-pressed={active}
                 className={`rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all border ${
                   active
                     ? 'bg-[#D9A441] text-white border-[#D9A441] shadow-sm shadow-[#D9A441]/20'
