@@ -175,7 +175,7 @@ export function ProfileView({ data, completionPercentage, onEdit, onSubmit, subm
                   <div className="flex flex-wrap gap-1.5">
                     {visible.map((role) => (
                       <span key={role} className="max-w-full break-words rounded-lg bg-blue-50 border border-blue-100 px-3 py-1.5 text-xs font-semibold text-[#0B2C6B]">
-                        {role}
+                        {role === "EO" ? "Event Organizer" : role}
                       </span>
                     ))}
                   </div>

@@ -1130,5 +1130,15 @@
   "Data rekening AMS belum dapat dimuat. Isi sesuai data yang terverifikasi.": "AMS bank details could not be loaded. Enter the verified details.",
   "Lengkapi data identitas, rekening, dan perwakilan BinaHub.": "Complete the identity, bank, and BinaHub representative details.",
   "Data perjanjian berubah. Buka pratinjau dan tinjau kembali NDA dan ACA.": "The agreement details changed. Preview and review the NDA and ACA again.",
-  "NDA dan ACA belum dapat disiapkan.": "The NDA and ACA could not be prepared."
+  "NDA dan ACA belum dapat disiapkan.": "The NDA and ACA could not be prepared.",
+  "Data untuk perjanjian (opsional)": "Agreement details (optional)",
+  "Isi jika diperlukan untuk undangan konsultan. Hanya Anda dan admin BinaHub yang dapat melihat data ini untuk menyiapkan perjanjian.": "Complete these fields when needed for a consultant invitation. Only you and BinaHub administrators can access them to prepare the agreement.",
+  "Alamat lengkap untuk perjanjian": "Full address for the agreement",
+  "Nomor identitas untuk perjanjian": "Identity number for the agreement",
+  "Nama dan email diambil dari akun AMS. Data identitas dan rekening terisi jika sudah disimpan di profil associate. Lengkapi bagian yang kosong dan periksa data sebelum meninjau perjanjian.": "The name and email come from AMS. Identity and bank details are filled in when saved in the associate’s profile. Complete any missing fields and verify the information before reviewing the agreements.",
+  "Data profil AMS belum dapat dimuat. Isi sesuai data yang terverifikasi.": "AMS profile details could not be loaded. Enter the verified information.",
+  "Ke awal dokumen": "Go to start of document",
+  "Ke akhir dokumen": "Go to end of document",
+  "Ke awal": "To start",
+  "Ke akhir": "To end"
 }

@@ -13,7 +13,8 @@ type StepProfileProps = {
 
 const roleOptions = [
   'Trainer', 'Facilitator', 'Coach', 'Mentor', 'Consultant', 'Assessor', 'Speaker', 'Game Master',
-  'Tour Leader', 'Project Manager', 'EO', 'MC', 'Photographer', 'Videographer', 'Affiliate Marketer', 'AI Consultant'
+  'Tour Leader', 'Project Manager', 'Event Organizer', 'Training Organizer', 'Project Talent',
+  'MC', 'Photographer', 'Videographer', 'Affiliate Marketer', 'AI Consultant'
 ];
 
 const expertiseOptions = [
@@ -28,7 +29,8 @@ const expertiseOptions = [
   'Learning Design',
   'Measurement & Analytics',
   'AI & Digital Transformation',
-  'Spiritual & Character Development'
+  'Spiritual & Character Development',
+  'External & Internal Relationship',
 ];
 
 // Helper: Custom Select Component for Upward Dropdown in Edit Mode
@@ -115,8 +117,9 @@ const TIMEZONE_OPTIONS = [
 
 export function StepProfile({ profile, onUpdate }: StepProfileProps) {
   const { t } = useAmsLocale();
+  const selectedRoles = [...new Set((profile.roles ?? []).map(role => role === 'EO' ? 'Event Organizer' : role))];
   const handleRoleToggle = (role: string) => {
-    const cur = profile.roles || [];
+    const cur = selectedRoles;
     const active = cur.includes(role);
     if (!active && cur.length >= 7) {
       alert('Maksimal memilih 7 peran utama.');
@@ -295,11 +298,12 @@ export function StepProfile({ profile, onUpdate }: StepProfileProps) {
           </svg>{t("Pilih maksimal 7 peran utama yang ingin Anda kontribusikan di BinaHub")}</label>
         <div className="flex flex-wrap gap-2">
           {roleOptions.map((role) => {
-            const active = (profile.roles || []).includes(role);
+            const active = selectedRoles.includes(role);
             return (
               <button
                 key={role}
                 type="button"
+                aria-pressed={active}
                 onClick={() => handleRoleToggle(role)}
                 className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition-all border ${
                   active
@@ -327,6 +331,7 @@ export function StepProfile({ profile, onUpdate }: StepProfileProps) {
               <button
                 key={exp}
                 type="button"
+                aria-pressed={active}
                 onClick={() => handleExpertiseToggle(exp)}
                 className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition-all border ${
                   active

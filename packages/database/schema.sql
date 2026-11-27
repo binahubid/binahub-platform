@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS associate_financial_details (
   bank_name TEXT,
   bank_account_number TEXT,
   bank_account_holder TEXT,
+  agreement_address TEXT CHECK (length(agreement_address) BETWEEN 1 AND 400),
+  agreement_identity_number TEXT CHECK (length(agreement_identity_number) BETWEEN 1 AND 60),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );

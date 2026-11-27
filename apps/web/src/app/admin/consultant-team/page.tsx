@@ -5,6 +5,7 @@ import {useAuth} from '@/context/AuthContext';
 import {readableTeamDocuments,teamActions,teamDate,teamLabels,teamRequest,type TeamMembership} from '@/lib/consultant-team';
 import s from './team.module.css';
 import { useAmsLocale } from "@/components/ams-language";
+import { ConsultantAgreementDocuments } from "@/components/consultant-agreement-documents";
 type Directory={members:TeamMembership[];total:number;pageSize:number};
 type Candidate={id:string;email:string;full_name:string;revision:number};
 const agreementFields = [
@@ -57,7 +58,7 @@ export default function ConsultantTeamAdminPage(){
     const abort = new AbortController();
     void teamRequest<Partial<DraftProfile>>(accessToken, '/api/admin/consultant-team/agreement-profile/' + target.id, undefined, abort.signal)
       .then((fields) => { if (!abort.signal.aborted) setProfile((previous) => ({ ...previous, ...fields })); })
-      .catch(() => { if (!abort.signal.aborted) setError('Data rekening AMS belum dapat dimuat. Isi sesuai data yang terverifikasi.'); })
+      .catch(() => { if (!abort.signal.aborted) setError('Data profil AMS belum dapat dimuat. Isi sesuai data yang terverifikasi.'); })
       .finally(() => { if (!abort.signal.aborted) setProfileLoading(false); });
     return () => abort.abort();
   }, [target, accessToken]);
@@ -116,7 +117,7 @@ export default function ConsultantTeamAdminPage(){
       </>:<form onSubmit={send} className={s.form}>
         <div className={s.row}><div><h3>{target.full_name}</h3><p>{target.email}</p></div><button type="button" onClick={()=>choose(null)}>{t("Ganti associate")}</button></div>
         <h3>{t("Data perjanjian NDA dan ACA")}</h3>
-        <p className={s.hint}>{t("Nama dan email diambil dari akun AMS. Isi alamat lengkap, nomor identitas, dan perwakilan BinaHub yang berwenang. Periksa rekening sebelum meninjau perjanjian.")}</p>
+        <p className={s.hint}>{t("Nama dan email diambil dari akun AMS. Data identitas dan rekening terisi jika sudah disimpan di profil associate. Lengkapi bagian yang kosong dan periksa data sebelum meninjau perjanjian.")}</p>
         {profileLoading && <p role="status">{t("Mengambil data dari AMS…")}</p>}
         <fieldset disabled={profileLoading || busy} className={s.form}>
           {agreementFields.map(([key, label, max]) => <label key={key} className={s.field}>{t(label)}
@@ -133,10 +134,7 @@ export default function ConsultantTeamAdminPage(){
           </label>
         </fieldset>
         {preview ? <>
-          {preview.documents.map((document, index) => <details key={index}>
-            <summary>{index === 0 ? t("Perjanjian Kerahasiaan (NDA)") : t("Perjanjian Kerja Sama (ACA)")}</summary>
-            <p className={s.prose}>{readableTeamDocuments(document)[0]}</p>
-          </details>)}
+          <ConsultantAgreementDocuments documents={preview.documents.flatMap(readableTeamDocuments)} />
           <label className={s.check}><input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} />
             {t("Saya telah meninjau kedua dokumen dan berwenang mengirimnya atas nama BinaHub.")}
           </label>
@@ -159,7 +157,7 @@ export default function ConsultantTeamAdminPage(){
       </tbody></table></div>}
       {data&&data.total>data.pageSize&&<div className={s.row}><p>{page*data.pageSize+1}–{Math.min((page+1)*data.pageSize,data.total)} {t("dari")} {data.total}</p><div className={s.actions}><button disabled={page===0} onClick={()=>setPage((v)=>v-1)}>{t("Sebelumnya")}</button><button disabled={(page+1)*data.pageSize>=data.total} onClick={()=>setPage((v)=>v+1)}>{t("Berikutnya")}</button></div></div>}
     </section>
-    {detail&&<section className={s.panel}><div className={s.heading}><h2>Perjanjian {detail.membership.full_name}</h2><button onClick={()=>setDetail(null)}>{t("Tutup rincian")}</button></div><p className={s.prose}>{readableTeamDocuments(detail.membership.signed_agreement_text ?? detail.membership.agreement_text).join("\n\n")}</p>{detail.membership.compensation_terms?.trim()&&<><h3>{t("Ketentuan kompensasi")}</h3><p className={s.prose}>{detail.membership.compensation_terms}</p></>}<h3>{t("Riwayat keanggotaan")}</h3><ul>{detail.history.map((h)=><li key={h.id} className={s.history}><p>{t(teamActions[h.action]||t("Keanggotaan diperbarui"))}</p><p className={s.hint}>{teamDate(h.created_at)}</p>{h.action==='accept'&&<details><summary>{t("Lihat perjanjian yang disetujui saat itu")}</summary><p className={s.prose}>{readableTeamDocuments(h.snapshot.signed_agreement_text ?? h.snapshot.agreement_text).join("\n\n")}</p>{h.snapshot.compensation_terms?.trim()&&<p className={s.prose}>{h.snapshot.compensation_terms}</p>}</details>}</li>)}</ul></section>}
+    {detail&&<section className={s.panel}><div className={s.heading}><h2>Perjanjian {detail.membership.full_name}</h2><button onClick={()=>setDetail(null)}>{t("Tutup rincian")}</button></div><ConsultantAgreementDocuments documents={readableTeamDocuments(detail.membership.signed_agreement_text ?? detail.membership.agreement_text)} />{detail.membership.compensation_terms?.trim()&&<><h3>{t("Ketentuan kompensasi")}</h3><p className={s.prose}>{detail.membership.compensation_terms}</p></>}<h3>{t("Riwayat keanggotaan")}</h3><ul>{detail.history.map((h)=><li key={h.id} className={s.history}><p>{t(teamActions[h.action]||t("Keanggotaan diperbarui"))}</p><p className={s.hint}>{teamDate(h.created_at)}</p>{h.action==='accept'&&<details><summary>{t("Lihat perjanjian yang disetujui saat itu")}</summary><ConsultantAgreementDocuments documents={readableTeamDocuments(h.snapshot.signed_agreement_text ?? h.snapshot.agreement_text)} />{h.snapshot.compensation_terms?.trim()&&<p className={s.prose}>{h.snapshot.compensation_terms}</p>}</details>}</li>)}</ul></section>}
     <dialog ref={dialog} onCancel={(e)=>{if(busy)e.preventDefault();else setConfirmation(null)}} className={s.dialog}>
       <h2>{confirmation?.action==='pause'?t("Jeda keanggotaan?"):confirmation?.action==='end'?t("Akhiri keanggotaan?"):t("Aktifkan kembali keanggotaan?")}</h2>
       <p>{confirmation?.row.full_name} {confirmation?.action==='resume'?t("akan mendapatkan akses portal berdasarkan persetujuan yang sudah tercatat."):t("akan kehilangan akses kerja Portal Konsultan. Riwayat pekerjaan dan persetujuan tetap tercatat.")}</p>

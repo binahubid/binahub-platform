@@ -51,6 +51,8 @@ export const associateFinancialDetails = pgTable("associate_financial_details", 
   bank_name: text("bank_name"),
   bank_account_number: text("bank_account_number"),
   bank_account_holder: text("bank_account_holder"),
+  agreement_address: text("agreement_address"),
+  agreement_identity_number: text("agreement_identity_number"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });

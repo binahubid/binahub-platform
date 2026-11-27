@@ -38,6 +38,9 @@ export const ASSOCIATE_ROLES = [
   'Researcher',
   'Writer',
   'Game Master',
+  'Event Organizer',
+  'Training Organizer',
+  'Project Talent',
   'Other',
 ] as const;
 
@@ -62,6 +65,7 @@ export const ASSOCIATE_EXPERTISES = [
   'Operations & Supply Chain',
   'Health & Wellness',
   'Learning & Development',
+  'External & Internal Relationship',
 ] as const;
 
 export const ASSOCIATE_INDUSTRIES = [
@@ -123,6 +127,8 @@ export const updateProfileSchema = z.object({
 });
 
 export const updateFinancialDetailsSchema = z.object({
+  agreementAddress: z.string().trim().max(400).regex(/^[^\r\n]*$/).nullable().optional(),
+  agreementIdentityNumber: z.string().trim().max(60).regex(/^[^\r\n]*$/).nullable().optional(),
   npwp: z.string().trim().regex(/^[0-9.\- ]*$/, 'Format NPWP tidak valid').max(24).nullable().optional(),
   bankName: z.string().trim().max(100).nullable().optional(),
   bankAccountNumber: z.string().trim().regex(/^[0-9]*$/, 'Nomor rekening hanya boleh berisi angka').max(40).nullable().optional(),

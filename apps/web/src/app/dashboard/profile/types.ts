@@ -101,6 +101,8 @@ export type Portfolio = {
 };
 
 export type FinancialDetails = {
+  agreement_address: string | null;
+  agreement_identity_number: string | null;
   npwp: string | null;
   bank_name: string | null;
   bank_account_number: string | null;

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ConsultantPortalIcon, useConsultantTeam } from '@/components/consultant-team-context';
 import { readableTeamDocuments,teamDate,teamLabels,teamRequest } from '@/lib/consultant-team';
 import { useAmsLocale } from "@/components/ams-language";
+import { ConsultantAgreementDocuments } from "@/components/consultant-agreement-documents";
 
 export default function ConsultantMembershipPage(){
   const { locale, t } = useAmsLocale();
@@ -35,14 +36,7 @@ export default function ConsultantMembershipPage(){
           <h2 className="text-lg font-semibold text-slate-900">{t("Perjanjian kerja sama konsultan")}</h2>
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-[#0B2C6B]">{t(teamLabels[m.status])}</span>
         </div>
-        {documents.length === 2 ? <div className="space-y-3">
-          {documents.map((document,index) => <details key={index} className="rounded-lg border border-slate-200 px-4">
-            <summary className="cursor-pointer py-3 text-sm font-semibold text-[#0B2C6B]">
-              {index === 0 ? t("Perjanjian Kerahasiaan (NDA)") : t("Perjanjian Kerja Sama (ACA)")}
-            </summary>
-            <div className="max-w-prose whitespace-pre-line break-words pb-4 text-sm leading-7 text-slate-700">{document}</div>
-          </details>)}
-        </div> : <div className="max-w-prose whitespace-pre-line text-sm leading-7 text-slate-700">{documents[0]}</div>}
+        <ConsultantAgreementDocuments documents={documents} />
         {m.compensation_terms?.trim()&&<section className="mt-6 border-t border-slate-200 pt-5"><h3 className="font-semibold text-slate-900">{t("Ketentuan kompensasi")}</h3><p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-700">{m.compensation_terms}</p></section>}
         {m.accepted_at&&<p className="mt-5 text-xs leading-5 text-slate-500">{t("Disetujui pada")} {teamDate(m.accepted_at, locale)}.</p>}
         {m.status==='invited'?<div className="mt-6 space-y-5 border-t border-slate-200 pt-5">

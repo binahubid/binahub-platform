@@ -242,24 +242,29 @@ associateRoutes.get('/me', async (c) => {
   return c.json({ success: true, data: { ...filteredAssociate, reviews: reviews || [], assignments: assignmentsWithStatus || [], assignments_unavailable: assignmentsWithStatus === null } });
 });
 
-// Financial details are intentionally isolated from profile/public/CV responses.
+// Financial and agreement details are isolated from profile, public and CV responses.
+const financialFields = 'id, associate_id, npwp, bank_name, bank_account_number, bank_account_holder, created_at, updated_at';
+const privateProfileFields = `${financialFields}, agreement_address, agreement_identity_number` as const;
 associateRoutes.get('/financial-details', async (c) => {
   const user = c.get('user') as AuthUser;
   if (user.role === 'admin') {
     return c.json({ success: false, error: 'Gunakan endpoint admin' }, 403);
   }
 
-  const { data, error } = await getDb()
-    .from('associate_financial_details')
-    .select('id, associate_id, npwp, bank_name, bank_account_number, bank_account_holder, created_at, updated_at')
-    .eq('associate_id', user.id)
-    .maybeSingle();
+  const db = getDb();
+  const profile = await db.from('associate_financial_details')
+    .select(privateProfileFields).eq('associate_id', user.id).maybeSingle();
+  const agreementProfileAvailable = !profile.error;
+  const { data, error } = profile.error?.code === '42703'
+    ? await db.from('associate_financial_details').select(financialFields).eq('associate_id', user.id).maybeSingle()
+    : profile;
 
   if (error) {
     return c.json({ success: false, error: 'Gagal memuat data finansial' }, 500);
   }
 
-  return c.json({ success: true, data });
+  c.header('Cache-Control', 'private, no-store');
+  return c.json({ success: true, data, agreementProfileAvailable });
 });
 
 associateRoutes.put('/financial-details', async (c) => {
@@ -282,15 +287,18 @@ associateRoutes.put('/financial-details', async (c) => {
       bank_name: value.bankName || null,
       bank_account_number: value.bankAccountNumber || null,
       bank_account_holder: value.bankAccountHolder || null,
+      ...(value.agreementAddress === undefined ? {} : { agreement_address: value.agreementAddress || null }),
+      ...(value.agreementIdentityNumber === undefined ? {} : { agreement_identity_number: value.agreementIdentityNumber || null }),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'associate_id' })
-    .select('id, associate_id, npwp, bank_name, bank_account_number, bank_account_holder, created_at, updated_at')
+    .select(financialFields)
     .single();
 
   if (error) {
     return c.json({ success: false, error: 'Gagal menyimpan data finansial' }, 500);
   }
 
+  c.header('Cache-Control', 'private, no-store');
   return c.json({ success: true, data });
 });
 

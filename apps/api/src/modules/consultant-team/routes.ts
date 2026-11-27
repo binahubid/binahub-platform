@@ -62,11 +62,18 @@ teamAdminRoutes.get('/agreement-profile/:id', async (c) => {
   const { associateId } = input.data;
   const identity = await getAssociateIdentity(associateId).catch(() => null);
   if (identity?.status !== 'active') return c.json({ success: false, error: teamErrorMessages.TEAM_ASSOCIATE_INACTIVE }, 409);
-  const { data, error } = await getDb().from('associate_financial_details')
-    .select('npwp,bank_name,bank_account_holder,bank_account_number').eq('associate_id', associateId).maybeSingle();
+  const db = getDb();
+  const bankFields = 'npwp,bank_name,bank_account_holder,bank_account_number';
+  const profile = await db.from('associate_financial_details')
+    .select(`${bankFields},agreement_address,agreement_identity_number`)
+    .eq('associate_id', associateId).maybeSingle();
+  const { data, error } = profile.error?.code === '42703'
+    ? await db.from('associate_financial_details').select(bankFields).eq('associate_id', associateId).maybeSingle()
+    : profile;
   if (error) return c.json({ success: false, error: 'Data untuk perjanjian belum dapat dimuat.' }, 503);
   c.header('Cache-Control', 'private, no-store');
   return c.json({ success: true, data: {
+    address: profile.data?.agreement_address ?? '', identityNumber: profile.data?.agreement_identity_number ?? '',
     npwp: data?.npwp ?? '', bankName: data?.bank_name ?? '',
     bankHolder: data?.bank_account_holder ?? '', bankAccount: data?.bank_account_number ?? '',
   } });

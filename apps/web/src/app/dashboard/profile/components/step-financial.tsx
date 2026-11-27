@@ -13,6 +13,8 @@ type StepFinancialProps = {
 export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialProps) {
   const { t } = useAmsLocale();
   const [data, setData] = useState<FinancialDetails>({
+    agreement_address: '',
+    agreement_identity_number: '',
     npwp: '',
     bank_name: '',
     bank_account_number: '',
@@ -20,16 +22,26 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [agreementProfileAvailable, setAgreementProfileAvailable] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     if (!accessToken) return;
+    const controller = new AbortController();
     fetch(`${apiUrl}/api/associate/financial-details`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}` }, signal: controller.signal,
     })
       .then((r) => r.json())
       .then((d) => {
-        if (d?.success && d.data) {
+        if (controller.signal.aborted) return;
+        if (!d?.success) throw new Error('PROFILE_UNAVAILABLE');
+        setLoadError(false);
+        setAgreementProfileAvailable(d.agreementProfileAvailable === true);
+        if (d.data) {
           setData({
+            agreement_address: d.data.agreement_address || '',
+            agreement_identity_number: d.data.agreement_identity_number || '',
             npwp: d.data.npwp || '',
             bank_name: d.data.bank_name || '',
             bank_account_number: d.data.bank_account_number || '',
@@ -37,9 +49,10 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
           });
         }
       })
-      .catch(() => showToast('Gagal memuat data finansial', 'error'))
-      .finally(() => setLoading(false));
-  }, [accessToken, apiUrl, showToast]);
+      .catch(() => { if (!controller.signal.aborted) setLoadError(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [accessToken, apiUrl, revision]);
 
   const handleSave = async () => {
     if (!accessToken) return;
@@ -49,6 +62,10 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
+          ...(agreementProfileAvailable ? {
+            agreementAddress: data.agreement_address || null,
+            agreementIdentityNumber: data.agreement_identity_number || null,
+          } : {}),
           npwp: data.npwp || null,
           bankName: data.bank_name || null,
           bankAccountNumber: data.bank_account_number || null,
@@ -78,6 +95,13 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
       </div>
     );
   }
+
+  if (loadError) return <div role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-800">
+    {t('Gagal memuat data finansial')}
+    <button type="button" className="ml-3 min-h-11 font-semibold underline" onClick={() => {
+      setLoading(true); setRevision(current => current + 1);
+    }}>{t('Coba lagi')}</button>
+  </div>;
 
   return (
     <div className="space-y-6">
@@ -130,6 +154,27 @@ export function StepFinancial({ apiUrl, accessToken, showToast }: StepFinancialP
           placeholder={t("Nama sesuai rekening")}
         />
       </div>
+
+      {agreementProfileAvailable && <details className="rounded-xl border border-slate-200 px-4">
+        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-[#0B2C6B]">
+          {t("Data untuk perjanjian (opsional)")}
+        </summary>
+        <div className="space-y-4 pb-4">
+          <p className="text-xs leading-6 text-slate-600">{t("Isi jika diperlukan untuk undangan konsultan. Hanya Anda dan admin BinaHub yang dapat melihat data ini untuk menyiapkan perjanjian.")}</p>
+          <label className="block text-sm font-medium text-slate-800">
+            {t("Alamat lengkap untuk perjanjian")}
+            <input type="text" maxLength={400} autoComplete="street-address" value={data.agreement_address || ''}
+              onChange={event => setData({ ...data, agreement_address: event.target.value })}
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2" />
+          </label>
+          <label className="block text-sm font-medium text-slate-800">
+            {t("Nomor identitas untuk perjanjian")}
+            <input type="text" maxLength={60} autoComplete="off" value={data.agreement_identity_number || ''}
+              onChange={event => setData({ ...data, agreement_identity_number: event.target.value })}
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2" />
+          </label>
+        </div>
+      </details>}
 
       <button
         onClick={handleSave}
