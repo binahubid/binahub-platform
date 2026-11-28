@@ -10,6 +10,7 @@ import { queueNotificationEmail } from '../../lib/notification-email.js';
 import { syncAssignmentAssignee } from '../../lib/app-integration.js';
 import type { AppEnv } from '../../types/env.js';
 import { consultantNoticeSchema } from '@ams/shared/validators/notifications';
+import { referralEligibility } from '@ams/shared/validators/referrals';
 
 const integration = new Hono<AppEnv>();
 
@@ -80,6 +81,16 @@ integration.post('/consultant-team/eligible', async (c) => {
     if (activeConsultantMembership(member, 'active')) rows.push({ id: matches[0].id, email });
   }
   return c.json({ success: true, data: rows });
+});
+
+integration.post('/referrals/eligible', async (c) => {
+  const body = await signedBody(c);
+  if ('error' in body) return body.error;
+  const parsed = referralEligibility.safeParse(body.value);
+  if (!parsed.success) return c.json({ success: false, error: 'Akun tidak valid.' }, 400);
+  const { data, error } = await getDb().from('associates').select('status').eq('id', parsed.data.associateId).maybeSingle();
+  if (error) return c.json({ success: false, error: 'Status akun belum dapat dibaca.' }, 503);
+  return c.json({ success: true, active: data?.status === 'active' });
 });
 
 integration.post('/associates/search', async (c) => {

@@ -10,6 +10,8 @@ import { AppBootLogo } from '@/components/ui/app-boot-logo';
 import { usePageVisibility } from '../../hooks/use-page-visibility';
 import { AmsLanguageSelect, useAmsLocale } from "@/components/ams-language";
 
+import { REFERRAL_ICON } from '@/lib/referrals';
+
 const sidebarSections = [
   {
     label: '',
@@ -20,6 +22,7 @@ const sidebarSections = [
   {
     label: 'Talent operations',
     items: [
+      { href: '/admin/referrals', label: 'Referral', icon: REFERRAL_ICON },
       { href: '/admin/consultant-team', label: 'Tim Konsultan', icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m16-13a4 4 0 010 8M9 3a4 4 0 100 8 4 4 0 000-8m14 18v-2a4 4 0 00-3-3.87' },
       { href: '/admin/materials', label: 'Materi', icon: 'M4 19.5A2.5 2.5 0 016.5 17H20M6.5 3H20v19H6.5A2.5 2.5 0 014 19.5v-14A2.5 2.5 0 016.5 3z' },
       { href: '/admin/associates', label: 'Associates', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },

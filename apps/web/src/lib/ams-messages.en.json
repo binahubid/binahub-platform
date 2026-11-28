@@ -1,4 +1,11 @@
 {
+  "Referral": "Referrals",
+  "Referral belum dapat diakses. Coba lagi sebentar.": "Referrals are temporarily unavailable. Try again shortly.",
+  "Referral ini tidak tersedia.": "This referral is unavailable.",
+  "Referral sudah berubah. Muat ulang sebelum menyimpan.": "This referral has changed. Refresh before saving.",
+  "Kode sudah berubah. Muat ulang sebelum menyimpan.": "Your code has changed. Refresh before saving.",
+  "Gunakan kode milik Associate aktif.": "Select an active Associate’s code.",
+  "Catatan kontak memerlukan izin calon klien. Anda dapat meminta bantuan admin.": "Contact notes require the prospect’s permission. You can ask an admin to help.",
   "Geser menu ke kiri": "Scroll shortcuts left",
   "Geser menu ke kanan": "Scroll shortcuts right",
   "Fitur portal": "Portal features",

@@ -9,6 +9,8 @@ Object.assign(process.env, {
   APP_INTEGRATION_SECRET:'synthetic-integration-contract-only',
 });
 let outbound=0,rateChecks=0,associateLookups=0,teamActive=true;
+let referralAssociateActive=true;
+const referralCommands=[];
 let materialReads=0;
 let syncedRevision=4, membershipSyncs=0;
 const ticketTargets=[];
@@ -31,7 +33,7 @@ globalThis.fetch=async (input,init)=>{
     return Response.json({allowed:true,remaining:9,reset_at:'2099-01-01T00:00:00Z'});
   }
   if(url.origin==='https://example.invalid'&&url.pathname==='/rest/v1/associates'){
-    if(url.searchParams.get('id')) return Response.json([{id:'00000000-0000-4000-8000-000000000007',email:'active_associate@example.com',status:'active'}]);
+    if(url.searchParams.get('id')) return Response.json([{id:accountId,email:'active_associate@example.com',status:referralAssociateActive?'active':'suspended'}]);
     associateLookups++;
     assert.equal(url.searchParams.get('status'),'eq.active');
     assert.equal(url.searchParams.get('limit'),'2');
@@ -52,6 +54,13 @@ globalThis.fetch=async (input,init)=>{
     return Response.json([{full_name:'Synthetic Consultant'}]);
   }
   if(url.origin==='https://api.binahub.id'){
+    if(url.pathname==='/api/integrations/ams/referrals'){
+      const headers=new Headers(init.headers),raw=init.body;
+      assert.equal(headers.get('x-binahub-signature'),createHmac('sha256',process.env.APP_INTEGRATION_SECRET).update(`${headers.get('x-binahub-timestamp')}.${raw}`).digest('hex'));
+      const payload=JSON.parse(raw);
+      referralCommands.push(payload);
+      return Response.json({success:true,data:payload.action==='settings'?{code:'BH-AABBCCDDEE',enabled:true}:{total:0,records:[],associates:[]}});
+    }
     if(url.pathname==='/api/integrations/ams/consultant-team'){
       membershipSyncs++;
       assert.equal(JSON.parse(init.body).membership.revision,4);
@@ -73,6 +82,38 @@ globalThis.fetch=async (input,init)=>{
 };
 const {default:app}=await import('../apps/api/dist/app.js');
 const domain=await import('../packages/domain/dist/index.js');
+
+test('associate referral scope comes from the AMS account and private responses are not cached',async()=>{
+  const headers={Authorization:'Bearer synthetic-associate'};
+  const result=await app.request('/api/associate/referrals?source=inquiry&page=2',{headers});
+  assert.equal(result.status,200);
+  assert.equal(result.headers.get('Cache-Control'),'private, no-store');
+  assert.deepEqual(referralCommands.at(-1),{action:'list',associateId:accountId,source:'inquiry',page:2});
+  const code=await app.request('/api/associate/referrals/code',{headers});
+  assert.equal(code.status,200);
+  assert.equal((await code.json()).data.code,'BH-AABBCCDDEE');
+  assert.equal(referralCommands.at(-1).associateId,accountId);
+  const forbidden=await app.request('/api/associate/referrals/follow-up',{method:'POST',headers:{...headers,'Content-Type':'application/json'},
+    body:JSON.stringify({associateId:'00000000-0000-4000-8000-000000000008',caseId:accountId,requestId:accountId,note:'Text',revisitOn:null,help:false})});
+  assert.equal(forbidden.status,400);
+  referralAssociateActive=false;
+  try{
+    const inactive=await app.request('/api/associate/referrals/code',{headers});
+    assert.equal(inactive.status,403);
+    assert.equal((await inactive.json()).code,'REFERRAL_INACTIVE');
+  }finally{referralAssociateActive=true;}
+});
+
+test('admin referral review is unavailable to associates and reviewers',async()=>{
+  const path='/api/admin/referrals';
+  for(const role of ['associate','reviewer']){
+    const response=await app.request(path,{headers:{Authorization:'Bearer synthetic-'+role}});
+    assert.equal(response.status,403);
+  }
+  const response=await app.request(path+'?status=review',{headers:{Authorization:'Bearer synthetic-admin'}});
+  assert.equal(response.status,200);
+  assert.deepEqual(referralCommands.at(-1),{action:'admin_list',adminId:accountId,status:'review',page:1});
+});
 
 test('native ESM workspace entry resolves without bundler-specific extension fallback',()=>{
   assert.equal(typeof domain.canSubmit,'function');

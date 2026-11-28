@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { CapabilityRadar, ProfileStrength, Avatar, ServiceError } from '../../components/ui';
 import { ProtectedFileLink } from '../../components/ui/protected-file';
 import { WorkspaceOverview, WorkspaceShortcuts } from '@/components/ui/workspace-overview';
+import { REFERRAL_ICON } from '@/lib/referrals';
 import { ConsultantPortalEntry, useConsultantTeam } from '@/components/consultant-team-context';
 import { InstallAmsCard } from '@/components/notifications/device-settings';
 import { assignmentStatusLabel, assignmentStatusTone, formatAssignmentDate, nextAssignmentTransition, type AssignmentWork } from '@/lib/assignment-display';
@@ -476,6 +477,7 @@ export default function DashboardPage() {
           completionHref="/dashboard/profile"
         />
         <WorkspaceShortcuts items={[
+          ...(data.status === 'active' ? [{ label: 'Referral', href: '/dashboard/referrals', tone: 'blue' as const, icon: REFERRAL_ICON }] : []),
           ...(consultantActive ? [{ label: 'Portal Konsultan', tone: 'blue' as const, artwork: 'consultant' as const, onClick: () => void open(), busy: opening }] : []),
           { label: 'Dokumen', href: '/dashboard/profile?tab=documents', tone: 'blue', artwork: 'document' },
           { label: 'Ketersediaan', href: '/dashboard/profile?tab=availability', tone: 'teal', artwork: 'availability' },
