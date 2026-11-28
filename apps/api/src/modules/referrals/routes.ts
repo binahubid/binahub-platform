@@ -50,11 +50,8 @@ associateReferralRoutes.get('/', (c) => {
 associateReferralRoutes.get('/code', (c) => signedReferral(c, {
   action: 'settings', associateId: c.get('user').id, email: c.get('user').email, operation: 'load',
 }));
-associateReferralRoutes.post('/code', async (c) => {
-  const input = referralSettings.safeParse(await c.req.json().catch(() => null));
-  if (!input.success) return c.json({ success: false, error: 'Periksa kembali pengaturan kode.' }, 400);
-  return signedReferral(c, { action: 'settings', associateId: c.get('user').id, email: c.get('user').email, ...input.data });
-});
+associateReferralRoutes.post('/code', (c) =>
+  c.json({ success: false, error: 'Hubungi Admin untuk mengatur kode referral.' }, 403));
 associateReferralRoutes.post('/follow-up', async (c) => {
   const input = referralFollowUp.safeParse(await c.req.json().catch(() => null));
   if (!input.success) return c.json({ success: false, error: 'Isi catatan, atur tanggal cek kembali, atau minta bantuan.' }, 400);
@@ -97,4 +94,15 @@ adminReferralRoutes.post('/review', async (c) => {
   const input = referralReview.safeParse(await c.req.json().catch(() => null));
   if (!input.success) return c.json({ success: false, error: 'Lengkapi kode dan alasan keputusan referral.' }, 400);
   return signedReferral(c, { action: 'admin_review', adminId: c.get('user').id, ...input.data });
+});
+
+adminReferralRoutes.post('/code', async (c) => {
+  const input = referralSettings.safeParse(await c.req.json().catch(() => null));
+  if (!input.success) return c.json({ success: false, error: 'Periksa kembali kode konfirmasi.' }, 400);
+  const { data, error } = await getDb().from('associates').select('email').eq('id', input.data.associateId).maybeSingle();
+  if (error) return c.json({ success: false, error: 'Referral belum dapat diakses. Coba lagi sebentar.' }, 503);
+  if (!data?.email) return c.json({ success: false, error: 'Referral ini tidak tersedia.' }, 404);
+  return signedReferral(c, {
+    action: 'admin_settings', adminId: c.get('user').id, email: data.email, ...input.data,
+  });
 });

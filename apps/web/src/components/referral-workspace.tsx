@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { referralSources, referralStages, type ReferralCode, type ReferralDashboardData, type ReferralRow } from '@ams/shared/validators/referrals';
+import { referralSources, referralStages, type ReferralCode, type ReferralCodeOperation, type ReferralDashboardData, type ReferralRow } from '@ams/shared/validators/referrals';
 import { useAmsLocale } from '@/components/ams-language';
 import { useAuth } from '@/context/AuthContext';
 import { REFERRAL_ICON, referralLink, referralRequest } from '@/lib/referrals';
@@ -50,8 +50,6 @@ export function ReferralWorkspace({ admin = false }: { admin?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string>();
   const [ineligible, setIneligible] = useState(false);
-  const [rotation, setRotation] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!accessToken || admin) return;
@@ -96,21 +94,6 @@ export function ReferralWorkspace({ admin = false }: { admin?: boolean }) {
       setFeedback(success);
     } catch {
       setFeedback(tr('Pilih tautan atau kode, lalu salin dari perangkat Anda.', 'Select the link or code and copy it using your device.'));
-    }
-  }
-
-  async function updateCode(operation: 'enable' | 'disable' | 'rotate') {
-    if (!accessToken || !code || saving) return;
-    setSaving(true);
-    setFeedback('');
-    try {
-      setCode(await referralRequest<ReferralCode>(accessToken, base + '/code', { operation, expectedCode: code.code }));
-      setRotation(false);
-      setFeedback(tr('Pengaturan kode disimpan.', 'Referral code settings saved.'));
-    } catch (error) {
-      setFeedback(error instanceof Error ? t(error.message) : tr('Pengaturan belum tersimpan.', 'Settings could not be saved.'));
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -162,7 +145,7 @@ export function ReferralWorkspace({ admin = false }: { admin?: boolean }) {
             {tr('Tautan Anda', 'Your referral link')}
           </h2>
           {code && <span className={'rounded-md px-2.5 py-1 text-xs font-semibold ' + (code.enabled ? 'bg-emerald-100 text-emerald-950' : 'bg-slate-100 text-slate-700')}>
-            {code.enabled ? tr('Aktif', 'Active') : tr('Dijeda', 'Paused')}</span>}
+            {code.enabled ? tr('Aktif', 'Active') : tr('Dijeda oleh Admin', 'Paused by Admin')}</span>}
         </div>
         {code ? <div className="mt-4 space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -176,15 +159,8 @@ export function ReferralWorkspace({ admin = false }: { admin?: boolean }) {
             <button type="button" className={secondary} disabled={!code.enabled} onClick={() => void copy(
               tr('Saya ingin mengenalkan BinaHub untuk kebutuhan pengembangan individu, tim, atau perusahaan Anda. Jelajahi layanannya di sini: ', 'Explore BinaHub for your individual, team, or organisational development needs: ') + shareUrl,
               tr('Pesan pengantar disalin.', 'Introductory message copied.'))}>{tr('Salin pesan pengantar', 'Copy introduction')}</button>
-            <button type="button" className={secondary} disabled={saving}
-              onClick={() => void updateCode(code.enabled ? 'disable' : 'enable')}>{code.enabled ? tr('Jeda kode', 'Pause code') : tr('Aktifkan kode', 'Enable code')}</button>
-            <button type="button" className={secondary} disabled={saving} aria-expanded={rotation}
-              onClick={() => setRotation((value) => !value)}>{tr('Ganti kode', 'Replace code')}</button>
           </div>
-          {rotation && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-            <p>{tr('Kode lama akan berhenti berlaku untuk kunjungan dan pengisian baru. Riwayat tetap tersimpan.', 'The old code will stop working for new visits and submissions. Existing referrals are preserved.')}</p>
-            <button type="button" className={secondary + ' mt-2'} disabled={saving} onClick={() => void updateCode('rotate')}>{tr('Ya, buat kode baru', 'Create a new code')}</button>
-          </div>}
+          {!code.enabled && <p className="text-sm text-slate-600">{tr('Hubungi Admin untuk mengaktifkan kembali kode ini.', 'Contact an Admin to reactivate this code.')}</p>}
         </div> : <p className="mt-4 text-sm text-slate-600" role="status">{codeStatus === 'error'
           ? tr('Tautan belum dapat dimuat.', 'The link could not be loaded.') : tr('Menyiapkan tautan…', 'Preparing your link…')}
           {codeStatus === 'error' && <button className="ml-2 font-semibold text-[#0B2C6B] underline" onClick={refresh}>{tr('Coba lagi', 'Retry')}</button>}</p>}
@@ -279,15 +255,94 @@ export function ReferralWorkspace({ admin = false }: { admin?: boolean }) {
       {admin && associates.length > 0 && <details className="ams-panel p-4 sm:p-5">
         <summary className="cursor-pointer font-semibold text-[#0B2C6B]">{tr('Kode dan kinerja Associate', 'Associate codes and performance')}</summary>
         <ul className="mt-3 divide-y divide-slate-200">
-          {associates.map((row) => <li key={row.id} className="flex flex-col gap-1.5 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0"><span className="block break-words font-semibold text-slate-900">{row.name || row.code}</span>
-              <span className="text-xs text-slate-600">{row.code} · {row.active && row.enabled ? tr('Aktif', 'Active') : tr('Jeda / nonaktif', 'Paused / inactive')}</span></div>
-            <span className="text-xs leading-5 text-slate-700">{row.visits} {tr('kunjungan', 'visits')} · {row.referrals} {tr('rujukan', 'referrals')} · {row.meetings} {tr('tahap meeting', 'meeting stage')} · {row.proposals} {tr('tahap proposal', 'proposal stage')} · {row.won} {tr('disepakati', 'agreed')}</span>
+          {associates.map((row) => <li key={row.id} className="space-y-2 py-3 text-sm">
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0"><span className="block break-words font-semibold text-slate-900">{row.name || row.code}</span>
+                <span className="text-xs text-slate-600">{row.code} · {!row.active ? tr('Akun nonaktif', 'Inactive account') : row.enabled ? tr('Aktif', 'Active') : tr('Dijeda', 'Paused')}</span></div>
+              <span className="text-xs leading-5 text-slate-700">{row.visits} {tr('kunjungan', 'visits')} · {row.referrals} {tr('rujukan', 'referrals')} · {row.meetings} {tr('tahap meeting', 'meeting stage')} · {row.proposals} {tr('tahap proposal', 'proposal stage')} · {row.won} {tr('disepakati', 'agreed')}</span>
+            </div>
+            <AdminCodeControls key={row.code + row.enabled} row={row} save={save} loading={loading} />
           </li>)}
         </ul>
       </details>}
     </>}
   </div>;
+}
+
+function AdminCodeControls({ row, save, loading }: {
+  row: NonNullable<ReferralDashboardData['associates']>[number];
+  save: (path: string, payload: unknown, success: string) => Promise<void>;
+  loading: boolean;
+}) {
+  const { locale, t } = useAmsLocale();
+  const tr = (id: string, en: string) => locale === 'en' ? en : id;
+  const [operation, setOperation] = useState<ReferralCodeOperation>();
+  const [confirmation, setConfirmation] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const labels = {
+    enable: tr('Aktifkan kode', 'Enable code'),
+    disable: tr('Jeda kode', 'Pause code'),
+    rotate: tr('Ganti kode', 'Replace code'),
+  };
+  const impacts = {
+    enable: tr('Tautan ini dapat menerima rujukan kembali selama akun Associate aktif.', 'This link can receive referrals again while the Associate account is active.'),
+    disable: tr('Tautan dan kode ini berhenti menerima rujukan sampai diaktifkan kembali.', 'This link and code stop receiving referrals until reactivated.'),
+    rotate: tr('Tautan dan kode lama langsung kehilangan validitas. Bagikan tautan baru setelah perubahan.', 'The old link and code stop working immediately. Share the new link after the change.'),
+  };
+  const confirmationCode = confirmation.trim().toUpperCase();
+  const pending = busy || loading;
+
+  function selectOperation(next?: ReferralCodeOperation) {
+    setOperation(next);
+    setConfirmation('');
+    setError('');
+  }
+
+  async function confirm(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!operation || confirmationCode !== row.code || pending) return;
+    setBusy(true);
+    setError('');
+    try {
+      await save('/code', { associateId: row.id, operation, expectedCode: row.code, confirmationCode },
+        tr('Pengaturan kode referral disimpan.', 'Referral code settings saved.'));
+      selectOperation();
+    } catch (cause) {
+      setError(cause instanceof Error ? t(cause.message) : tr('Perubahan belum tersimpan.', 'The change could not be saved.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <details onToggle={(event) => {
+    if (!event.currentTarget.open && !busy) selectOperation();
+  }}>
+    <summary className="min-h-11 cursor-pointer content-center font-medium text-[#0B2C6B]">{tr('Kelola kode', 'Manage code')}</summary>
+    {!operation ? <div className="flex flex-wrap gap-2">
+      <button type="button" className={secondary} disabled={pending} onClick={() => selectOperation(row.enabled ? 'disable' : 'enable')}>
+        {labels[row.enabled ? 'disable' : 'enable']}
+      </button>
+      <button type="button" className={secondary} disabled={pending} onClick={() => selectOperation('rotate')}>{labels.rotate}</button>
+    </div> : <form onSubmit={confirm} aria-busy={busy} className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+      <div>
+        <h3 className="font-semibold">{labels[operation]} · {row.name || row.code}</h3>
+        <p className="mt-1">{impacts[operation]} {tr('Riwayat rujukan tetap tersimpan.', 'Existing referral records are preserved.')}</p>
+      </div>
+      <label className="block max-w-sm space-y-1.5">
+        <span>{tr('Ketik kode saat ini untuk mengonfirmasi', 'Type the current code to confirm')} <strong className="font-mono">{row.code}</strong></span>
+        <input className={control} value={confirmation} onChange={(event) => setConfirmation(event.target.value)}
+          maxLength={row.code.length} spellCheck={false} autoComplete="off" autoCapitalize="characters" disabled={pending} />
+      </label>
+      {error && <p role="alert" className="font-medium text-red-800">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className={primary} disabled={pending || confirmationCode !== row.code}>
+          {busy ? tr('Menyimpan…', 'Saving…') : tr('Konfirmasi perubahan', 'Confirm change')}
+        </button>
+        <button type="button" className={secondary} disabled={busy} onClick={() => selectOperation()}>{tr('Batal', 'Cancel')}</button>
+      </div>
+    </form>}
+  </details>;
 }
 
 type DetailProps = {

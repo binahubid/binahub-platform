@@ -10,9 +10,12 @@ export const referralFilters = z.object({
   page: z.coerce.number().int().min(1).max(500).default(1),
 }).strict();
 export const referralSettings = z.object({
+  associateId: z.uuid(),
   operation: z.enum(['enable', 'disable', 'rotate']),
   expectedCode: referralCodeSchema,
-}).strict();
+  confirmationCode: referralCodeSchema,
+}).strict().refine((value) => value.confirmationCode === value.expectedCode);
+export type ReferralCodeOperation = z.infer<typeof referralSettings>['operation'];
 export const referralFollowUp = z.object({
   caseId: z.uuid(), requestId: z.uuid(),
   note: z.string().trim().max(1000),

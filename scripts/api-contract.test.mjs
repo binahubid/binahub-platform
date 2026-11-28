@@ -115,6 +115,25 @@ test('admin referral review is unavailable to associates and reviewers',async()=
   assert.deepEqual(referralCommands.at(-1),{action:'admin_list',adminId:accountId,status:'review',page:1});
 });
 
+test('only admins can change referral codes and must confirm the current code', async () => {
+  const payload = { associateId: accountId, operation: 'rotate', expectedCode: 'BH-AABBCCDDEE', confirmationCode: 'BH-AABBCCDDEE' };
+  const request = (path, role, body) => app.request('/api/' + path + '/referrals/code', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer synthetic-' + role, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const before = referralCommands.length;
+  assert.equal((await request('associate', 'associate', payload)).status, 403);
+  assert.equal((await request('admin', 'associate', payload)).status, 403);
+  assert.equal((await request('admin', 'reviewer', payload)).status, 403);
+  assert.equal((await request('admin', 'admin', { ...payload, confirmationCode: 'BH-FFEEDDCCBB' })).status, 400);
+  assert.equal(referralCommands.length, before);
+  assert.equal((await request('admin', 'admin', payload)).status, 200);
+  assert.deepEqual(referralCommands.at(-1), {
+    action: 'admin_settings', adminId: accountId, email: 'active_associate@example.com', ...payload,
+  });
+});
+
 test('native ESM workspace entry resolves without bundler-specific extension fallback',()=>{
   assert.equal(typeof domain.canSubmit,'function');
   assert.equal(domain.activeConsultantMembership({status:'active',accepted_at:'2026-11-12'},'active'),true);
